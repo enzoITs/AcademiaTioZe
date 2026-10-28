@@ -1,0 +1,317 @@
+{
+  "saveVersion": 1,
+  "time": {
+    "secondsPerDay": 8,
+    "daysPerMonth": 30,
+    "speeds": [0, 1, 2, 4],
+    "blocks": [
+      { "id": "manha", "label": "Manhã", "share": 0.25 },
+      { "id": "tarde", "label": "Tarde", "share": 0.2 },
+      { "id": "noite", "label": "Noite", "share": 0.55 }
+    ],
+    "startCalendarMonth": 2,
+    "weekdays": ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+    "monthNames": ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
+    "offlineMaxDays": 3,
+    "offlineConditionFloor": 20,
+    "offlineThresholdSeconds": 5
+  },
+  "seasonality": {
+    "mondayChestMultiplier": 1.5,
+    "chestShareOfWeightDemand": 0.4,
+    "januaryEnrollmentMultiplier": 2.5
+  },
+  "economy": {
+    "startingMoney": 1500,
+    "eraBaseFee": { "1": 35, "2": 55, "3": 80, "4": 110 },
+    "startingFee": 35,
+    "feeSlider": { "min": 15, "max": 90, "step": 1 },
+    "fixedMonthlyCosts": [
+      { "id": "energia", "label": "Energia", "amount": 150 },
+      { "id": "agua", "label": "Água e limpeza", "amount": 80 }
+    ],
+    "rent": 0,
+    "negativeFloor": -500,
+    "dailyInterestOnDebt": 0.005,
+    "sellRefundRate": 0.5,
+    "repairCostRate": 0.06,
+    "repairMinCost": 10,
+    "serviceCostRate": 0.03,
+    "serviceBonus": 30,
+    "fairRange": [0.9, 1.05],
+    "pricePointsPerPercentAbove": 1
+  },
+  "grid": {
+    "cols": 16,
+    "rows": 12,
+    "tileSize": 48,
+    "door": { "x": 1, "y": 7 },
+    "zones": [
+      { "id": "garagem", "label": "Garagem", "x": 0, "y": 0, "w": 8, "h": 8, "cost": 0, "startsUnlocked": true,
+        "description": "A garagem herdada do Tio Zé." },
+      { "id": "quintal", "label": "Quintal", "x": 8, "y": 0, "w": 4, "h": 8, "cost": 800, "requires": null,
+        "description": "Derruba o muro do lado e ganha uma faixa comprida." },
+      { "id": "puxadinho", "label": "Puxadinho", "x": 4, "y": 8, "w": 4, "h": 4, "cost": 1500, "requires": "quintal",
+        "description": "Um cômodo quadradinho atrás da garagem." },
+      { "id": "varanda", "label": "Varanda dos fundos", "x": 8, "y": 8, "w": 4, "h": 4, "cost": 2700, "requires": "puxadinho",
+        "description": "Fecha o canto entre o quintal e o puxadinho.",
+        "reaction": { "from": "tioze", "text": "A varanda onde eu fazia churrasco virou academia? Pelo menos guarda um cantinho pra grelha!" } },
+      { "id": "galpao", "label": "Galpão do Seu Armando", "x": 12, "y": 0, "w": 4, "h": 6, "cost": 4900, "requires": "quintal",
+        "description": "O vizinho topou vender o galpão onde guardava o Fusca.",
+        "reaction": { "from": "armando", "text": "Vendi o galpão. O Fusca vai dormir na rua agora, viu? Cuida bem do meu chão de cimento." } },
+      { "id": "terraco", "label": "Terraço coberto", "x": 12, "y": 6, "w": 4, "h": 6, "cost": 8800, "requires": "galpao",
+        "description": "Cobertura nova ao lado do galpão. O maior espaço da garagem.",
+        "reaction": { "from": "valeria", "text": "Um terraço coberto? Estou anotando a ideia pra MegaFit. Parabéns, vizinho(a)!" } }
+    ],
+    "procedural": {
+      "minAvailable": 1,
+      "sizes": [[4, 4], [4, 6], [6, 4], [6, 6]],
+      "pricePerTile": 380,
+      "growth": 1.12,
+      "roundTo": 50,
+      "maxCoordinate": 400,
+      "reserved": { "x": 0, "y": 8, "w": 4 },
+      "names": [
+        { "label": "Lote vago", "description": "Mato alto e um pneu velho. Nada que uma roçada não resolva." },
+        { "label": "Antiga oficina", "description": "Ainda cheira a graxa, mas o piso aguenta qualquer anilha." },
+        { "label": "Depósito da quitanda", "description": "A quitanda mudou de ponto e deixou o depósito vazio." },
+        { "label": "Quadra do bairro", "description": "A quadra de futsal que ninguém usava desde a final de 2009." },
+        { "label": "Salão de festas", "description": "Tem até globo de luz. Os alunos vão amar." },
+        { "label": "Casa da Dona Neide", "description": "A Dona Neide foi morar com a filha e vendeu o quintal." },
+        { "label": "Lava-rápido fechado", "description": "Já vem com ralo no chão: perfeito para o dia do suor." },
+        { "label": "Barracão", "description": "Teto alto e espaço de sobra para os aparelhos grandes." },
+        { "label": "Estacionamento", "description": "Umas faixas pintadas no chão e muita vontade de crescer." },
+        { "label": "Antiga padaria", "description": "O forno já foi embora; o cheirinho de pão, não." },
+        { "label": "Ateliê de costura", "description": "Os manequins ficaram de recordação para o espelho." },
+        { "label": "Pátio dos fundos", "description": "Um cantinho ensolarado que estava sobrando." }
+      ]
+    }
+  },
+  "categories": {
+    "cardio": { "label": "Cardio", "demand": "cardio" },
+    "pesoLivre": { "label": "Peso livre", "demand": "peso" },
+    "maquinas": { "label": "Máquinas", "demand": "peso" },
+    "funcional": { "label": "Funcional", "demand": "funcional" },
+    "conforto": { "label": "Conforto", "demand": null },
+    "decoracao": { "label": "Decoração", "demand": null }
+  },
+  "demandCategories": {
+    "cardio": "Cardio",
+    "peso": "Peso",
+    "funcional": "Funcional"
+  },
+  "tiers": {
+    "usado": { "label": "Usado", "startCondition": 70, "ceiling": 85, "wearPerUse": 0.3 },
+    "novo": { "label": "Novo", "startCondition": 100, "ceiling": 100, "wearPerUse": 0.2 },
+    "profissional": { "label": "Profissional", "startCondition": 100, "ceiling": 100, "wearPerUse": 0.1 }
+  },
+  "equipment": {
+    "esteira": {
+      "name": "Esteira", "category": "cardio", "size": [1, 2], "needsAccess": true, "visualSlots": 1, "anim": "run",
+      "description": "O coração do cardio. Corredores e iniciantes não vivem sem.",
+      "tiers": [
+        { "id": "usado", "price": 400, "capacity": 6 },
+        { "id": "novo", "price": 1200, "capacity": 7, "minRep": 2 },
+        { "id": "profissional", "price": 3200, "capacity": 8, "minRep": 3.5 }
+      ]
+    },
+    "bicicleta": {
+      "name": "Bicicleta ergométrica", "category": "cardio", "size": [1, 2], "needsAccess": true, "visualSlots": 1, "anim": "run",
+      "description": "Cardio de baixo impacto. Desejada por iniciantes e corredores.",
+      "tiers": [
+        { "id": "usado", "price": 350, "capacity": 6 },
+        { "id": "novo", "price": 1000, "capacity": 7, "minRep": 2 },
+        { "id": "profissional", "price": 2800, "capacity": 8, "minRep": 3.5 }
+      ]
+    },
+    "supino": {
+      "name": "Banco de supino", "category": "pesoLivre", "size": [2, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true, "noisy": true,
+      "description": "Segunda é dia de peito. Essencial para o Marombeiro.",
+      "tiers": [
+        { "id": "usado", "price": 300, "capacity": 5 },
+        { "id": "novo", "price": 900, "capacity": 6, "minRep": 2 },
+        { "id": "profissional", "price": 2500, "capacity": 7, "minRep": 3.5 }
+      ]
+    },
+    "halteres": {
+      "name": "Rack de halteres", "category": "pesoLivre", "size": [2, 1], "needsAccess": true, "visualSlots": 2, "anim": "lift", "noisy": true,
+      "description": "Barato e versátil: muita capacidade em pouco espaço.",
+      "tiers": [{ "id": "usado", "price": 250, "capacity": 8 }]
+    },
+    "rack_agachamento": {
+      "name": "Rack de agachamento", "category": "pesoLivre", "size": [3, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true,
+      "description": "Grandão e barulhento. Marombeiro chora de alegria.",
+      "tiers": [{ "id": "usado", "price": 700, "capacity": 6 }]
+    },
+    "colchonete": {
+      "name": "Área de colchonetes", "category": "funcional", "size": [2, 2], "needsAccess": true, "visualSlots": 2, "anim": "stretch",
+      "description": "Alongamento, abdominal e funcional. Barata e amada por iniciantes.",
+      "tiers": [{ "id": "usado", "price": 120, "capacity": 6 }]
+    },
+    "maquina_peito": {
+      "name": "Máquina de peito", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true,
+      "description": "Peito guiado e seguro. Essencial para o Iniciante. Capacidade em teste.",
+      "tiers": [{ "id": "usado", "price": 450, "capacity": 5 }]
+    },
+    "puxador": {
+      "name": "Puxador/remada", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minRep": 2.5,
+      "description": "Costas largas, sonho do Marombeiro. Capacidade em teste.",
+      "tiers": [{ "id": "usado", "price": 500, "capacity": 5 }]
+    },
+    "leg_press": {
+      "name": "Leg press", "category": "maquinas", "size": [3, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true, "minRep": 3,
+      "description": "Dia de perna sem desculpa. Desejado por iniciantes. Capacidade em teste.",
+      "tiers": [{ "id": "usado", "price": 800, "capacity": 4 }]
+    },
+    "bebedouro": {
+      "name": "Bebedouro", "category": "conforto", "size": [1, 1], "needsAccess": true, "vibe": 12,
+      "description": "Água geladinha. Essencial para o Corredor; perto do cardio agrada.",
+      "tiers": [{ "id": "usado", "price": 150, "capacity": 0 }]
+    },
+    "ventilador": {
+      "name": "Ventilador", "category": "conforto", "size": [1, 1], "needsAccess": false, "vibe": 10,
+      "description": "Ventilação para os calorentos. Aumenta a Vibe.",
+      "tiers": [{ "id": "usado", "price": 80, "capacity": 0 }]
+    },
+    "espelho": {
+      "name": "Espelho de parede", "category": "conforto", "size": [1, 2], "needsAccess": false, "wallMounted": true, "vibe": 8,
+      "description": "Precisa encostar na parede. Iniciantes conferem a postura.",
+      "tiers": [{ "id": "usado", "price": 100, "capacity": 0 }]
+    },
+    "vestiario": {
+      "name": "Vestiário", "category": "conforto", "size": [4, 3], "needsAccess": true, "vibe": 20, "minRep": 3.5,
+      "description": "Banho depois do treino. Corredores agradecem.",
+      "tiers": [{ "id": "usado", "price": 600, "capacity": 0 }]
+    },
+    "planta": {
+      "name": "Vaso de costela-de-adão", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 6,
+      "description": "Um verdinho deixa tudo mais acolhedor. Item de decoração proposto.",
+      "tiers": [{ "id": "usado", "price": 60, "capacity": 0 }]
+    },
+    "poster": {
+      "name": "Pôster Mister Bairro 1987", "category": "decoracao", "size": [1, 1], "needsAccess": false, "wallMounted": true, "vibe": 5,
+      "description": "O Tio Zé no auge. Precisa encostar na parede. Item de decoração proposto.",
+      "tiers": [{ "id": "usado", "price": 40, "capacity": 0 }]
+    }
+  },
+  "profiles": {
+    "iniciante": {
+      "label": "Iniciante",
+      "visitsPerDay": 0.45,
+      "categoryShare": { "cardio": 0.5, "funcional": 0.35, "peso": 0.15 },
+      "patience": "Média",
+      "queueMultiplier": 1.0,
+      "priceMultiplier": 1.5,
+      "spawnWeight": 0.45,
+      "essentials": ["esteira", "maquina_peito", "colchonete"],
+      "desired": ["bicicleta", "espelho", "bebedouro", "leg_press"],
+      "vibeMultipliers": { "espelho": 1.5, "planta": 1.3 },
+      "signature": { "shirt": "#8ec5e8", "accent": "#ffffff", "accessory": "bottle" }
+    },
+    "marombeiro": {
+      "label": "Marombeiro",
+      "visitsPerDay": 0.7,
+      "categoryShare": { "peso": 0.8, "cardio": 0.2 },
+      "patience": "Baixa",
+      "queueMultiplier": 1.3,
+      "priceMultiplier": 1.0,
+      "spawnWeight": 0.3,
+      "essentials": ["supino", "halteres", "rack_agachamento"],
+      "desired": ["maquina_peito", "puxador", "ventilador"],
+      "vibeMultipliers": { "poster": 1.6 },
+      "signature": { "shirt": "#f29a8e", "accent": "#3d3550", "accessory": "wristband" }
+    },
+    "corredor": {
+      "label": "Corredor",
+      "visitsPerDay": 0.55,
+      "categoryShare": { "cardio": 0.85, "funcional": 0.15 },
+      "patience": "Alta",
+      "queueMultiplier": 0.7,
+      "priceMultiplier": 1.0,
+      "spawnWeight": 0.25,
+      "essentials": ["esteira", "bebedouro"],
+      "desired": ["bicicleta", "ventilador", "vestiario"],
+      "vibeMultipliers": { "ventilador": 1.5, "bebedouro": 1.3 },
+      "signature": { "shirt": "#b8e986", "accent": "#d4ff3a", "accessory": "visor" }
+    }
+  },
+  "manias": {
+    "precisa_espelho": { "label": "Precisa de espelho", "extraEssential": "espelho", "penalty": 5 },
+    "odeia_lotacao": { "label": "Odeia academia lotada", "queueMultiplier": 1.4 },
+    "halter_favorito": { "label": "Não larga o halter favorito", "extraEssential": "halteres", "penalty": 5 },
+    "calorento": { "label": "Calorento", "vibePenaltyWithout": "ventilador", "vibePenalty": 15 }
+  },
+  "satisfaction": {
+    "weights": { "needs": 0.35, "queue": 0.2, "condition": 0.15, "vibe": 0.15, "price": 0.15 },
+    "essentialWeight": 3,
+    "desiredWeight": 1,
+    "missingEssentialPenalty": 10,
+    "dailyApproach": 0.2,
+    "queueSlope": 150,
+    "newStudentSatisfaction": 65,
+    "noveltyBonus": 5,
+    "noveltyDays": 4,
+    "noConditionDataScore": 70
+  },
+  "vibe": {
+    "base": 40,
+    "duplicateFalloff": 0.5,
+    "crowdedThreshold": 0.9,
+    "crowdedPenalty": 8,
+    "waterNearCardioBonus": 4,
+    "waterNearCardioMax": 8,
+    "waterNearCardioDistance": 2,
+    "noiseNearCardioPenalty": 4,
+    "noiseNearCardioMax": 12,
+    "noiseNearCardioDistance": 1
+  },
+  "retention": {
+    "cancelThreshold": 45,
+    "cancelMaxDaily": 0.04,
+    "baseDailyCancel": 0.001
+  },
+  "reputation": {
+    "start": 1.5,
+    "keep": 0.9
+  },
+  "enrollment": {
+    "base": 0.5,
+    "perStarAboveOne": 0.8,
+    "eraFactor": { "1": 1.0 },
+    "maxMembersPerPeakCapacity": 2
+  },
+  "wear": {
+    "scale": 0.7,
+    "states": { "ok": 60, "rangendo": 40, "cansado": 15 },
+    "tiredCapacityMultiplier": 0.75,
+    "tiredDailyBreakChance": 0.02,
+    "brokenCondition": 10
+  },
+  "cleaning": {
+    "usesPerDirt": 12,
+    "maxDirt": 10,
+    "cleanlinessPerDirt": 10
+  },
+  "staff": {
+    "maxStaff": 3,
+    "roles": {
+      "zelador": {
+        "label": "Faxineiro(a)",
+        "monthlySalary": 600,
+        "extraShiftRate": 0.7,
+        "cleanPerBlock": 6,
+        "description": "Limpa até 6 sujeiras por turno coberto. Cobrir mais um turno custa +70% do salário base."
+      }
+    }
+  },
+  "reviews": {
+    "dailyChance": 0.3,
+    "maxStored": 30
+  },
+  "era2Preview": {
+    "students": 60,
+    "reputation": 3.5,
+    "equipmentTypes": 7,
+    "expansions": 2
+  }
+}
