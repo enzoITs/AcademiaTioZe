@@ -1,0 +1,19 @@
+{
+  "name": "academia-do-tio-ze",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Academia do Tio Zé — tycoon casual de navegador (protótipo da Era 1)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "three": "^0.186.1"
+  }
+}
