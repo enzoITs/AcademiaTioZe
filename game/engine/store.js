@@ -324,7 +324,8 @@ export function startPlacement(type, tierId) {
   const { state, ui } = game;
   const def = getEquipmentDef(type);
   const tier = getTierDef(type, tierId);
-  if (isTypeLocked(type, state.reputation) || (tier.minRep ?? 0) > state.reputation) {
+  if ((def.minEra ?? 1) > state.era) return fail(`Bloqueado: chega na Era ${def.minEra}.`);
+  if (isTypeLocked(type, state.reputation, state.era) || (tier.minRep ?? 0) > state.reputation) {
     return fail(`Bloqueado: precisa de ${Math.max(def.minRep ?? 0, tier.minRep ?? 0)} estrelas de reputação.`);
   }
   if (!canAfford(state, tier.price)) return fail(`Saldo insuficiente para ${def.name} (${formatMoney(tier.price)}).`);

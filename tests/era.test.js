@@ -120,3 +120,55 @@ test('save da Era 2 volta igual e a simulação roda no ponto novo', () => {
   assert.ok(loaded.students.length >= 60);
   syncLayout(createNewGame(1));
 });
+
+test('Era 3: compra do prédio leva tudo, libera ring light e Influencer', async () => {
+  const { isTypeLocked } = await import('../game/systems/suggestions.js');
+  const { createStaffMember } = await import('../game/systems/staff.js');
+  const s = readyGarage();
+  performEraMove(s);
+  s.unlockedZones.push('sala_fundos', 'sobreloja');
+  syncLayout(s);
+  assert.equal(canMoveEra(s).ok, false, 'metas da Era 3 ainda não batidas');
+  // mais tipos de aparelho espalhados pelo ponto
+  const extra = ['remo', 'eliptico', 'kettlebell', 'saco_pancada', 'barra_fixa', 'planta', 'geladeira', 'caixa_som'];
+  let id = s.nextItemId;
+  for (const type of extra) {
+    let done = false;
+    for (let y = 0; y < 12 && !done; y++) {
+      for (let x = 0; x < 22 && !done; x++) {
+        const it = { id, type, tier: 'usado', x, y, rot: 0, condition: 90, purchasedDay: 0, pricePaid: 100 };
+        if (validatePlacement(s, it).ok) {
+          s.items.push(it);
+          id += 1;
+          done = true;
+        }
+      }
+    }
+  }
+  s.nextItemId = id;
+  while (s.students.length < 150) s.students.push(createStudent(s, s.rng, s.students.length % 5 === 0 ? 'idoso' : null));
+  for (let i = 0; i < 3; i++) s.staff.push(createStaffMember(s, s.rng));
+  s.reputation = 4.2;
+  s.money = 40000;
+  assert.ok(isTypeLocked('ring_light', 5, 2), 'ring light só na Era 3');
+  const goals = eraGoals(s);
+  assert.ok(goals.every((g) => g.done), JSON.stringify(goals));
+  const count = s.items.length;
+  const summary = performEraMove(s);
+  assert.equal(s.era, 3);
+  assert.deepEqual(s.unlockedZones, ['predio']);
+  assert.equal(summary.moved, count);
+  assert.equal(s.money, 40000 - 25000);
+  assert.deepEqual({ ...DOOR }, { x: 3, y: 15 });
+  const access = computeAccess(s.unlockedZones, s.items);
+  assert.ok(s.items.every((i) => access.reachable.has(i.id)));
+  assert.equal(isTypeLocked('ring_light', 5, 3), false);
+  s.ledger.totals = {};
+  s.time.day += 1;
+  applyDailyEconomy(s);
+  assert.ok(Math.abs(s.ledger.totals.aluguel + 800 / 30) < 0.02, 'IPTU e manutenção');
+  const seen = new Set();
+  for (let i = 0; i < 300; i++) seen.add(createStudent(s, s.rng).profile);
+  assert.ok(seen.has('influencer'));
+  syncLayout(createNewGame(1));
+});

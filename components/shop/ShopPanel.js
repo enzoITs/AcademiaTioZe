@@ -19,7 +19,8 @@ function ShopCard({ entry, money, reputation, requested, era }) {
   const [tierId, setTierId] = useState(entry.tiers[0].id);
   const tier = entry.tiers.find((t) => t.id === tierId);
   const tierCfg = CONFIG.tiers[tier.id];
-  const lockedType = isTypeLocked(entry.type, reputation);
+  const lockedEra = (entry.minEra ?? 1) > era;
+  const lockedType = isTypeLocked(entry.type, reputation, era);
   const lockedTier = (tier.minRep ?? 0) > reputation;
   const locked = lockedType || lockedTier;
   const needRep = Math.max(entry.minRep ?? 0, tier.minRep ?? 0);
@@ -77,9 +78,9 @@ function ShopCard({ entry, money, reputation, requested, era }) {
           className="btn btn-primary btn-sm"
           disabled={locked || !affordable}
           onClick={() => startPlacement(entry.type, tier.id)}
-          title={locked ? `Requer ${needRep} estrelas` : affordable ? 'Comprar e posicionar' : 'Saldo insuficiente'}
+          title={lockedEra ? `Chega na Era ${entry.minEra}` : locked ? `Requer ${needRep} estrelas` : affordable ? 'Comprar e posicionar' : 'Saldo insuficiente'}
         >
-          {locked ? <><Icon name="lock" size={14} /> {needRep}★</> : 'Comprar'}
+          {lockedEra ? <><Icon name="lock" size={14} /> Era {entry.minEra}</> : locked ? <><Icon name="lock" size={14} /> {needRep}★</> : 'Comprar'}
         </button>
       </div>
     </article>

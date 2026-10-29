@@ -1,7 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useGame } from '../../hooks/useGame.js';
-import { CONFIG, PROFILES, eraDef } from '../../game/config.js';
+import { CONFIG, PROFILES, BLOCKS, eraDef } from '../../game/config.js';
+import { ERA_CEREMONY } from '../../game/content/lines.js';
 import { footprintSize } from '../../game/grid/grid.js';
 import { formatMoney } from '../../game/utils/format.js';
 import { canMoveEra, previewEraMove } from '../../game/systems/eras.js';
@@ -11,6 +12,15 @@ import Modal from './Modal.js';
 import Icon from '../ui/Icon.js';
 
 const CAT_COLOR = { cardio: '#8ec5e8', pesoLivre: '#f29a8e', maquinas: '#b9a3e3', funcional: '#a8e6cf', conforto: '#f2cd5c', decoracao: '#f5b3c8' };
+
+const listNames = (types) => types.map((t) => CONFIG.equipment[t].name.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' e $1');
+
+/** Turno preferido do perfil ("de manhã", "à tarde", "à noite"). */
+function peakOf(profile) {
+  const shares = BLOCKS.map((b) => profile.blockShare?.[b.id] ?? b.share);
+  const i = shares.indexOf(Math.max(...shares));
+  return ['de manhã', 'à tarde', 'à noite'][i] ?? 'à noite';
+}
 
 /** Planta do novo ponto, com os aparelhos já onde a mudança inteligente vai pôr. */
 function NewPlan({ preview }) {
@@ -65,6 +75,7 @@ export function EraMoveDialog() {
   const newcomers = Object.entries(PROFILES).filter(([, p]) => p.minEra === preview.era);
   const fee = CONFIG.economy.eraBaseFee;
   const refund = preview.leftovers.reduce((s, i) => s + (i.pricePaid ?? 0), 0);
+  const newItems = Object.entries(CONFIG.equipment).filter(([, e]) => e.minEra === preview.era).map(([t]) => t);
 
   return (
     <Modal title={`Mudança para o ${def.label}`} onClose={closeModal} className="modal-wide">
@@ -85,20 +96,21 @@ export function EraMoveDialog() {
             O usado continua usado e a condição se mantém.
             {preview.leftovers.length ? ` ${preview.leftovers.length} não cabem e serão vendidos pelo preço pago (${formatMoney(refund)}).` : ''}
           </li>
-          <li><strong>Caução e caminhão:</strong> {formatMoney(def.moveCost ?? 0)} agora.</li>
-          <li><strong>Aluguel:</strong> {formatMoney(def.rent)}/mês, cobrado por dia.</li>
+          <li><strong>{def.moveCostLabel ?? 'Mudança'}:</strong> {formatMoney(def.moveCost ?? 0)} agora.</li>
+          <li><strong>{def.rentLabel ?? 'Aluguel'}:</strong> {formatMoney(def.rent)}/mês, cobrado por dia{eraDef(state.era).rent ? ` (hoje: ${formatMoney(eraDef(state.era).rent)})` : ''}.</li>
           <li><strong>Mensalidade base:</strong> sobe de {formatMoney(fee[String(state.era)])} para {formatMoney(fee[String(preview.era)])}: dá para cobrar mais sem perder a nota de preço justo.</li>
           {newcomers.map(([id, p]) => (
             <li key={id}>
-              <strong>Novo perfil, {p.label}:</strong> treina mais de manhã e quer {p.essentials.map((t) => CONFIG.equipment[t].name.toLowerCase()).join(' e ')}.
+              <strong>Novo perfil, {p.label}:</strong> treina mais {peakOf(p)} e quer {listNames(p.essentials)}.
             </li>
           ))}
+          {newItems.length ? <li><strong>Na loja:</strong> {listNames(newItems)}.</li> : null}
           <li><strong>Equipe:</strong> até {def.maxStaff} pessoas.</li>
           <li>
             <strong>Inauguração:</strong> 1 dia de portas fechadas (sem mensalidade). Em troca, todos os alunos ganham +{def.noveltyBonus} de
             satisfação por {def.noveltyDays} dias.
           </li>
-          <li className="subtle">Os terrenos da garagem ficam para trás: ela vira o Museu do Tio Zé.</li>
+          {def.leaving ? <li className="subtle">{def.leaving}</li> : null}
         </ul>
       </div>
       {check.ok ? null : <p className="neg small">{check.reason}</p>}
@@ -129,13 +141,14 @@ function TruckArt() {
   );
 }
 
-function RibbonArt() {
+function RibbonArt({ era }) {
+  const neon = era >= 3;
   return (
     <svg viewBox="0 0 200 120" width="100%" height="100%" aria-hidden="true">
-      <rect width="200" height="120" fill="#f3e3d3" />
-      <rect x="40" y="14" width="120" height="22" rx="5" fill="#f2cd5c" stroke="#3d3550" strokeWidth="2.5" />
-      <text x="100" y="30" textAnchor="middle" fontSize="11" fontWeight="800" fill="#3d3550">ACADEMIA DO TIO ZÉ</text>
-      <rect x="62" y="40" width="76" height="70" rx="4" fill="#c8b6dc" stroke="#3d3550" strokeWidth="2.5" />
+      <rect width="200" height="120" fill={neon ? '#dcebf3' : '#f3e3d3'} />
+      <rect x="40" y="14" width="120" height="22" rx="5" fill={neon ? '#3d3550' : '#f2cd5c'} stroke="#3d3550" strokeWidth="2.5" />
+      <text x="100" y="30" textAnchor="middle" fontSize="11" fontWeight="800" fill={neon ? '#ff7eb6' : '#3d3550'}>ACADEMIA DO TIO ZÉ</text>
+      <rect x="62" y="40" width="76" height="70" rx="4" fill={neon ? '#cfe3ef' : '#c8b6dc'} stroke="#3d3550" strokeWidth="2.5" />
       <rect x="70" y="48" width="60" height="62" fill="#efe6d6" stroke="#3d3550" strokeWidth="2" />
       <path d="M20 74 Q60 82 100 74 T180 74" stroke="#e8646a" strokeWidth="7" fill="none" />
       <path d="M92 66 L100 74 L92 84 M108 66 L100 74 L108 84" stroke="#e8646a" strokeWidth="5" fill="none" />
@@ -152,33 +165,18 @@ function RibbonArt() {
 /** Passos 3 a 5: cerimônia curta de inauguração, um quadro por vez. */
 export function EraCeremony({ era }) {
   const def = eraDef(era);
+  const text = ERA_CEREMONY[era] ?? ERA_CEREMONY[2];
   const [step, setStep] = useState(0);
   const steps = [
-    {
-      title: 'O caminhão chegou!',
-      art: <TruckArt />,
-      text: 'Cada aparelho foi encaixado no novo ponto pela mudança inteligente. Se quiser, ajuste depois no modo edição: mover é grátis.',
-    },
+    { title: 'O caminhão chegou!', art: <TruckArt />, text: text.truck },
     {
       title: 'Corte de fita',
-      art: <RibbonArt />,
-      text: `O bairro inteiro veio ver o letreiro novo. Hoje as portas ficam fechadas para a festa (sem mensalidade). A partir de amanhã, todo mundo treina com +${def.noveltyBonus} de satisfação por ${def.noveltyDays} dias.`,
+      art: <RibbonArt era={era} />,
+      text: `${text.ribbon} Hoje as portas ficam fechadas para a festa (sem mensalidade). A partir de amanhã, todo mundo treina com +${def.noveltyBonus} de satisfação por ${def.noveltyDays} dias.`,
     },
-    {
-      who: 'tioze',
-      title: 'Postal do Tio Zé',
-      text: `Sobrinho(a), ${def.label.toLowerCase()} com letreiro pintado à mão! A garagem vira o Museu do Tio Zé, com o caderno e as fotos. Agora tem aluguel: fecha o caixa todo mês e não esquece da turma da manhã, que chega gente nova por aí.`,
-    },
-    {
-      who: 'whey',
-      title: 'O Whey inspeciona',
-      text: 'Miau. (O Whey cheirou cada canto, aprovou o piso e já escolheu o lugar da soneca: bem do lado da porta.)',
-    },
-    {
-      who: 'armando',
-      title: 'Seu Armando passou na calçada',
-      text: '“Mudou de endereço e o barulho veio junto?! ...Tá, o letreiro ficou bonito. Minha neta disse que vai se matricular.”',
-    },
+    { who: 'tioze', title: 'Postal do Tio Zé', text: text.tioze },
+    { who: 'whey', title: 'O Whey inspeciona', text: text.whey },
+    { who: 'armando', title: 'Seu Armando passou na calçada', text: text.armando },
   ];
   const s = steps[step];
   const last = step === steps.length - 1;

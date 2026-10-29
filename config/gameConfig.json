@@ -92,8 +92,11 @@
     "2": {
       "label": "Ponto de bairro",
       "rent": 1500,
+      "rentLabel": "Aluguel do ponto",
       "maxStaff": 6,
       "moveCost": 1500,
+      "moveCostLabel": "Caução e caminhão",
+      "leaving": "Os terrenos da garagem ficam para trás: ela vira o Museu do Tio Zé.",
       "noveltyBonus": 8,
       "noveltyDays": 7,
       "goals": { "students": 60, "reputation": 3.5, "equipmentTypes": 7, "expansions": 2 },
@@ -110,6 +113,32 @@
         { "id": "sobreloja", "label": "Sobreloja", "x": 14, "y": 6, "w": 8, "h": 6, "cost": 9000, "requires": "sala_fundos",
           "description": "O espaço do lado, com mezanino. O maior da Era 2.",
           "reaction": { "from": "valeria", "text": "Sobreloja, é? A MegaFit tem três andares, mas tudo bem, vizinho(a). Tudo bem." } }
+      ]
+    },
+    "3": {
+      "label": "Academia completa",
+      "rent": 800,
+      "rentLabel": "IPTU e manutenção do prédio",
+      "maxStaff": 10,
+      "moveCost": 25000,
+      "moveCostLabel": "Compra do prédio e reforma",
+      "leaving": "O ponto de bairro é devolvido ao dono; a placa pintada à mão vai para o Museu do Tio Zé.",
+      "noveltyBonus": 8,
+      "noveltyDays": 7,
+      "goals": { "students": 150, "reputation": 4, "equipmentTypes": 14, "expansions": 2, "staff": 3, "idoso": 10 },
+      "description": "Um prédio inteiro, comprado e reformado: paredes derrubadas, fachada de vidro e letreiro neon.",
+      "door": { "x": 3, "y": 15 },
+      "cols": 20,
+      "rows": 17,
+      "reserved": { "x": 0, "y": 16, "w": 7 },
+      "zones": [
+        { "id": "predio", "label": "Academia completa", "x": 0, "y": 0, "w": 20, "h": 16, "cost": 0, "startsUnlocked": true,
+          "description": "O prédio reformado, com fachada de vidro." },
+        { "id": "ala_aulas", "label": "Ala de aulas", "x": 20, "y": 0, "w": 8, "h": 8, "cost": 20000, "requires": null,
+          "description": "Um salão de piso de madeira para aulas e alongamento." },
+        { "id": "terraco_predio", "label": "Terraço do prédio", "x": 20, "y": 8, "w": 10, "h": 8, "cost": 45000, "requires": "ala_aulas",
+          "description": "O andar de cima ao ar livre, com vista para o bairro inteiro.",
+          "reaction": { "from": "valeria", "text": "Terraço com vista?! Tá, essa doeu. A MegaFit vai abrir um rooftop... um dia." } }
       ]
     }
   },
@@ -300,6 +329,11 @@
       "description": "O Tio Zé no auge. Precisa encostar na parede. Item de decoração proposto.",
       "tiers": [{ "id": "usado", "price": 40, "capacity": 0 }]
     },
+    "ring_light": {
+      "name": "Ring light de estúdio", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 10, "minEra": 3,
+      "description": "Luz boa para a foto do treino. Influencer não posta sem.",
+      "tiers": [{ "id": "usado", "price": 450, "capacity": 0 }]
+    },
     "trofeus": {
       "name": "Estante de troféus", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 6, "minRep": 2,
       "description": "As medalhas do Tio Zé e do bairro. Brilha que dá gosto.",
@@ -359,7 +393,24 @@
       "essentials": ["colchonete", "bicicleta"],
       "desired": ["bebedouro", "eliptico", "planta", "vestiario"],
       "vibeMultipliers": { "planta": 1.5, "caixa_som": 0.5 },
-      "signature": { "shirt": "#c9b8e8", "accent": "#fffdf8", "accessory": "towel" }
+      "signature": { "shirt": "#c9b8e8", "accent": "#fffdf8", "accessory": "towel" },
+      "dirtSensitivity": 1.3
+    },
+    "influencer": {
+      "label": "Influencer",
+      "minEra": 3,
+      "visitsPerDay": 0.6,
+      "categoryShare": { "funcional": 0.5, "cardio": 0.3, "peso": 0.2 },
+      "blockShare": { "manha": 0.2, "tarde": 0.45, "noite": 0.35 },
+      "patience": "Baixa",
+      "queueMultiplier": 1.2,
+      "priceMultiplier": 0.5,
+      "spawnWeight": 0.2,
+      "essentials": ["espelho", "ring_light", "colchonete"],
+      "desired": ["planta", "trofeus", "poster", "eliptico", "geladeira"],
+      "vibeMultipliers": { "espelho": 2, "ring_light": 1.8, "planta": 1.5, "trofeus": 1.4 },
+      "signature": { "shirt": "#f5b3c8", "accent": "#b9a3e3", "accessory": "phone" },
+      "dirtSensitivity": 1.5
     }
   },
   "manias": {
@@ -404,7 +455,7 @@
   "enrollment": {
     "base": 0.5,
     "perStarAboveOne": 0.8,
-    "eraFactor": { "1": 1.0, "2": 1.4 },
+    "eraFactor": { "1": 1.0, "2": 1.4, "3": 1.9 },
     "maxMembersPerPeakCapacity": 2
   },
   "wear": {

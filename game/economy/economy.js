@@ -16,7 +16,7 @@ export const LEDGER_CATEGORIES = {
   equipamentos: { label: 'Compra de aparelhos', kind: 'expense' },
   ampliacoes: { label: 'Ampliações', kind: 'expense' },
   mudanca: { label: 'Mudança de era', kind: 'expense' },
-  aluguel: { label: 'Aluguel', kind: 'expense' },
+  aluguel: { label: 'Aluguel e prédio', kind: 'expense' },
   energia: { label: 'Energia', kind: 'expense' },
   agua: { label: 'Água e limpeza', kind: 'expense' },
   consertos: { label: 'Consertos e revisões', kind: 'expense' },
@@ -60,7 +60,7 @@ export function applyDailyEconomy(state) {
     transact(state, -cost.amount / days, cost.id, cost.label);
   }
   const rent = monthlyRent(state);
-  if (rent > 0) transact(state, -rent / days, 'aluguel', 'Aluguel do ponto');
+  if (rent > 0) transact(state, -rent / days, 'aluguel', eraDef(state.era).rentLabel ?? 'Aluguel');
   const salaries = totalMonthlySalaries(state);
   if (salaries > 0) transact(state, -salaries / days, 'salarios', 'Salários da equipe');
   if (state.money < 0) {

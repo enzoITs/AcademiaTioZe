@@ -32,7 +32,7 @@ export function computeDemand(profileCounts, blockIndex, day) {
     const share = blockShareOf(p, blockIndex);
     byProfile[pid] = {};
     for (const [cat, catShare] of Object.entries(p.categoryShare)) {
-      const d = profileCounts[pid] * p.visitsPerDay * share * catShare * mult[cat];
+      const d = (profileCounts[pid] ?? 0) * p.visitsPerDay * share * catShare * mult[cat];
       demand[cat] += d;
       byProfile[pid][cat] = d;
     }

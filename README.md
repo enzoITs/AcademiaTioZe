@@ -1,7 +1,7 @@
-# Academia do Tio Zé — protótipo das Eras 1 e 2
+# Academia do Tio Zé — protótipo das Eras 1, 2 e 3
 
 Tycoon casual de navegador: transforme a garagem herdada do Tio Zé em uma academia de sucesso.
-Implementa a Era 1 (Garagem) descrita no documento de design e a passagem para a Era 2 (Ponto de bairro).
+Implementa a Era 1 (Garagem) descrita no documento de design e as passagens para a Era 2 (Ponto de bairro) e a Era 3 (Academia completa).
 
 ## Como rodar
 
@@ -113,10 +113,27 @@ ombro e garrafa térmica), paredes cor de pêssego, porta com toldo listrado e l
 A planta de cada era fica em `eras` no JSON; a grade (`syncLayout`) troca porta, tamanho e terrenos.
 A garagem vira o Museu do Tio Zé só na história (não aparece no mapa).
 
+## Era 3: Academia completa (início)
+
+A mesma mudança em cinco passos leva do ponto de bairro para um prédio comprado e reformado. Metas: 150
+alunos, 4★, 14 tipos de aparelho, as 2 ampliações do ponto, 3 pessoas na equipe e 10 idosos na turma da manhã.
+
+- **Prédio 20×16** com Ala de aulas 8×8 (R$ 20.000) e Terraço do prédio 10×8 (R$ 45.000) à venda.
+- **Economia:** compra do prédio e reforma por R$ 25.000; sem aluguel, mas R$ 800/mês de IPTU e manutenção;
+  mensalidade base R$ 80; matrículas ×1,9; equipe até 10.
+- **Perfil Influencer:** quer espelho, ring light e colchonete; sente pouco o preço (×0,5), tem pouca paciência
+  com fila e repara mais na sujeira (×1,5; o Idoso ×1,3, como no documento). Anda com o celular, monta um
+  tripé ao lado do aparelho e faz pose de selfie na fila.
+- **Ring light de estúdio:** item novo que só aparece na loja a partir da Era 3 (`minEra` no JSON).
+- **Visual:** prédio de vidro com montantes brancos, porta de vidro de correr e letreiro neon.
+
+Os textos da cerimônia e do mural de cada era ficam em `ERA_CEREMONY` e `ERA_MESSAGES` (`game/content/lines.js`);
+as metas, em `eras[n].goals` no JSON.
+
 ## Limitações conhecidas / adiado de propósito
 
-- **Eras 3–4, instrutores e recepção, pool de candidatos,
-  planos, aulas, suplementos e filiais** não estão implementados. Na Era 2, "instrutor no turno"
+- **Era 4 (rede de filiais), aulas coletivas na Ala de aulas, afinidade de estilo, andar de cima de verdade,
+  instrutores e recepção, pool de candidatos, planos e suplementos** não estão implementados. Na Era 2, "instrutor no turno"
   ainda não é necessidade do Iniciante (não há instrutores).
 - **Efeito Janeiro:** só o multiplicador de matrículas (×2,5). A "Motivação que decai" ainda não existe.
 - **Verão, apagão e outros eventos sazonais:** ainda não implementados.

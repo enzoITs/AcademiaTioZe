@@ -8,6 +8,17 @@ import { computeAccess } from '../pathfinding/floodFill.js';
 import { transact } from '../economy/economy.js';
 import { grantNovelty } from '../simulation/students.js';
 import { addMessage } from './characters.js';
+import { ERA_MESSAGES } from '../content/lines.js';
+
+// Como medir cada meta de passagem (as metas de cada era ficam no JSON).
+const GOAL_METRICS = {
+  students: { label: 'Alunos ativos', value: (s) => s.students.length },
+  reputation: { label: 'Reputação', value: (s) => Number(s.reputation.toFixed(1)) },
+  equipmentTypes: { label: 'Tipos de aparelho', value: (s) => new Set(s.items.map((i) => i.type)).size },
+  expansions: { label: 'Ampliações', value: (s) => s.unlockedZones.length - 1 },
+  staff: { label: 'Pessoas na equipe', value: (s) => s.staff.length },
+  idoso: { label: 'Turma da manhã (idosos)', value: (s) => s.students.filter((st) => st.profile === 'idoso').length },
+};
 
 /** Próxima era (ou null quando não há outra implementada). */
 export function nextEra(state) {
@@ -18,14 +29,12 @@ export function nextEra(state) {
 export function eraGoals(state) {
   const era = nextEra(state);
   if (!era) return [];
-  const goal = eraDef(era).goals;
-  const types = new Set(state.items.map((i) => i.type)).size;
-  return [
-    { key: 'students', label: 'Alunos ativos', value: state.students.length, goal: goal.students },
-    { key: 'reputation', label: 'Reputação', value: Number(state.reputation.toFixed(1)), goal: goal.reputation },
-    { key: 'equipmentTypes', label: 'Tipos de aparelho', value: types, goal: goal.equipmentTypes },
-    { key: 'expansions', label: 'Ampliações', value: state.unlockedZones.length - 1, goal: goal.expansions },
-  ].map((g) => ({ ...g, done: g.value >= g.goal }));
+  return Object.entries(eraDef(era).goals)
+    .filter(([key]) => GOAL_METRICS[key])
+    .map(([key, goal]) => {
+      const value = GOAL_METRICS[key].value(state);
+      return { key, label: GOAL_METRICS[key].label, value, goal, done: value >= goal };
+    });
 }
 
 /** Pode se mudar agora? Retorna { ok, reason }. */
@@ -35,7 +44,7 @@ export function canMoveEra(state) {
   const missing = eraGoals(state).filter((g) => !g.done);
   if (missing.length) return { ok: false, reason: `Falta: ${missing.map((g) => g.label.toLowerCase()).join(', ')}.` };
   const cost = eraDef(era).moveCost ?? 0;
-  if (state.money < cost) return { ok: false, reason: 'Saldo insuficiente para a caução do novo ponto.' };
+  if (state.money < cost) return { ok: false, reason: `Saldo insuficiente: ${(eraDef(era).moveCostLabel ?? 'mudança').toLowerCase()} custa mais do que você tem.` };
   return { ok: true, reason: null };
 }
 
@@ -91,9 +100,9 @@ export function performEraMove(state) {
   const era = nextEra(state);
   const def = eraDef(era);
   const cost = def.moveCost ?? 0;
-  if (cost) transact(state, -cost, 'mudanca', `Caução e caminhão: ${def.label}`);
+  if (cost) transact(state, -cost, 'mudanca', `${def.moveCostLabel ?? 'Mudança'}: ${def.label}`);
 
-  // Novo endereço: os terrenos da garagem ficam para trás (viram o Museu do Tio Zé).
+  // Novo endereço: os terrenos da era anterior ficam para trás.
   const oldItems = state.items;
   state.era = era;
   state.unlockedZones = eraLayout(era).zones.filter((z) => z.startsUnlocked).map((z) => z.id);
@@ -117,9 +126,7 @@ export function performEraMove(state) {
   state.milestones[`era${era}`] = true;
   state.pendingModals.push({ kind: 'era', era });
 
-  addMessage(state, 'tioze', `Sobrinho(a), ${def.label.toLowerCase()} com letreiro e tudo! A garagem vira o Museu do Tio Zé: deixei lá o caderno e as fotos. Agora tem aluguel, então cuida do caixa.`);
-  addMessage(state, 'armando', 'Mudou?! Finalmente vou dormir em paz. ...Peraí, esse ponto não é aqui na esquina?');
-  addMessage(state, 'valeria', `Ponto próprio de bairro? Agora sim é concorrência. Bem-vindo(a) ao clube, vizinho(a)!`);
+  for (const [from, text] of ERA_MESSAGES[era] ?? []) addMessage(state, from, text);
   if (leftovers.length) {
     addMessage(state, 'whey', `Miau. (${leftovers.length} aparelho(s) não couberam no novo ponto e foram vendidos pelo preço pago.)`);
   }

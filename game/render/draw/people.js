@@ -103,6 +103,11 @@ function drawAccessory(ctx, kind, r, bodyW, bodyTop, accent) {
     box(ctx, bodyW / 2 + 1, bodyTop + 6, 7, 9, 2, '#fffdf8', INK, 1.2);
     box(ctx, bodyW / 2 + 1, bodyTop + 5, 7, 3, 1, P.pad, INK, 1);
   }
+  if (kind === 'phone') {
+    // celular na mão, com capinha da cor do look
+    box(ctx, bodyW / 2 + 1, bodyTop + 6, 5, 9, 1.5, accent, INK, 1.2);
+    box(ctx, bodyW / 2 + 2, bodyTop + 7.5, 3, 6, 0.5, INK, null);
+  }
   if (kind === 'towel') {
     // toalhinha no ombro e garrafa térmica
     box(ctx, bodyW / 2 - 6, bodyTop - 1, 7, 10, 2, accent, INK, 1.2);

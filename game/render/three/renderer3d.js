@@ -552,15 +552,26 @@ export class Renderer3D extends SceneDirector {
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         if (!unlocked(x, y)) continue;
-        if (!unlocked(x, y - 1)) wb.box(1 + WALL_T, WALL_H, WALL_T, WALL, { x: x + 0.5, z: y });
-        if (!unlocked(x - 1, y)) wb.box(WALL_T, WALL_H, 1 + WALL_T, WALL, { x, z: y + 0.5 });
+        if (!unlocked(x, y - 1)) {
+          wb.box(1 + WALL_T, WALL_H, WALL_T, WALL, { x: x + 0.5, z: y });
+          if (look.mullion) wb.box(0.06, WALL_H + 0.02, WALL_T + 0.03, look.mullion, { x, z: y });
+        }
+        if (!unlocked(x - 1, y)) {
+          wb.box(WALL_T, WALL_H, 1 + WALL_T, WALL, { x, z: y + 0.5 });
+          if (look.mullion) wb.box(WALL_T + 0.03, WALL_H + 0.02, 0.06, look.mullion, { x, z: y });
+        }
         if (!unlocked(x + 1, y)) wb.box(WALL_T, WALL_LOW, 1 + WALL_T, WALL, { x: x + 1, z: y + 0.5 });
         if (!unlocked(x, y + 1) && !(x === DOOR.x && y === DOOR.y)) wb.box(1 + WALL_T, WALL_LOW, WALL_T, WALL, { x: x + 0.5, z: y + 1 });
       }
     }
     const dz = DOOR.y + 1;
     for (const x of [DOOR.x, DOOR.x + 1]) wb.box(WALL_T, WALL_H, WALL_T, WALL, { x, z: dz });
-    if (look.door === 'awning') {
+    if (look.door === 'glass') {
+      // prédio: porta de vidro de correr aberta, batente branco e faixa neon
+      wb.box(1.04, 0.1, WALL_T + 0.02, '#fffdf8', { x: DOOR.x + 0.5, y: WALL_H - 0.12, z: dz });
+      for (const s of [-1, 1]) wb.box(0.42, WALL_H - 0.14, 0.03, '#bfe3f5', { x: DOOR.x + 0.5 + s * 0.62, z: dz + 0.06 });
+      wb.box(1.2, 0.03, 0.03, P.pink, { x: DOOR.x + 0.5, y: WALL_H - 0.02, z: dz + 0.08 });
+    } else if (look.door === 'awning') {
       // ponto de bairro: batente de porta de vidro e toldo listrado
       wb.box(1.04, 0.07, WALL_T, '#fffdf8', { x: DOOR.x + 0.5, y: WALL_H - 0.18, z: dz });
       for (let i = 0; i < 6; i++) {
@@ -644,11 +655,16 @@ export class Renderer3D extends SceneDirector {
         box(ctx, -sw / 2, -12, sw, 24, 6, signLook.fill);
         ctx.textAlign = 'center';
         ctx.fillStyle = signLook.ink;
+        if (signLook.neon) {
+          ctx.shadowColor = signLook.ink;
+          ctx.shadowBlur = 5;
+        }
         if (signLook.sub) {
           // letreiro pintado à mão: nome grande e uma linha menor
           ctx.font = `700 10px ${FONT_TITLE}`;
           ctx.fillText(signLook.lines[0], 0, -1);
           ctx.fillStyle = signLook.sub;
+          if (signLook.neon) ctx.shadowColor = signLook.sub;
           ctx.font = `700 7px ${FONT_UI}`;
           ctx.fillText(signLook.lines[1], 0, 9);
         } else {

@@ -7,8 +7,9 @@ import { computeBlockStats } from '../simulation/demand.js';
 const SAT = CONFIG.satisfaction;
 const PEAK_BLOCK = CONFIG.time.blocks.reduce((best, b, i, arr) => (b.share > arr[best].share ? i : best), 0);
 
-export function isTypeLocked(type, reputation) {
-  return (EQUIPMENT[type].minRep ?? 0) > reputation;
+/** Trava por reputação e por era (alguns itens só existem a partir de uma era). */
+export function isTypeLocked(type, reputation, era = 1) {
+  return (EQUIPMENT[type].minRep ?? 0) > reputation || (EQUIPMENT[type].minEra ?? 1) > era;
 }
 
 export function buildSuggestions(state, academy) {
@@ -34,7 +35,7 @@ export function buildSuggestions(state, academy) {
     ...e,
     profiles: [...e.profiles],
     gain: e.gainSum / e.count,
-    locked: isTypeLocked(e.type, state.reputation),
+    locked: isTypeLocked(e.type, state.reputation, state.era),
     price: EQUIPMENT[e.type].tiers[0].price,
   }));
   list.sort((a, b) => b.essentialCount * 3 + b.count - (a.essentialCount * 3 + a.count));

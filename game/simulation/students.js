@@ -76,7 +76,10 @@ export function studentTarget(student, academy, exposure, fee, day) {
   const overPct = Math.max(0, fee / academy.perceivedValue - 1) * 100;
   const price = clamp(100 - overPct * CONFIG.economy.pricePointsPerPercentAbove * profile.priceMultiplier, 0, 100);
 
-  const factors = { needs: needs.score, queue, condition: academy.conditionScore, vibe, price };
+  // Idoso e Influencer reparam mais na sujeira (metade da nota de Condição é limpeza).
+  const dirtGap = (100 - academy.cleanliness) * ((profile.dirtSensitivity ?? 1) - 1) * 0.5;
+  const condition = clamp(academy.conditionScore - dirtGap, 0, 100);
+  const factors = { needs: needs.score, queue, condition, vibe, price };
   const w = SAT.weights;
   const weighted = w.needs * factors.needs + w.queue * factors.queue + w.condition * factors.condition
     + w.vibe * factors.vibe + w.price * factors.price;

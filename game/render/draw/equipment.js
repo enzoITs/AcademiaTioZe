@@ -369,6 +369,22 @@ Object.assign(DRAW, {
     circle(ctx, 0, 2, 3, P.metalDark, null);
     circle(ctx, 0, -11, 3, P.metal, null);
   },
+  ring_light(ctx, w, h, t) {
+    for (let k = 0; k < 3; k++) {
+      const a = (k * 2 * Math.PI) / 3 + 0.3;
+      line(ctx, 0, 0, Math.sin(a) * 14, Math.cos(a) * 14, P.rubber, 3);
+    }
+    ctx.beginPath();
+    ctx.arc(0, -2, 13, 0, Math.PI * 2);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    ctx.strokeStyle = '#fffdf8';
+    ctx.lineWidth = 4.5;
+    ctx.stroke();
+    box(ctx, -3, -7, 6, 10, 1.5, INK, null);
+    if (Math.floor(t * 1.6) % 2 === 0) circle(ctx, 2, -5, 1.4, P.pad, null);
+  },
   trofeus(ctx, w, h) {
     box(ctx, -w / 2 + 5, -h / 2 + 6, w - 10, 18, 3, '#c9a27a');
     cupTop(ctx, -10, -h / 2 + 15, 5, '#c9cbd6');

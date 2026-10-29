@@ -137,8 +137,8 @@ function EraCard({ state }) {
     return (
       <div className="era-card">
         <p className="small">
-          Você está na <strong>Era {state.era} · {def.label}</strong>. A Era {state.era + 1} (Academia completa) ainda não existe neste protótipo:
-          por enquanto, amplie o ponto, contrate equipe e conquiste a turma da manhã.
+          Você está na <strong>Era {state.era} · {def.label}</strong>. A Era {state.era + 1} (Rede de filiais) ainda não existe neste protótipo:
+          por enquanto, amplie o prédio, monte a equipe e conquiste o bairro inteiro.
         </p>
       </div>
     );
@@ -150,7 +150,7 @@ function EraCard({ state }) {
     <div className="era-card">
       <p className="small">
         Metas para a <strong>Era {era} ({def.label})</strong>. Ao bater todas, a mudança libera: espaço maior, mensalidade base maior,
-        aluguel de {formatMoney(def.rent)}/mês e gente nova no bairro.
+        {(def.rentLabel ?? 'aluguel').toLowerCase()} de {formatMoney(def.rent)}/mês e gente nova no bairro.
       </p>
       <ul className="era-goals">
         {goals.map((g) => (
@@ -167,7 +167,7 @@ function EraCard({ state }) {
         onClick={openEraMove}
         title={check.ok ? 'Ver a planta do novo ponto' : check.reason}
       >
-        <Icon name={check.ok ? 'door' : 'lock'} size={15} /> {check.ok ? `Ver o ${def.label.toLowerCase()}` : 'Ver a planta (metas pendentes)'}
+        <Icon name={check.ok ? 'door' : 'lock'} size={15} /> {check.ok ? `Ver a planta da Era ${era}` : 'Ver a planta (metas pendentes)'}
       </button>
     </div>
   );

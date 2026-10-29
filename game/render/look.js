@@ -10,6 +10,9 @@ export const ZONE_FLOOR = {
   ponto: ['#f1e6d8', '#e8dac8'],
   sala_fundos: ['#e2ecf3', '#d6e3ec'],
   sobreloja: ['#ece6f2', '#e1d9ea'],
+  predio: ['#eef0f4', '#e3e7ee'],
+  ala_aulas: ['#ecd9bd', '#e3cdac'],
+  terraco_predio: ['#dcefe6', '#cfe6da'],
 };
 
 // Cara de cada era: parede, letreiro e porta (portão de enrolar na garagem,
@@ -17,6 +20,11 @@ export const ZONE_FLOOR = {
 export const ERA_LOOK = {
   1: { wall: '#c8b6dc', door: 'gate', sign: { fill: '#f2cd5c', ink: '#3d3550', lines: ['ACADEMIA', 'DO TIO ZÉ'], w: 76 } },
   2: { wall: '#ecc9b4', door: 'awning', sign: { fill: '#fffdf8', ink: '#c94f55', sub: '#5d9cc9', lines: ['ACADEMIA DO TIO ZÉ', 'ponto de bairro · desde 1987'], w: 110 } },
+  // prédio de vidro com neon: paredes azul-vidro com montantes brancos e letreiro escuro que brilha
+  3: {
+    wall: '#cfe3ef', mullion: '#fffdf8', door: 'glass',
+    sign: { fill: '#3d3550', ink: '#ff7eb6', sub: '#7ef0e0', lines: ['ACADEMIA DO TIO ZÉ', 'academia completa · desde 1987'], w: 124, neon: true },
+  },
 };
 export const eraLook = (era) => ERA_LOOK[era] ?? ERA_LOOK[1];
 // Pisos dos terrenos gerados: alternam numa paleta pastel.

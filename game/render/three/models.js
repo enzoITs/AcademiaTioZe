@@ -549,6 +549,11 @@ function armGeo(look, profileId, side) {
       b.rbox(0.075, 0.095, 0.075, '#fffdf8', { y: -0.33, z: 0.05 }, 0.015);
       b.box(0.078, 0.025, 0.078, P.pad, { y: -0.25, z: 0.05 });
     }
+    if (sig.accessory === 'phone' && side > 0) {
+      // celular na mão, com a capinha da cor do look
+      b.rbox(0.055, 0.1, 0.018, sig.accent, { y: -0.34, z: 0.045 }, 0.008);
+      b.box(0.04, 0.075, 0.004, INK, { y: -0.328, z: 0.055 });
+    }
     if (sig.accessory === 'towel' && side < 0) {
       // garrafa térmica de café
       b.cyl(0.032, 0.032, 0.15, P.metalDark, { y: -0.36, z: 0.05 }, 8);
@@ -624,6 +629,17 @@ export function setMood(rig, mood) {
 
 // Objetos de mão usados em alguns aparelhos (kettlebell, luvas de boxe).
 const PROP_OF = { 'use-swing': 'kettlebell', 'use-punch': 'gloves' };
+const tripodGeo = () => cached('prop|tripod', () => {
+  const b = new Builder();
+  for (let k = 0; k < 3; k++) {
+    const a = (k * 2 * PI) / 3;
+    b.box(0.018, 0.42, 0.018, P.rubber, { x: Math.sin(a) * 0.07, z: Math.cos(a) * 0.07, rx: Math.cos(a) * 0.25, rz: -Math.sin(a) * 0.25 });
+  }
+  b.box(0.015, 0.2, 0.015, P.metalDark, { y: 0.4 });
+  b.rbox(0.1, 0.06, 0.015, INK, { y: 0.58, rx: 0.2 }, 0.006);
+  b.sphere(0.012, P.pad, { x: 0.03, y: 0.62, z: 0.01 }, 6, 4);
+  return b.build();
+});
 const kettleGeo = () => cached('prop|kettlebell', () => {
   const b = new Builder();
   b.sphere(0.065, P.plate, { y: -0.07, sy: 0.9 }, 8, 6);
@@ -637,11 +653,19 @@ const gloveGeo = () => cached('prop|glove', () => {
   return b.build();
 });
 
-function showProp(rig, name) {
-  if (name && !rig.props?.[name]) {
+function showProp(rig, names) {
+  for (const name of names) {
+    if (rig.props?.[name]) continue;
     rig.props ??= {};
     const meshes = [];
-    if (name === 'kettlebell') {
+    if (name === 'tripod') {
+      // tripé com celular filmando o treino, de frente para o aluno
+      const m = solid(tripodGeo(), LIMB);
+      m.position.set(0.32, 0, 0.42);
+      m.rotation.y = PI + 0.6;
+      rig.root.add(m);
+      meshes.push(m);
+    } else if (name === 'kettlebell') {
       const m = solid(kettleGeo(), LIMB);
       m.position.set(-0.17, -0.25, 0.02);
       rig.armR.add(m);
@@ -656,7 +680,7 @@ function showProp(rig, name) {
     }
     rig.props[name] = meshes;
   }
-  if (rig.props) for (const [k, list] of Object.entries(rig.props)) for (const m of list) m.visible = k === name;
+  if (rig.props) for (const [k, list] of Object.entries(rig.props)) for (const m of list) m.visible = names.includes(k);
 }
 
 /**
@@ -764,6 +788,12 @@ export function posePerson(rig, state, t, seed, profileId) {
     armZ = 1.25 - k * 1.0;
   } else if (state === 'wait') {
     bob = Math.sin(phase * 0.5) * 0.008;
+    if (profileId === 'influencer' && (t * 0.25 + seed * 0.1) % 1 < 0.35) {
+      // pose de selfie: celular para cima, pezinho levantado
+      armR = -2.5;
+      armZ = 0.25;
+      legL = -0.35;
+    }
     if (profileId === 'corredor') {
       bob = Math.abs(Math.sin(phase * 1.6)) * 0.025;
       legL = Math.sin(phase * 1.6) * 0.3;
@@ -779,7 +809,10 @@ export function posePerson(rig, state, t, seed, profileId) {
   rig.armR.rotation.x = armR;
   rig.armL.rotation.z = -armZ;
   rig.armR.rotation.z = armZ;
-  showProp(rig, PROP_OF[state] ?? null);
+  const props = [];
+  if (PROP_OF[state]) props.push(PROP_OF[state]);
+  if (profileId === 'influencer' && state.startsWith('use-')) props.push('tripod');
+  showProp(rig, props);
 }
 
 // ------------------------------------------------------------ equipe

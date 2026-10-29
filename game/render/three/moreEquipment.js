@@ -475,6 +475,36 @@ export const MORE_EQUIP = {
   },
 
   // ------------------------------------------------------------ decoração
+  ring_light: {
+    build() {
+      const b = new Builder();
+      for (let k = 0; k < 3; k++) {
+        const a = (k * 2 * PI) / 3 + 0.3;
+        b.box(0.03, 0.62, 0.03, P.rubber, { x: Math.sin(a) * 0.14, z: Math.cos(a) * 0.14 - 0.05, rx: Math.cos(a) * 0.32, rz: -Math.sin(a) * 0.32 });
+      }
+      b.cyl(0.02, 0.02, 0.62, P.metalDark, { y: 0.5, z: -0.05 }, 6);
+      const ring = new Builder();
+      ring.torus(0.24, 0.035, '#fffdf8', {});
+      ring.torus(0.24, 0.012, '#fff6c8', { z: 0.03 });
+      ring.box(0.02, 0.24, 0.02, P.metalDark, { y: -0.24 });
+      ring.rbox(0.07, 0.12, 0.015, INK, { y: -0.06, z: 0.01 }, 0.008);
+      const rec = new Builder();
+      rec.sphere(0.016, P.pad, {}, 6, 4);
+      return {
+        base: b,
+        parts: [
+          { name: 'ring', b: ring, pos: [0, 1.32, -0.05] },
+          { name: 'rec', b: rec, pos: [0.025, 1.33, -0.03] },
+        ],
+      };
+    },
+    animate(p, t) {
+      // luz "respirando" e o pontinho vermelho de gravação piscando
+      p.ring.scale.setScalar(1 + Math.sin(t * 2.4) * 0.015);
+      p.rec.visible = Math.floor(t * 1.6) % 2 === 0;
+    },
+  },
+
   trofeus: {
     build() {
       const b = new Builder();
