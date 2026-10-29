@@ -28,7 +28,7 @@ import {
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal, setLocalOwner,
 } from './persistence.js';
-import { account, cloudSave, markBaseline } from './cloud.js';
+import { account, cloudSave } from './cloud.js';
 import { playSound, setSoundEnabled } from '../audio/sfx.js';
 import { formatMoney } from '../utils/format.js';
 import { EQUIPMENT_SHORT, FINALLY_LINES, BRANCH_LINES } from '../content/lines.js';
@@ -184,10 +184,9 @@ function startWith(state, offlineSeconds = 0) {
 }
 
 /** O progresso deste navegador passa a ser da conta logada e sobe para a nuvem. */
-function claimForAccount({ baseline = false } = {}) {
+function claimForAccount() {
   if (!account.user) return;
   setLocalOwner(account.user.name);
-  if (baseline) markBaseline();
   cloudSave(game.state, { force: true });
 }
 
@@ -196,20 +195,17 @@ export function newGame() {
   startWith(createNewGame());
   setLocalOwner(account.user?.name ?? '');
   saveToLocal(game.state);
-  claimForAccount({ baseline: true });
+  claimForAccount();
 }
 
-/**
- * Continua o progresso deste navegador.
- * `baseline`: a conta já tinha progresso na nuvem e o jogador escolheu o do navegador.
- */
-export function continueGame({ baseline = false } = {}) {
+/** Continua o progresso deste navegador (e sobe para a conta, se houver). */
+export function continueGame() {
   const raw = readLocalRaw();
   if (!raw) return fail('Nenhum jogo salvo encontrado.');
   try {
     const state = parseSave(raw);
     startWith(state, (Date.now() - state.savedAt) / 1000);
-    claimForAccount({ baseline });
+    claimForAccount();
     return true;
   } catch (err) {
     return fail(`Não foi possível carregar o save: ${err.message}`);
@@ -234,7 +230,7 @@ export function importSave(text) {
     const state = parseSave(text);
     startWith(state);
     saveToLocal(state);
-    claimForAccount({ baseline: true });
+    claimForAccount();
     toast('Partida importada com sucesso.', 'success');
     emit();
     return true;

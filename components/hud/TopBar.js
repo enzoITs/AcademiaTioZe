@@ -42,7 +42,7 @@ function CloudStatus({ acc }) {
     );
   }
   const bad = acc.sync === 'offline' || acc.sync === 'error';
-  const text = `${acc.user.name}: ${SYNC_TEXT[acc.sync] ?? ''}${acc.message ? ` (${acc.message})` : ''}${acc.flagged ? ' · perfil em revisão' : ''}`;
+  const text = `${acc.user.name}: ${SYNC_TEXT[acc.sync] ?? ''}${acc.message ? ` (${acc.message})` : ''}`;
   return (
     <span className={`cloud-status ${acc.sync} ${bad ? 'bad' : ''}`} title={text} role="status" aria-label={text}>
       <Icon name={bad ? 'cloudOff' : 'cloud'} size={17} /><span className="cloud-name">{acc.user.name}</span>

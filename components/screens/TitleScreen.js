@@ -75,7 +75,7 @@ function decide(user, local, cloud) {
           text: `O progresso da conta (${sub(remote)}) será substituído pelo deste navegador (${sub(local)}).`,
           confirmLabel: 'Usar o deste navegador',
           danger: true,
-          onConfirm: () => continueGame({ baseline: true }),
+          onConfirm: () => continueGame(),
         }),
       };
     }

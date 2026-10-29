@@ -26,11 +26,8 @@ Para apagar as contas de teste, pare o servidor e apague `.data/`.
   a tela inicial deixa escolher qual manter.
 - **Ranking** por dinheiro e por alunos (Matriz + membros das filiais), com busca por apelido. Clicando num
   jogador abre o **perfil**, lado a lado com o seu, e gráficos mês a mês (saldo e alunos da Matriz no fim de cada mês).
-- **Checagem contra trapaça (básica):** o servidor valida o save com o mesmo `parseSave` do jogo e compara com o
-  envio anterior (`game/online/progress.js`): dias de jogo não podem andar mais rápido que o ×4, e saldo, alunos e
-  era não podem dar saltos impossíveis (limites em `online.plausibility` no JSON). Quem falha **não perde o
-  progresso**, mas sai do ranking (`profiles.flagged`). Para liberar alguém: `UPDATE profiles SET flagged = false
-  WHERE user_id = (SELECT id FROM users WHERE name_key = 'apelido');`.
+- **Validação do save:** o servidor confere o formato com o mesmo `parseSave` do jogo (save quebrado é recusado).
+  Não há checagem de saltos de progresso: o ranking mostra os números que o jogo enviou.
 - Rotas em `app/api/` (Route Handlers): `auth/register|login|logout|me`, `save` (GET/PUT), `ranking`,
   `players?q=` e `players/[name]`. O código de servidor fica em `server/` (banco, contas, progresso).
 

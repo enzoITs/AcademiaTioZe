@@ -36,14 +36,13 @@ CREATE TABLE IF NOT EXISTS profiles (
   day INTEGER NOT NULL DEFAULT 0,
   equipment INTEGER NOT NULL DEFAULT 0,
   staff INTEGER NOT NULL DEFAULT 0,
-  sellable DOUBLE PRECISION NOT NULL DEFAULT 0,
   history JSONB NOT NULL DEFAULT '[]'::jsonb,
-  flagged BOOLEAN NOT NULL DEFAULT false,
-  flag_reason TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS profiles_money ON profiles(money DESC) WHERE NOT flagged;
-CREATE INDEX IF NOT EXISTS profiles_students ON profiles(students DESC) WHERE NOT flagged;
+-- Bancos criados antes: a checagem de saltos foi removida (os índices antigos caem junto com a coluna).
+ALTER TABLE profiles DROP COLUMN IF EXISTS flagged, DROP COLUMN IF EXISTS flag_reason, DROP COLUMN IF EXISTS sellable;
+CREATE INDEX IF NOT EXISTS profiles_money ON profiles(money DESC);
+CREATE INDEX IF NOT EXISTS profiles_students ON profiles(students DESC);
 `;
 
 async function openPg() {

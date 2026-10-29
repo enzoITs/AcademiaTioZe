@@ -12,7 +12,6 @@ export const account = {
   user: null, // { name }
   sync: 'idle',
   syncedAt: null,
-  flagged: false,
   message: null,
 };
 
@@ -70,13 +69,13 @@ export async function refreshMe() {
 
 export async function register(name, password) {
   const { user } = await api('/api/auth/register', { method: 'POST', body: { name, password } });
-  set({ user, flagged: false, message: null });
+  set({ user, message: null });
   return user;
 }
 
 export async function login(name, password) {
   const { user } = await api('/api/auth/login', { method: 'POST', body: { name, password } });
-  set({ user, flagged: false, message: null });
+  set({ user, message: null });
   return user;
 }
 
@@ -86,7 +85,7 @@ export async function logout() {
   try {
     await api('/api/auth/logout', { method: 'POST' });
   } finally {
-    set({ user: null, sync: 'idle', syncedAt: null, flagged: false });
+    set({ user: null, sync: 'idle', syncedAt: null });
   }
 }
 
@@ -99,13 +98,7 @@ export const fetchProfile = (name) => api(`/api/players/${encodeURIComponent(nam
 let lastPush = 0;
 let inFlight = false;
 let retryAfter = 0;
-let baselineNext = false;
 let currentPush = null;
-
-/** O próximo envio compara com uma garagem nova (novo jogo ou progresso trocado). */
-export function markBaseline() {
-  baselineNext = true;
-}
 
 /** Envia o progresso. Sem `force`, no máximo a cada `cloudSaveSeconds`. */
 export function cloudSave(state, { force = false, keepalive = false } = {}) {
@@ -114,18 +107,16 @@ export function cloudSave(state, { force = false, keepalive = false } = {}) {
   if (inFlight && !keepalive) return;
   if (!force && now - lastPush < CONFIG.online.cloudSaveSeconds * 1000) return;
   if (now < retryAfter && !keepalive) return;
-  const rawBody = `{"baseline":${baselineNext},"save":${serialize(state)}}`;
+  const rawBody = `{"save":${serialize(state)}}`;
   // O navegador só garante pedidos "keepalive" pequenos ao fechar a aba.
   if (keepalive && rawBody.length > 60_000) return;
   lastPush = now;
   inFlight = true;
-  const baseline = baselineNext;
   set({ sync: 'saving' });
   currentPush = api('/api/save', { method: 'PUT', rawBody, keepalive })
-    .then((res) => {
-      if (baseline) baselineNext = false;
+    .then(() => {
       setLocalOwner(account.user?.name ?? '');
-      set({ sync: 'saved', syncedAt: Date.now(), flagged: res.flagged, message: null });
+      set({ sync: 'saved', syncedAt: Date.now(), message: null });
     })
     .catch((err) => {
       if (err.status === 401) set({ user: null, sync: 'idle', message: 'Sua sessão expirou. Entre de novo para salvar na nuvem.' });

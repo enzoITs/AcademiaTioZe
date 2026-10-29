@@ -1,18 +1,14 @@
 // Progresso na nuvem, perfis públicos e ranking.
 import { CONFIG } from '../game/config.js';
 import { parseSave } from '../game/engine/persistence.js';
-import { summarize, historyOf, implausible } from '../game/online/progress.js';
+import { summarize, historyOf } from '../game/online/progress.js';
 import { one, query } from './db.js';
 
-/**
- * Valida e guarda o save da conta. O progresso é sempre guardado (ninguém perde o que jogou);
- * se a checagem achar um salto impossível, o perfil sai do ranking (`flagged`).
- * `baseline`: o jogador começou de novo ou trocou pelo progresso do navegador,
- * então compara com uma garagem nova em vez do save anterior.
- */
+/** Save com formato inválido (recusado por parseSave). */
 export class SaveRejected extends Error {}
 
-export async function storeSave(userId, raw, { baseline = false } = {}) {
+/** Valida o formato do save e guarda junto com os números públicos do perfil. */
+export async function storeSave(userId, raw) {
   let state;
   try {
     state = parseSave(raw);
@@ -20,17 +16,6 @@ export async function storeSave(userId, raw, { baseline = false } = {}) {
     throw new SaveRejected(err.message);
   }
   const next = summarize(state);
-  const prev = await one(
-    `SELECT p.day, p.money, p.students, p.era, p.sellable, p.flagged,
-            extract(epoch FROM now() - p.updated_at)::float8 AS age
-       FROM profiles p WHERE p.user_id = $1`,
-    [userId],
-  );
-  const reasons = baseline || !prev ? implausible(null, next) : implausible(prev, next, prev.age);
-  // Uma vez fora do ranking, só volta quando liberado no banco.
-  const flagged = (prev?.flagged ?? false) || reasons.length > 0;
-  const reason = reasons.length ? reasons.join('; ').slice(0, 500) : null;
-
   await query(
     `INSERT INTO saves (user_id, data, saved_at, updated_at) VALUES ($1, $2::jsonb, $3, now())
      ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, saved_at = EXCLUDED.saved_at, updated_at = now()`,
@@ -38,18 +23,17 @@ export async function storeSave(userId, raw, { baseline = false } = {}) {
   );
   await query(
     `INSERT INTO profiles (user_id, money, students, matriz_students, branch_members, branches, reputation, era, day,
-                           equipment, staff, sellable, history, flagged, flag_reason, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15, now())
+                           equipment, staff, history, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb, now())
      ON CONFLICT (user_id) DO UPDATE SET
        money = EXCLUDED.money, students = EXCLUDED.students, matriz_students = EXCLUDED.matriz_students,
        branch_members = EXCLUDED.branch_members, branches = EXCLUDED.branches, reputation = EXCLUDED.reputation,
        era = EXCLUDED.era, day = EXCLUDED.day, equipment = EXCLUDED.equipment, staff = EXCLUDED.staff,
-       sellable = EXCLUDED.sellable, history = EXCLUDED.history, flagged = EXCLUDED.flagged,
-       flag_reason = COALESCE(EXCLUDED.flag_reason, profiles.flag_reason), updated_at = now()`,
+       history = EXCLUDED.history, updated_at = now()`,
     [userId, next.money, next.students, next.matrizStudents, next.branchMembers, next.branches, next.reputation,
-      next.era, next.day, next.equipment, next.staff, next.sellable, JSON.stringify(historyOf(state)), flagged, reason],
+      next.era, next.day, next.equipment, next.staff, JSON.stringify(historyOf(state))],
   );
-  return { savedAt: state.savedAt, flagged, newlyFlagged: flagged && !(prev?.flagged ?? false) };
+  return { savedAt: state.savedAt };
 }
 
 export async function loadSave(userId) {
@@ -58,7 +42,7 @@ export async function loadSave(userId) {
 }
 
 const PUBLIC_COLUMNS = `u.name, u.created_at, p.money, p.students, p.matriz_students, p.branch_members, p.branches,
-  p.reputation, p.era, p.day, p.equipment, p.staff, p.flagged, p.updated_at`;
+  p.reputation, p.era, p.day, p.equipment, p.staff, p.updated_at`;
 
 function publicProfile(row, withHistory = false) {
   if (!row) return null;
@@ -76,7 +60,6 @@ function publicProfile(row, withHistory = false) {
     day: row.day,
     equipment: row.equipment,
     staff: row.staff,
-    flagged: row.flagged,
   };
   if (withHistory) out.history = Array.isArray(row.history) ? row.history : [];
   return out;
@@ -97,9 +80,8 @@ export async function profileByName(name) {
 const RANK_COLUMN = { money: 'money', students: 'students' };
 
 async function rankOf(row, by) {
-  if (row.flagged) return null;
   const col = RANK_COLUMN[by];
-  const r = await one(`SELECT count(*)::int AS n FROM profiles WHERE NOT flagged AND ${col} > $1`, [row[col]]);
+  const r = await one(`SELECT count(*)::int AS n FROM profiles WHERE ${col} > $1`, [row[col]]);
   return r.n + 1;
 }
 
@@ -110,10 +92,10 @@ export async function ranking(by, page, userId) {
   const offset = Math.max(0, page) * size;
   const rows = await query(
     `SELECT ${PUBLIC_COLUMNS} FROM profiles p JOIN users u ON u.id = p.user_id
-      WHERE NOT p.flagged ORDER BY p.${col} DESC, p.updated_at ASC LIMIT $1 OFFSET $2`,
+      ORDER BY p.${col} DESC, p.updated_at ASC LIMIT $1 OFFSET $2`,
     [size + 1, offset],
   );
-  const total = (await one('SELECT count(*)::int AS n FROM profiles WHERE NOT flagged')).n;
+  const total = (await one('SELECT count(*)::int AS n FROM profiles')).n;
   const list = rows.slice(0, size).map((r, i) => ({ ...publicProfile(r), position: offset + i + 1 }));
   let me = null;
   if (userId) {

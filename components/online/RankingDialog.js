@@ -124,8 +124,6 @@ function Board() {
             <span>Entre numa conta para aparecer no ranking.</span>
             <button type="button" className="btn btn-sm btn-primary" onClick={() => openModal({ kind: 'account', mode: 'register' })}>Criar conta</button>
           </>
-        ) : me?.flagged ? (
-          <span><Icon name="alert" size={15} /> Seu perfil está em revisão e fora do ranking: o servidor achou um salto de progresso impossível.</span>
         ) : me && !meInList && !found ? (
           <ul className="rank-list"><PlayerRow player={me} board={board} me onOpen={setViewing} /></ul>
         ) : !me ? (
@@ -195,7 +193,6 @@ function ProfileView({ name, onBack }) {
         <div>
           <h2 className="modal-title">{p.name}{own ? <span className="chip">você</span> : null}</h2>
           <p className="small subtle">Era {p.era} · {eraDef(p.era).label} · jogando desde {since}</p>
-          {p.flagged ? <p className="small neg"><Icon name="alert" size={13} /> Perfil em revisão, fora do ranking.</p> : null}
         </div>
       </div>
 
