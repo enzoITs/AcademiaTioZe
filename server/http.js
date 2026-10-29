@@ -32,6 +32,11 @@ export function sameOrigin(request) {
   }
 }
 
+/** Para o painel do admin: o pedido tem que dizer de onde veio, e ser do próprio site. */
+export function strictSameOrigin(request) {
+  return !!request.headers.get('origin') && sameOrigin(request);
+}
+
 export async function readJson(request, maxBytes) {
   const text = await request.text();
   if (text.length > maxBytes) return { error: 'Dados grandes demais.' };

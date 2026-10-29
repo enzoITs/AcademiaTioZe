@@ -27,6 +27,7 @@ export const LEDGER_CATEGORIES = {
   juros: { label: 'Juros do saldo negativo', kind: 'expense' },
   filiaisCustos: { label: 'Custos das filiais', kind: 'expense' },
   filiaisAbertura: { label: 'Abertura e reforma de filiais', kind: 'expense' },
+  multa: { label: 'Multa da administração', kind: 'expense' },
 };
 
 export function createLedger(day, money) {

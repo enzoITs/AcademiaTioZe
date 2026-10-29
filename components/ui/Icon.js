@@ -22,6 +22,8 @@ const PATHS = {
   chart: <path d="M5 19V11M10 19V6M15 19v-9M20 19v-5M3.5 19.5h17" />,
   mail: <><rect x="3.5" y="6" width="17" height="12" rx="2.5" /><path d="M4 7l8 6 8-6" /></>,
   alert: <><path d="M12 4.5l8.5 15h-17z" /><path d="M12 10v4M12 17h.01" /></>,
+  shield: <><path d="M12 3.5l7 2.8v5.3c0 4.3-2.9 7.4-7 8.9-4.1-1.5-7-4.6-7-8.9V6.3z" /><path d="M9 12l2.2 2.2L15.5 10" /></>,
+  ban: <><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></>,
   lock: <><rect x="5.5" y="10.5" width="13" height="9" rx="2.5" /><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" /></>,
   sound: <><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3z" /><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" /></>,
   mute: <><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></>,

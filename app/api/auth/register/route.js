@@ -1,5 +1,5 @@
 import { usernameProblem, passwordProblem } from '../../../../game/online/progress.js';
-import { hashPassword, startSession } from '../../../../server/auth.js';
+import { hashPassword, startSession, reservedName, publicUser } from '../../../../server/auth.js';
 import { one } from '../../../../server/db.js';
 import { route, json, fail, readJson, sameOrigin, allow, clientIp } from '../../../../server/http.js';
 
@@ -12,6 +12,7 @@ export const POST = route(async (request) => {
   const password = body?.password;
   const problem = usernameProblem(name) ?? passwordProblem(password);
   if (problem) return fail(problem);
+  if (reservedName(name)) return fail('Esse apelido é reservado. Escolha outro.', 409);
   const taken = await one('SELECT 1 FROM users WHERE name_key = $1', [name.toLowerCase()]);
   if (taken) return fail('Esse apelido já está em uso.', 409);
   const user = await one(
@@ -20,5 +21,5 @@ export const POST = route(async (request) => {
   );
   if (!user) return fail('Esse apelido já está em uso.', 409);
   await startSession(user.id);
-  return json({ user: { name: user.name } }, 201);
+  return json({ user: publicUser({ ...user, role: 'player' }) }, 201);
 });

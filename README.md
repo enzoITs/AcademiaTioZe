@@ -13,6 +13,8 @@ npm run build && npm start   # produção
 ```
 
 Sem `DATABASE_URL`, o `npm run dev` usa um Postgres embutido (PGlite) na pasta `.data/` — nada para instalar.
+Para ter a conta de admin no `npm run dev`, coloque `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.env.local`
+(arquivo ignorado pelo git).
 Para apagar as contas de teste, pare o servidor e apague `.data/`.
 
 ## Online (contas, nuvem e ranking)
@@ -26,10 +28,32 @@ Para apagar as contas de teste, pare o servidor e apague `.data/`.
   a tela inicial deixa escolher qual manter.
 - **Ranking** por dinheiro e por alunos (Matriz + membros das filiais), com busca por apelido. Clicando num
   jogador abre o **perfil**, lado a lado com o seu, e gráficos mês a mês (saldo e alunos da Matriz no fim de cada mês).
-- **Validação do save:** o servidor confere o formato com o mesmo `parseSave` do jogo (save quebrado é recusado).
-  Não há checagem de saltos de progresso: o ranking mostra os números que o jogo enviou.
+- **Anti-trapaça** (`game/online/anticheat.js`, testado em `tests/anticheat.test.js`): o servidor confere o formato
+  com o `parseSave` do jogo e compara cada save com o último aceito. Ele calcula o máximo que um jogador honesto
+  conseguiria no intervalo, com folga: o relógio do jogo não anda mais rápido que a velocidade ×4 no tempo real
+  do servidor; alunos não passam da capacidade dos aparelhos nem entram mais rápido que o máximo de matrículas;
+  o patrimônio (saldo + aparelhos e filiais pelo preço de catálogo, nunca menos) só cresce com mensalidades
+  (a mais alta da era, para todos os alunos possíveis) e precisa cair com mudança de era, ampliações e contratações.
+  Save impossível é **recusado**: nada muda na nuvem, o jogo volta ao último progresso válido com um aviso e a
+  tentativa fica registrada para o admin. Progresso de outra aba mais antigo que o da nuvem também não
+  sobrescreve. Progresso de convidado ou importado que chega já avançado (sem histórico para conferir) é guardado,
+  mas fica **em análise** (fora do ranking) até o admin aprovar. Os limites ficam em `online.anticheat` no JSON.
+- **Painel do admin** em `/admin` (para quem não é admin, a página não existe): lista de jogadores com busca,
+  filtros (suspeitos, em análise, banidos) e, na ficha de cada um, saves recusados, uma análise "do zero"
+  (o progresso atual é possível partindo de uma garagem nova?) e as punições: **advertência**, **multa** (nunca
+  deixa o saldo negativo), **zerar progresso**, **tirar do ranking** e **banir** (1, 3, 7, 30 dias ou para sempre).
+  Multa e zerar mudam o save da nuvem e sobem a versão (`rev`): o jogo do jogador recarrega da nuvem no envio
+  seguinte. O jogador vê advertências e multas numa janela ao entrar ou durante o jogo; banido não consegue entrar
+  e vê o motivo. Tudo fica no histórico da ficha.
+- **Conta de admin:** criada pelas variáveis `ADMIN_USERNAME` e `ADMIN_PASSWORD` (mínimo 10 caracteres) ao iniciar
+  o servidor. A variável manda: se a conta já existe, vira admin e a senha passa a ser a da variável (trocar a senha
+  derruba as sessões antigas). O site nunca cria admin sozinho, e ninguém consegue criar conta com apelido
+  começando com `admin` (nem outros nomes reservados). Contas de admin não podem ser punidas pelo painel.
+- **Outras proteções:** cabeçalhos de segurança (CSP, `X-Frame-Options`, `nosniff`, HSTS em produção), ações do
+  admin só com origem do próprio site, limite de ações por minuto e um aviso no console do navegador.
 - Rotas em `app/api/` (Route Handlers): `auth/register|login|logout|me`, `save` (GET/PUT), `ranking`,
-  `players?q=` e `players/[name]`. O código de servidor fica em `server/` (banco, contas, progresso).
+  `players?q=`, `players/[name]` e `admin/users` (lista) e `admin/users/[name]` (ficha e ações). O código de
+  servidor fica em `server/` (banco, contas, progresso, admin).
 
 ### Publicar no Railway
 
@@ -40,6 +64,8 @@ Para apagar as contas de teste, pare o servidor e apague `.data/`.
    (referência à variável do banco). As tabelas são criadas sozinhas na primeira conexão.
 4. O Railway detecta o Next.js: build `npm run build`, start `npm run start` (o Next usa a porta `PORT` do Railway).
 5. Em **Settings → Networking → Generate Domain** para ganhar o endereço público.
+6. Para o painel do admin, adicione também `ADMIN_USERNAME` e `ADMIN_PASSWORD` nas **Variables** e faça o redeploy.
+   Entre no jogo com essa conta: aparece o botão **Painel admin** na tela inicial (ou abra `/admin`).
 
 Se usar a URL pública do banco (de fora do Railway) e ela pedir SSL, adicione `PGSSL=true`.
 
@@ -222,8 +248,11 @@ cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tip
   (marcadas "em teste"). Os preços dos níveis novo/profissional de esteira e bike seguem a proporção do supino.
 - Toque funciona para clicar e arrastar; não há gesto de pinça (use os botões de zoom).
 - Sem WebGL 2 o jogo cai para a vista 2D de reserva (`game/render/renderer.js`).
-- **Online:** a checagem de trapaça é básica — o jogo roda no navegador, então um jogador esperto ainda consegue
-  números um pouco acima do real sem ser pego. Não há troca de senha, recuperação de conta, nem moderação de
+- **Online:** a simulação roda no navegador, então o servidor só consegue barrar o que é impossível. Editar
+  dinheiro, alunos, aparelhos, filiais, era ou acelerar o relógio é recusado; mas quem forja o save com cuidado
+  ainda pode ficar perto do "melhor jogo possível" (academia sempre cheia e mensalidade no máximo da era) sem ser
+  pego. Gastos pequenos (consertos, pintura) não entram na conta. Saves enviados antes da proteção não são
+  conferidos de novo: a ficha do admin mostra a análise "do zero" para achar esses casos. Não há troca de senha, recuperação de conta, nem moderação de
   apelidos. O limite de tentativas de login fica em memória (zera quando o servidor reinicia).
   O último envio ao fechar a aba só sai se o progresso couber em ~60 KB; se não couber, ele vai na próxima vez que
   o jogador abrir o jogo (a tela inicial usa o progresso mais novo).

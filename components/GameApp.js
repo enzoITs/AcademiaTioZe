@@ -85,11 +85,23 @@ function useAutosaveOnExit() {
   }, []);
 }
 
+/** Aviso no console para quem abre o "Inspecionar" (e para quem foi convencido a colar código ali). */
+function useConsoleWarning() {
+  useEffect(() => {
+    console.log('%cPare!', 'color:#e8646a;font-size:42px;font-weight:900;-webkit-text-stroke:1px #3d3550');
+    console.log(
+      '%cMexer no jogo por aqui não adianta: o servidor confere cada progresso enviado, recusa números impossíveis e avisa a administração. Contas que tentam trapacear podem ser multadas ou banidas.\nSe alguém mandou você colar algo aqui, é golpe para roubar sua conta.',
+      'font-size:15px;color:#3d3550',
+    );
+  }, []);
+}
+
 export default function GameApp() {
   const { ui } = useGame();
   const rendererRef = useRef(null);
   useKeyboard();
   useAutosaveOnExit();
+  useConsoleWarning();
 
   if (ui.screen !== 'game') {
     return (

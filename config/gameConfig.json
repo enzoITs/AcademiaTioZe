@@ -609,6 +609,15 @@
     "cloudSaveSeconds": 20,
     "minSecondsBetweenSaves": 4,
     "maxSaveBytes": 3000000,
-    "sessionDays": 60
+    "sessionDays": 60,
+    "anticheat": {
+      "speedSlack": 1.25,
+      "daySlack": 1.5,
+      "incomeMargin": 1.25,
+      "moneySlack": 2000,
+      "enrollMargin": 1.3,
+      "studentSlack": 3,
+      "reviewDays": 60
+    }
   }
 }

@@ -29,7 +29,7 @@ import {
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal, setLocalOwner,
 } from './persistence.js';
-import { account, cloudSave } from './cloud.js';
+import { account, cloudSave, fetchCloudSave, setCloudHandlers } from './cloud.js';
 import { playSound, setSoundEnabled } from '../audio/sfx.js';
 import { formatMoney } from '../utils/format.js';
 import { EQUIPMENT_SHORT, FINALLY_LINES, BRANCH_LINES } from '../content/lines.js';
@@ -68,6 +68,7 @@ function createUi() {
     soundOn: true,
     view: null, // { kind: 'branch', branchId }: visitando uma filial (só para ver)
     prevTab: null,
+    notice: null, // { title, lines }: aviso da administração ou do servidor (fica por cima de tudo)
   };
 }
 
@@ -146,8 +147,33 @@ export function getSuggestions() {
 
 export function isModalOpen() {
   const { ui, state } = game;
-  return !!(ui.confirm || ui.modal || state?.pendingModals.length);
+  return !!(ui.notice || ui.confirm || ui.modal || state?.pendingModals.length);
 }
+
+// ---------------------------------------------------------------- avisos do servidor
+/** Mostra um aviso por cima de tudo (junta com o que já estiver aberto). */
+export function showNotice(lines, title = 'Aviso da administração') {
+  const list = lines.filter(Boolean);
+  if (!list.length) return;
+  const prev = game.ui.notice;
+  game.ui.notice = prev ? { title: prev.title, lines: [...prev.lines, ...list] } : { title, lines: list };
+  playSound('notify');
+  emit();
+}
+
+export function dismissNotice() {
+  game.ui.notice = null;
+  emit();
+}
+
+/** O servidor recusou o save ou ele mudou lá (multa, progresso zerado): continua da versão da nuvem. */
+async function reloadFromCloud(message, notices) {
+  const { save } = await fetchCloudSave();
+  if (game.ui.screen === 'game' && save) continueFromCloud(save);
+  showNotice([message, ...notices], 'Progresso recarregado da nuvem');
+}
+
+setCloudHandlers({ onReload: reloadFromCloud, onNotices: (lines, title) => showNotice(lines, title) });
 
 /** Recalcula derivados e premia necessidades recém-atendidas ("Finalmente!"). */
 function afterLayoutChange() {

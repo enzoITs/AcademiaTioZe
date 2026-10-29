@@ -164,6 +164,9 @@ export default function TitleScreen() {
           ) : acc.user ? (
             <>
               <span className="account-who"><Icon name="cloud" size={16} /> <strong>{acc.user.name}</strong></span>
+              {acc.user.role === 'admin' ? (
+                <a className="btn btn-sm" href="/admin"><Icon name="shield" size={14} /> Painel admin</a>
+              ) : null}
               <button type="button" className="btn btn-sm btn-link" onClick={() => logout()}><Icon name="logout" size={14} /> Sair</button>
             </>
           ) : (

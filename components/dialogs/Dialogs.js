@@ -4,7 +4,7 @@ import { useGame } from '../../hooks/useGame.js';
 import { POSTCARDS } from '../../game/systems/characters.js';
 import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import {
-  resolveConfirm, closeModal, dismissPending, saveNow, exportSave, importSave, askConfirm, newGame, backToTitle, notifyError, openModal,
+  resolveConfirm, dismissNotice, closeModal, dismissPending, saveNow, exportSave, importSave, askConfirm, newGame, backToTitle, notifyError, openModal,
 } from '../../game/engine/store.js';
 import { LedgerTable } from '../reports/FinancePanel.js';
 import { Avatar } from '../hud/MessagesPanel.js';
@@ -19,6 +19,19 @@ import AccountDialog from '../online/AccountDialog.js';
 import RankingDialog from '../online/RankingDialog.js';
 import { useAccount } from '../../hooks/useAccount.js';
 import { logout } from '../../game/engine/cloud.js';
+
+/** Aviso da administração ou do servidor (multa, advertência, progresso recarregado, banimento). */
+function NoticeDialog({ notice }) {
+  return (
+    <Modal title={notice.title} onClose={dismissNotice} className="modal-sm notice-dialog">
+      <h2 className="modal-title"><Icon name="alert" size={20} /> {notice.title}</h2>
+      {notice.lines.map((line, i) => <p key={i}>{line}</p>)}
+      <div className="modal-actions">
+        <button type="button" className="btn btn-primary" onClick={dismissNotice} data-autofocus>Entendi</button>
+      </div>
+    </Modal>
+  );
+}
 
 function ConfirmDialog({ confirm }) {
   return (
@@ -177,6 +190,7 @@ function MenuDialog() {
 
 export default function Dialogs() {
   const { ui, state } = useGame();
+  if (ui.notice) return <NoticeDialog notice={ui.notice} />;
   if (ui.confirm) return <ConfirmDialog confirm={ui.confirm} />;
   if (ui.modal?.kind === 'menu') return <MenuDialog />;
   if (ui.modal?.kind === 'account') return <AccountDialog key={ui.modal.mode} mode={ui.modal.mode} />;
