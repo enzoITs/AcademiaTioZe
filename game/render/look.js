@@ -1,4 +1,5 @@
 // Cores do cenário compartilhadas pelos renderizadores 3D e 2D.
+import { decorFloorColors, decorWallColor } from '../systems/decor.js';
 
 export const ZONE_FLOOR = {
   garagem: ['#ece4d6', '#e4dac9'],
@@ -32,12 +33,18 @@ export const ERA_LOOK = {
   },
 };
 export const eraLook = (era) => ERA_LOOK[era] ?? ERA_LOOK[1];
-/** Cara da cena: a filial traz a sua (cor do estilo e letreiro próprio); a Matriz usa a da era. */
-export const lookOf = (state) => state?.look ?? eraLook(state?.era ?? 1);
+/** Cara da cena: a filial traz a sua (cor do estilo e letreiro próprio); a Matriz usa a da era (e a reforma). */
+export function lookOf(state) {
+  if (state?.look) return state.look;
+  const base = eraLook(state?.era ?? 1);
+  const wall = decorWallColor(state);
+  return wall ? { ...base, wall } : base;
+}
 // Pisos dos terrenos gerados: alternam numa paleta pastel.
 export const PROC_FLOORS = [
   ['#efe6dc', '#e6dbcd'], ['#e2ecf3', '#d6e3ec'], ['#ece6f2', '#e1d9ea'],
   ['#e6efe0', '#dbe7d3'], ['#f3e8d8', '#ebdcc6'], ['#e4e8ec', '#d9dee4'],
 ];
-export const floorOf = (zone) => zone.floor ?? ZONE_FLOOR[zone.id] ?? PROC_FLOORS[(Number(zone.id.split('-')[1]) || 0) % PROC_FLOORS.length];
+export const floorOf = (zone, state = null) => decorFloorColors(state)
+  ?? zone.floor ?? ZONE_FLOOR[zone.id] ?? PROC_FLOORS[(Number(zone.id.split('-')[1]) || 0) % PROC_FLOORS.length];
 export const BLOCK_TINT = ['rgba(255,214,150,0.07)', 'rgba(255,255,255,0)', 'rgba(70,80,160,0.12)'];

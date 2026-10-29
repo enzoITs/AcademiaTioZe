@@ -202,6 +202,10 @@ cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tip
 - **Expansão para os dois lados:** sempre há um terreno à venda à esquerda e outro à direita do prédio principal.
   Quando nasce um terreno à esquerda da coluna 0, a planta inteira anda para a direita (`state.shift`), junto com
   aparelhos, sujeira, porta e câmera.
+- **Reforma** (botão na barra do mapa, `decor` no JSON, `game/systems/decor.js`): 10 cores de chão e 10 de parede
+  para a Matriz. O preço é o custo da cor × tiles da academia (chão) ou × metros de parede (paredes), e entra nas
+  finanças como "Reforma e pintura". As áreas compradas depois já nascem com a cor escolhida, e a cor continua na
+  mudança de era. "Original" volta à cor da era (também é paga). As filiais mantêm a cara do próprio estilo.
 
 ## Limitações conhecidas / adiado de propósito
 

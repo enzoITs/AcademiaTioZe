@@ -1,7 +1,7 @@
 'use client';
 import { useGame } from '../../hooks/useGame.js';
 import {
-  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses, openCityMap, viewMatriz,
+  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses, openCityMap, viewMatriz, openDecor,
 } from '../../game/engine/store.js';
 import { lotCost } from '../../game/systems/network.js';
 import { repairCost } from '../../game/systems/maintenance.js';
@@ -60,6 +60,9 @@ export default function CanvasToolbar({ rendererRef }) {
             {state.network.lots.some((l) => state.money >= lotCost(state, l)) ? <span className="tool-badge">!</span> : null}
           </button>
         ) : null}
+        <button type="button" className="tool" onClick={openDecor} title="Reforma: cor do chão e das paredes">
+          <Icon name="paint" /><span>Reforma</span>
+        </button>
         {forSale > 0 ? (
           <button type="button" className="tool" onClick={openExpansions} title="Comprar mais espaço para a academia">
             <Icon name="expand" /><span>Ampliar</span>

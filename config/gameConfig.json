@@ -576,6 +576,33 @@
     "dailyChance": 0.3,
     "maxStored": 30
   },
+  "decor": {
+    "_comment": "Reforma: preço do chão = custo × tiles da academia; das paredes = custo × metros de parede. 'original' volta à cor da era.",
+    "floors": [
+      { "id": "original", "label": "Original", "cost": 3 },
+      { "id": "creme", "label": "Creme", "colors": ["#f3e7cf", "#eadcc0"], "cost": 3 },
+      { "id": "menta", "label": "Menta", "colors": ["#d6eedb", "#c8e5ce"], "cost": 3 },
+      { "id": "ceu", "label": "Céu", "colors": ["#d6e6f5", "#c8dcef"], "cost": 3 },
+      { "id": "rosa", "label": "Rosa", "colors": ["#f6dbe5", "#efcddb"], "cost": 4 },
+      { "id": "amarelo", "label": "Amarelo", "colors": ["#f7e8b5", "#f0dd9f"], "cost": 4 },
+      { "id": "madeira", "label": "Madeira clara", "colors": ["#e2c49a", "#d8b789"], "cost": 6 },
+      { "id": "nogueira", "label": "Madeira escura", "colors": ["#b68a62", "#a97d56"], "cost": 7 },
+      { "id": "borracha", "label": "Emborrachado", "colors": ["#9a9eae", "#8f93a4"], "cost": 7 },
+      { "id": "xadrez", "label": "Xadrez", "colors": ["#f7f4ee", "#5b5470"], "cost": 9 }
+    ],
+    "walls": [
+      { "id": "original", "label": "Original", "cost": 3 },
+      { "id": "branco", "label": "Branco", "color": "#f4f1ea", "cost": 3 },
+      { "id": "amarelo", "label": "Amarelo", "color": "#f2d98a", "cost": 3 },
+      { "id": "menta", "label": "Menta", "color": "#bfe3cf", "cost": 3 },
+      { "id": "azul", "label": "Azul", "color": "#b9d3ee", "cost": 4 },
+      { "id": "rosa", "label": "Rosa", "color": "#f2c1d1", "cost": 4 },
+      { "id": "lilas", "label": "Lilás", "color": "#c8b6dc", "cost": 4 },
+      { "id": "laranja", "label": "Laranja", "color": "#f0b98a", "cost": 5 },
+      { "id": "vermelho", "label": "Vermelho", "color": "#dc8a86", "cost": 6 },
+      { "id": "grafite", "label": "Grafite", "color": "#7d7f8f", "cost": 8 }
+    ]
+  },
   "online": {
     "rankingPageSize": 50,
     "historyMonths": 12,

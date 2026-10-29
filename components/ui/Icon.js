@@ -29,6 +29,7 @@ const PATHS = {
   map: <><path d="M4 6.5l5-2 6 2 5-2v13l-5 2-6-2-5 2z" /><path d="M9 4.5v13M15 6.5v13" /></>,
   flag: <><path d="M6 20.5V4" /><path d="M6 4.5h10l-2.5 3.5L16 11.5H6" /></>,
   broom: <><path d="M14 4l-3.5 8" /><path d="M7 12h7.5l2.5 8H5z" /><path d="M9 15.5l-.5 4.5M12.5 15.5l.5 4.5" /></>,
+  paint: <><rect x="4" y="4" width="13" height="5.5" rx="1.8" /><path d="M17 6.8h2.5v4.7h-7.5v3" /><rect x="10.3" y="14.5" width="3.4" height="6" rx="1.2" /></>,
   expand: <><rect x="4" y="4" width="9" height="9" rx="2" /><path d="M16 8h4v12H8v-4" strokeDasharray="2 2.5" /></>,
   users: <><circle cx="12" cy="8" r="3.4" /><path d="M5.5 19.5c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /></>,
   upgrade: <><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5" /><path d="M6 19.5h12" /></>,

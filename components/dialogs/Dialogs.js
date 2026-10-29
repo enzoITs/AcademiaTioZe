@@ -11,6 +11,7 @@ import { Avatar } from '../hud/MessagesPanel.js';
 import Stars from '../hud/Stars.js';
 import Modal from './Modal.js';
 import ExpansionsDialog from './ExpansionsDialog.js';
+import DecorDialog from './DecorDialog.js';
 import { EraMoveDialog, EraCeremony } from './EraDialogs.js';
 import { CityDialog, OpenBranchDialog, BranchDialog } from '../network/NetworkDialogs.js';
 import Icon from '../ui/Icon.js';
@@ -183,6 +184,7 @@ export default function Dialogs() {
   if (ui.modal?.kind === 'offline') return <OfflineDialog summary={ui.modal.summary} />;
   if (ui.modal?.kind === 'report') return <ReportDialog report={ui.modal.report} />;
   if (ui.modal?.kind === 'expansions') return <ExpansionsDialog />;
+  if (ui.modal?.kind === 'decor') return <DecorDialog />;
   if (ui.modal?.kind === 'eraMove') return <EraMoveDialog />;
   if (ui.modal?.kind === 'city') return <CityDialog />;
   if (ui.modal?.kind === 'openBranch') return <OpenBranchDialog key={ui.modal.lotId} lotId={ui.modal.lotId} />;

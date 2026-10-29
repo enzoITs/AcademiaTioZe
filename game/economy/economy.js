@@ -17,6 +17,7 @@ export const LEDGER_CATEGORIES = {
   filiaisVenda: { label: 'Venda de filiais', kind: 'revenue' },
   equipamentos: { label: 'Compra de aparelhos', kind: 'expense' },
   ampliacoes: { label: 'Ampliações', kind: 'expense' },
+  reforma: { label: 'Reforma e pintura', kind: 'expense' },
   mudanca: { label: 'Mudança de era', kind: 'expense' },
   aluguel: { label: 'Aluguel e prédio', kind: 'expense' },
   energia: { label: 'Energia', kind: 'expense' },

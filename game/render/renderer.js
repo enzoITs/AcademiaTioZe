@@ -271,7 +271,7 @@ export class GameRenderer extends SceneDirector {
       for (let x = 0; x < COLS; x++) {
         const z = zoneAtCell(x, y);
         if (!z || !state.unlockedZones.includes(z.id)) continue;
-        const [a, b] = floorOf(z);
+        const [a, b] = floorOf(z, state);
         ctx.fillStyle = (x + y) % 2 ? a : b;
         ctx.fillRect(x * T, y * T, T, T);
       }

@@ -1,6 +1,7 @@
 // Estado serializável da partida. Tudo aqui vai para o save.
 import { CONFIG, PROFILE_IDS, DEMAND_CATEGORIES } from '../config.js';
 import { createLedger } from '../economy/economy.js';
+import { emptyDecor } from '../systems/decor.js';
 
 export function emptyExposure() {
   return Object.fromEntries(PROFILE_IDS.map((p) => [p, 0]));
@@ -32,6 +33,7 @@ export function createNewGame(seed = Date.now() % 2147483647) {
     nextStudentId: 1,
     staff: [],
     network: null, // Era 4: filiais, lotes à venda e candidatos a gerente
+    decor: emptyDecor(), // reforma: cor do chão e das paredes da Matriz
     nextStaffId: 1,
     enrollAcc: 0,
     dirt: [],

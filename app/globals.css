@@ -317,6 +317,27 @@ kbd {
 .modal-wide { width: min(820px, 100%); }
 .exp-infinite { margin: 2px 0 8px; }
 .exp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* Reforma */
+.decor-layout { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; margin-top: 8px; }
+.decor-preview { width: 100%; height: auto; display: block; background: var(--cream); border: 2px solid var(--line); border-radius: var(--radius-sm); padding: 6px; position: sticky; top: 0; }
+.decor-sections { display: grid; gap: 10px; }
+.decor-tabs { margin: 0; }
+.decor-section { display: grid; gap: 8px; }
+.decor-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.decor-head h3 { margin: 0; font-size: 16px; font-family: var(--font-title); }
+.decor-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.decor-swatch {
+  width: 100%; display: grid; justify-items: center; gap: 3px; padding: 6px 4px 5px; font: inherit; color: var(--ink);
+  background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;
+}
+.decor-swatch:hover { border-color: var(--ink-faint); }
+.decor-swatch.picked { border-color: var(--ink); box-shadow: 0 0 0 2px var(--yellow); }
+.decor-swatch:focus-visible { outline: 3px solid var(--blue-deep); outline-offset: 1px; }
+.decor-chip { width: 38px; height: 26px; border-radius: 6px; border: 1.5px solid var(--ink); }
+.decor-name { font-size: 12px; font-weight: 800; line-height: 1.1; text-align: center; }
+.decor-price { font-variant-numeric: tabular-nums; font-weight: 700; }
+.decor-price.short { color: var(--red-deep); }
+.decor-buy { justify-self: start; }
 .exp-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 6px; }
 .site-plan { width: 100%; height: auto; background: #cfe6c0; border: 2.5px solid var(--ink); border-radius: 14px; }
 .site-plan g { cursor: default; }
@@ -603,6 +624,8 @@ kbd {
 .chart-table th, .chart-table td { padding: 3px 6px; text-align: right; border-bottom: 1px solid var(--line); }
 .chart-table th:first-child, .chart-table td:first-child { text-align: left; }
 @media (max-width: 720px) {
+  .decor-layout { grid-template-columns: 1fr; }
+  .decor-preview { position: static; max-width: 320px; }
   .chart-pair { grid-template-columns: 1fr; }
   .cloud-name { display: none; }
   .cloud-status { padding: 0 8px; }

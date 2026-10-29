@@ -541,7 +541,7 @@ export class Renderer3D extends SceneDirector {
   // ------------------------------------------------------------ terreno e paredes
   syncTerrain(state, t) {
     const zones = allZones(state);
-    const key = `${state.era}|${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => `${z.id}@${z.x},${z.y}`).join(',')}`;
+    const key = `${state.era}|${state.decor?.floor}/${state.decor?.wall}|${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => `${z.id}@${z.x},${z.y}`).join(',')}`;
     if (key !== this.terrainKey) {
       this.terrainKey = key;
       this.buildTerrain(state, zones);
@@ -609,7 +609,7 @@ export class Renderer3D extends SceneDirector {
       for (let x = 0; x < COLS; x++) {
         const z = zoneAtCell(x, y);
         if (!z || !state.unlockedZones.includes(z.id)) continue;
-        const [a, b] = floorOf(z);
+        const [a, b] = floorOf(z, state);
         g.box(1, 0.06, 1, (x + y) % 2 ? a : b, { x: x + 0.5, y: FLOOR_Y - 0.06, z: y + 0.5 });
       }
     }

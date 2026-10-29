@@ -21,6 +21,7 @@ import { buildSuggestions, isTypeLocked } from '../systems/suggestions.js';
 import { createStaffMember, hireBlocker, roleDef } from '../systems/staff.js';
 import { canMoveEra, performEraMove } from '../systems/eras.js';
 import { ensureFrontier } from '../systems/expansion.js';
+import { decorOption, decorPrice } from '../systems/decor.js';
 import {
   STYLES, openBlocker, openBranch, upgradeBranch, branchUpgradeCost, changeBranchStyle, swapManager,
   sellBranch, branchSaleValue,
@@ -833,6 +834,31 @@ function unlockZone(zoneId) {
   playSound('celebrate');
   afterLayoutChange();
   emit();
+}
+
+// ---------------------------------------------------------------- reforma
+export function openDecor() {
+  leaveView();
+  game.ui.selectedId = null;
+  openModal({ kind: 'decor' });
+}
+
+/** Pinta o chão ou as paredes da Matriz inteira. Retorna true se pagou. */
+export function applyDecor(kind, id) {
+  const { state } = game;
+  if (inBranchView()) return false;
+  const opt = decorOption(kind, id);
+  if (!opt) return false;
+  if (state.decor?.[kind] === id) return fail('A academia já está com essa cor.');
+  const cost = decorPrice(state, kind, id);
+  if (!canAfford(state, cost)) return fail(`Saldo insuficiente para a reforma (${formatMoney(cost)}).`);
+  const what = kind === 'floor' ? 'chão' : 'paredes';
+  transact(state, -cost, 'reforma', `Reforma: ${what} ${opt.label.toLowerCase()}`);
+  state.decor = { ...state.decor, [kind]: id };
+  toast(`Reforma pronta: ${what} ${opt.label.toLowerCase()} (${formatMoney(cost)}).`, 'success');
+  playSound('buy');
+  emit();
+  return true;
 }
 
 // ---------------------------------------------------------------- eras

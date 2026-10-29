@@ -1,5 +1,6 @@
 // Salvamento local, exportação/importação JSON e validação de saves.
 // Nunca é chamado no servidor: todas as funções verificam `window`.
+import { normalizeDecor } from '../systems/decor.js';
 import { CONFIG, EQUIPMENT, PROFILES, MAX_ERA, eraDef } from '../config.js';
 import { validatePlacement, rectsOverlap, syncLayout, allZones, baseZones } from '../grid/grid.js';
 import { createNewGame } from './state.js';
@@ -245,6 +246,7 @@ export function parseSave(text) {
     .map((m) => ({ ...m, shifts: CONFIG.time.blocks.map((_, i) => m.shifts[i] === true) }));
   state.nextStaffId = Math.max(base.nextStaffId, ...state.staff.map((m) => m.id + 1));
   state.network = parseNetwork(data.network, state);
+  state.decor = normalizeDecor(data.decor);
   state.time.staffCleaned = isNum(state.time.staffCleaned) ? Math.max(0, Math.floor(state.time.staffCleaned)) : 0;
   state.time.staffFixed = isNum(state.time.staffFixed) ? Math.max(0, Math.floor(state.time.staffFixed)) : 0;
   state.dirt = arr(data.dirt).filter((d) => d && isNum(d.x) && isNum(d.y)).slice(0, CONFIG.cleaning.maxDirt);
