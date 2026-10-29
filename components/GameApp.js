@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame.js';
 import {
-  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView,
+  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, flushCloud, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView,
 } from '../game/engine/store.js';
 import TopBar from './hud/TopBar.js';
 import SidePanel from './hud/SidePanel.js';
@@ -69,7 +69,9 @@ function useKeyboard() {
 function useAutosaveOnExit() {
   useEffect(() => {
     const save = () => {
-      if (game.ui.screen === 'game') saveNow(true);
+      if (game.ui.screen !== 'game') return;
+      saveNow(true);
+      flushCloud();
     };
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') save();

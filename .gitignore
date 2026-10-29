@@ -15,6 +15,9 @@ build/
 next-env.d.ts
 *.tsbuildinfo
 
+# Banco local de desenvolvimento (PGlite)
+.data/
+
 # Testes
 coverage/
 

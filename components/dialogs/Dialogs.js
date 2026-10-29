@@ -4,7 +4,7 @@ import { useGame } from '../../hooks/useGame.js';
 import { POSTCARDS } from '../../game/systems/characters.js';
 import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import {
-  resolveConfirm, closeModal, dismissPending, saveNow, exportSave, importSave, askConfirm, newGame, backToTitle, notifyError,
+  resolveConfirm, closeModal, dismissPending, saveNow, exportSave, importSave, askConfirm, newGame, backToTitle, notifyError, openModal,
 } from '../../game/engine/store.js';
 import { LedgerTable } from '../reports/FinancePanel.js';
 import { Avatar } from '../hud/MessagesPanel.js';
@@ -14,6 +14,10 @@ import ExpansionsDialog from './ExpansionsDialog.js';
 import { EraMoveDialog, EraCeremony } from './EraDialogs.js';
 import { CityDialog, OpenBranchDialog, BranchDialog } from '../network/NetworkDialogs.js';
 import Icon from '../ui/Icon.js';
+import AccountDialog from '../online/AccountDialog.js';
+import RankingDialog from '../online/RankingDialog.js';
+import { useAccount } from '../../hooks/useAccount.js';
+import { logout } from '../../game/engine/cloud.js';
 
 function ConfirmDialog({ confirm }) {
   return (
@@ -107,6 +111,7 @@ function ReportDialog({ report }) {
 
 function MenuDialog() {
   const fileRef = useRef(null);
+  const acc = useAccount();
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -126,13 +131,21 @@ function MenuDialog() {
         <button type="button" className="btn" onClick={exportSave}><Icon name="download" size={15} /> Exportar save (JSON)</button>
         <button type="button" className="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" size={15} /> Importar save (JSON)</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={onFile} />
+        <button type="button" className="btn" onClick={() => openModal({ kind: 'ranking' })}><Icon name="trophy" size={15} /> Ranking</button>
+        {acc.user ? (
+          <button type="button" className="btn" onClick={() => { backToTitle(); logout(); }}><Icon name="logout" size={15} /> Sair da conta ({acc.user.name})</button>
+        ) : (
+          <button type="button" className="btn" onClick={() => { backToTitle(); openModal({ kind: 'account', mode: 'login' }); }}><Icon name="user" size={15} /> Entrar na conta</button>
+        )}
         <button type="button" className="btn" onClick={backToTitle}><Icon name="door" size={15} /> Tela inicial</button>
         <button
           type="button"
           className="btn btn-danger"
           onClick={() => askConfirm({
             title: 'Começar um novo jogo?',
-            text: 'A partida atual salva neste navegador será apagada. Exporte antes se quiser guardar.',
+            text: acc.user
+              ? 'O progresso da sua conta será apagado e você recomeça na garagem. Exporte antes se quiser guardar.'
+              : 'O progresso salvo neste navegador será apagado. Exporte antes se quiser guardar.',
             confirmLabel: 'Apagar e recomeçar',
             danger: true,
             onConfirm: newGame,
@@ -154,7 +167,9 @@ function MenuDialog() {
         <li><kbd>1</kbd>–<kbd>3</kbd> velocidade ×1/×2/×4</li>
         <li>Roda do mouse: zoom · arrastar: mover câmera</li>
       </ul>
-      <p className="small subtle">O jogo salva sozinho a cada 15 segundos e ao fechar a aba.</p>
+      <p className="small subtle">
+        O jogo salva sozinho a cada 15 segundos e ao fechar a aba{acc.user ? `, na nuvem da conta ${acc.user.name}` : ', só neste navegador (entre numa conta para salvar na nuvem)'}.
+      </p>
     </Modal>
   );
 }
@@ -163,6 +178,8 @@ export default function Dialogs() {
   const { ui, state } = useGame();
   if (ui.confirm) return <ConfirmDialog confirm={ui.confirm} />;
   if (ui.modal?.kind === 'menu') return <MenuDialog />;
+  if (ui.modal?.kind === 'account') return <AccountDialog key={ui.modal.mode} mode={ui.modal.mode} />;
+  if (ui.modal?.kind === 'ranking') return <RankingDialog profile={ui.modal.profile ?? null} />;
   if (ui.modal?.kind === 'offline') return <OfflineDialog summary={ui.modal.summary} />;
   if (ui.modal?.kind === 'report') return <ReportDialog report={ui.modal.report} />;
   if (ui.modal?.kind === 'expansions') return <ExpansionsDialog />;

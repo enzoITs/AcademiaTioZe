@@ -10,6 +10,18 @@ export function formatMoney(value) {
   return moneyFormatter.format(Math.round(value));
 }
 
+const shortMoneyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+/** "R$ 12,5 mil", para eixos e listas apertadas. */
+export function formatMoneyShort(value) {
+  return shortMoneyFormatter.format(Math.round(value));
+}
+
 export function formatPercent(value, digits = 0) {
   return `${(value * 100).toFixed(digits).replace('.', ',')}%`;
 }

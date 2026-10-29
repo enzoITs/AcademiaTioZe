@@ -7,6 +7,7 @@ import { averageSatisfaction } from '../../game/simulation/students.js';
 import { monthSummary } from '../../game/economy/economy.js';
 import { setSpeed, saveNow, openModal, toggleSound } from '../../game/engine/store.js';
 import Icon from '../ui/Icon.js';
+import { useAccount } from '../../hooks/useAccount.js';
 import Stars from './Stars.js';
 
 const SPEED_LABELS = ['Pausar', '×1', '×2', '×4'];
@@ -24,8 +25,34 @@ function Stat({ icon, label, value, sub, tone, title }) {
   );
 }
 
+const SYNC_TEXT = {
+  idle: 'Conectado',
+  saving: 'Salvando na nuvem…',
+  saved: 'Salvo na nuvem',
+  offline: 'Sem internet: salvando só aqui, envia quando voltar',
+  error: 'Erro ao salvar na nuvem',
+};
+
+function CloudStatus({ acc }) {
+  if (!acc.user) {
+    return (
+      <span className="cloud-status guest" title="Jogando como convidado: progresso só neste navegador e fora do ranking">
+        <Icon name="cloudOff" size={17} /><span className="cloud-name">Convidado</span>
+      </span>
+    );
+  }
+  const bad = acc.sync === 'offline' || acc.sync === 'error';
+  const text = `${acc.user.name}: ${SYNC_TEXT[acc.sync] ?? ''}${acc.message ? ` (${acc.message})` : ''}${acc.flagged ? ' · perfil em revisão' : ''}`;
+  return (
+    <span className={`cloud-status ${acc.sync} ${bad ? 'bad' : ''}`} title={text} role="status" aria-label={text}>
+      <Icon name={bad ? 'cloudOff' : 'cloud'} size={17} /><span className="cloud-name">{acc.user.name}</span>
+    </span>
+  );
+}
+
 export default function TopBar() {
   const { state, rt, ui } = useGame();
+  const acc = useAccount();
   const [flash, setFlash] = useState(null);
   const prevMoney = useRef(state.money);
 
@@ -112,6 +139,10 @@ export default function TopBar() {
       </div>
 
       <div className="top-actions">
+        <CloudStatus acc={acc} />
+        <button type="button" className="icon-btn" onClick={() => openModal({ kind: 'ranking' })} title="Ranking e perfis" aria-label="Ranking">
+          <Icon name="trophy" />
+        </button>
         <button type="button" className="icon-btn" onClick={toggleSound} title="Ligar/desligar som" aria-label="Alternar som" aria-pressed={ui.soundOn}>
           <Icon name={ui.soundOn ? 'sound' : 'mute'} />
         </button>

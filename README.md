@@ -12,6 +12,40 @@ npm test         # testes das fórmulas e mecânicas (node --test)
 npm run build && npm start   # produção
 ```
 
+Sem `DATABASE_URL`, o `npm run dev` usa um Postgres embutido (PGlite) na pasta `.data/` — nada para instalar.
+Para apagar as contas de teste, pare o servidor e apague `.data/`.
+
+## Online (contas, nuvem e ranking)
+
+- **Conta** com apelido (3–20 letras, números ou `_`) e senha. Senha guardada com `scrypt` + sal; a sessão é um
+  token aleatório num cookie `httpOnly` (o banco só guarda o hash do token). Dá para jogar como convidado:
+  aí o progresso fica só no navegador e fora do ranking.
+- **Progresso na nuvem:** cada conta tem um progresso só. O jogo envia junto com o salvamento automático
+  (no máximo a cada 20 s), no botão Salvar, ao voltar à tela inicial e ao fechar a aba. Em outro computador,
+  é só entrar na conta e Continuar. Se o navegador tiver progresso de convidado e a conta já tiver outro,
+  a tela inicial deixa escolher qual manter.
+- **Ranking** por dinheiro e por alunos (Matriz + membros das filiais), com busca por apelido. Clicando num
+  jogador abre o **perfil**, lado a lado com o seu, e gráficos mês a mês (saldo e alunos da Matriz no fim de cada mês).
+- **Checagem contra trapaça (básica):** o servidor valida o save com o mesmo `parseSave` do jogo e compara com o
+  envio anterior (`game/online/progress.js`): dias de jogo não podem andar mais rápido que o ×4, e saldo, alunos e
+  era não podem dar saltos impossíveis (limites em `online.plausibility` no JSON). Quem falha **não perde o
+  progresso**, mas sai do ranking (`profiles.flagged`). Para liberar alguém: `UPDATE profiles SET flagged = false
+  WHERE user_id = (SELECT id FROM users WHERE name_key = 'apelido');`.
+- Rotas em `app/api/` (Route Handlers): `auth/register|login|logout|me`, `save` (GET/PUT), `ranking`,
+  `players?q=` e `players/[name]`. O código de servidor fica em `server/` (banco, contas, progresso).
+
+### Publicar no Railway
+
+1. No Railway: **New Project → Deploy from GitHub repo** e escolha este repositório (branch `online`, ou a `main`
+   depois de juntar).
+2. No mesmo projeto: **New → Database → PostgreSQL**.
+3. No serviço do jogo, em **Variables**, adicione `DATABASE_URL` com o valor `${{Postgres.DATABASE_URL}}`
+   (referência à variável do banco). As tabelas são criadas sozinhas na primeira conexão.
+4. O Railway detecta o Next.js: build `npm run build`, start `npm run start` (o Next usa a porta `PORT` do Railway).
+5. Em **Settings → Networking → Generate Domain** para ganhar o endereço público.
+
+Se usar a URL pública do banco (de fora do Railway) e ela pedir SSL, adicione `PGSSL=true`.
+
 ## Controles
 
 | Ação | Controle |
@@ -187,3 +221,8 @@ cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tip
   (marcadas "em teste"). Os preços dos níveis novo/profissional de esteira e bike seguem a proporção do supino.
 - Toque funciona para clicar e arrastar; não há gesto de pinça (use os botões de zoom).
 - Sem WebGL 2 o jogo cai para a vista 2D de reserva (`game/render/renderer.js`).
+- **Online:** a checagem de trapaça é básica — o jogo roda no navegador, então um jogador esperto ainda consegue
+  números um pouco acima do real sem ser pego. Não há troca de senha, recuperação de conta, nem moderação de
+  apelidos. O limite de tentativas de login fica em memória (zera quando o servidor reinicia).
+  O último envio ao fechar a aba só sai se o progresso couber em ~60 KB; se não couber, ele vai na próxima vez que
+  o jogador abrir o jogo (a tela inicial usa o progresso mais novo).

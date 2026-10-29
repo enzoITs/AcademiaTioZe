@@ -26,8 +26,9 @@ import {
   sellBranch, branchSaleValue,
 } from '../systems/network.js';
 import {
-  saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal,
+  saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal, setLocalOwner,
 } from './persistence.js';
+import { account, cloudSave, markBaseline } from './cloud.js';
 import { playSound, setSoundEnabled } from '../audio/sfx.js';
 import { formatMoney } from '../utils/format.js';
 import { EQUIPMENT_SHORT, FINALLY_LINES, BRANCH_LINES } from '../content/lines.js';
@@ -125,6 +126,11 @@ export function notifyError(text) {
   return fail(text);
 }
 
+export function notify(text, tone = 'info') {
+  toast(text, tone);
+  emit();
+}
+
 function itemById(id) {
   return game.state.items.find((i) => i.id === id) ?? null;
 }
@@ -177,21 +183,49 @@ function startWith(state, offlineSeconds = 0) {
   emit();
 }
 
+/** O progresso deste navegador passa a ser da conta logada e sobe para a nuvem. */
+function claimForAccount({ baseline = false } = {}) {
+  if (!account.user) return;
+  setLocalOwner(account.user.name);
+  if (baseline) markBaseline();
+  cloudSave(game.state, { force: true });
+}
+
 export function newGame() {
   clearLocal();
   startWith(createNewGame());
+  setLocalOwner(account.user?.name ?? '');
   saveToLocal(game.state);
+  claimForAccount({ baseline: true });
 }
 
-export function continueGame() {
+/**
+ * Continua o progresso deste navegador.
+ * `baseline`: a conta já tinha progresso na nuvem e o jogador escolheu o do navegador.
+ */
+export function continueGame({ baseline = false } = {}) {
   const raw = readLocalRaw();
   if (!raw) return fail('Nenhum jogo salvo encontrado.');
   try {
     const state = parseSave(raw);
     startWith(state, (Date.now() - state.savedAt) / 1000);
+    claimForAccount({ baseline });
     return true;
   } catch (err) {
     return fail(`Não foi possível carregar o save: ${err.message}`);
+  }
+}
+
+/** Continua o progresso que veio da nuvem (outro computador, ou navegador limpo). */
+export function continueFromCloud(save) {
+  try {
+    const state = parseSave(save);
+    startWith(state, (Date.now() - state.savedAt) / 1000);
+    setLocalOwner(account.user?.name ?? '');
+    saveToLocal(game.state);
+    return true;
+  } catch (err) {
+    return fail(`Não foi possível carregar o progresso da nuvem: ${err.message}`);
   }
 }
 
@@ -200,6 +234,7 @@ export function importSave(text) {
     const state = parseSave(text);
     startWith(state);
     saveToLocal(state);
+    claimForAccount({ baseline: true });
     toast('Partida importada com sucesso.', 'success');
     emit();
     return true;
@@ -219,14 +254,23 @@ export function saveNow(silent = false) {
   if (!game.state) return;
   const ok = saveToLocal(game.state);
   game.state.savedAt = Date.now();
+  // Salvar na mão envia já; o salvamento automático respeita o intervalo da nuvem.
+  cloudSave(game.state, { force: !silent });
   if (!silent) {
-    toast(ok ? 'Jogo salvo neste navegador.' : 'Não foi possível salvar (armazenamento bloqueado).', ok ? 'success' : 'error');
+    const where = account.user ? 'na nuvem e neste navegador' : 'neste navegador';
+    toast(ok ? `Jogo salvo ${where}.` : 'Não foi possível salvar (armazenamento bloqueado).', ok ? 'success' : 'error');
     emit();
   }
 }
 
+/** Fechando a aba: último envio para a nuvem (só se o progresso for pequeno o bastante). */
+export function flushCloud() {
+  if (game.state && game.ui.screen === 'game') cloudSave(game.state, { force: true, keepalive: true });
+}
+
 export function backToTitle() {
   saveNow(true);
+  cloudSave(game.state, { force: true });
   game.ui = { ...createUi(), screen: 'title' };
   emit();
 }

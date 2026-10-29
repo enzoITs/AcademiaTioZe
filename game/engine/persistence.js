@@ -45,8 +45,30 @@ export function clearLocal() {
   if (!hasStorage()) return;
   try {
     window.localStorage.removeItem(SAVE_KEY);
+    window.localStorage.removeItem(OWNER_KEY);
   } catch {
     /* armazenamento indisponível: nada a fazer */
+  }
+}
+
+const OWNER_KEY = 'academia-tio-ze/owner';
+
+/** Apelido da conta dona do save deste navegador ('' = convidado, null = não se sabe). */
+export function localOwner() {
+  if (!hasStorage()) return null;
+  try {
+    return window.localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setLocalOwner(name) {
+  if (!hasStorage()) return;
+  try {
+    window.localStorage.setItem(OWNER_KEY, name ?? '');
+  } catch {
+    /* ignora */
   }
 }
 

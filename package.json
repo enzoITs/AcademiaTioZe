@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Academia do Tio Zé — tycoon casual de navegador (protótipo da Era 1)",
+  "description": "Academia do Tio Zé — tycoon casual de navegador, com contas, progresso na nuvem e ranking",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,8 +12,15 @@
   },
   "dependencies": {
     "next": "^16.4.3",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.13"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }

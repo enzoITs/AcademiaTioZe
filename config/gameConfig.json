@@ -575,5 +575,22 @@
   "reviews": {
     "dailyChance": 0.3,
     "maxStored": 30
+  },
+  "online": {
+    "rankingPageSize": 50,
+    "historyMonths": 12,
+    "cloudSaveSeconds": 20,
+    "minSecondsBetweenSaves": 4,
+    "maxSaveBytes": 3000000,
+    "sessionDays": 60,
+    "plausibility": {
+      "speedSlack": 1.25,
+      "daySlack": 2,
+      "moneySlack": 8000,
+      "moneyMargin": 1.6,
+      "studentGainPerDay": 60,
+      "studentSlack": 20,
+      "refundShare": 1
+    }
   }
 }
