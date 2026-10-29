@@ -163,6 +163,11 @@ export function branchTarget(state, branch) {
   };
 }
 
+/** Quanto do caminho até a meta a filial anda por dia (Express e Luta enchem mais rápido). */
+export function branchApproach(branch) {
+  return Math.min(0.5, N.dailyApproach * (STYLES[branch.style].growth ?? 1));
+}
+
 /** Resultado mensal estimado de uma filial com os membros de hoje. */
 export function branchMonthly(state, branch) {
   const revenue = branch.members * branchFee(state, branch);
@@ -290,7 +295,7 @@ export function runNetworkDay(state) {
   let cost = 0;
   for (const b of state.network.branches) {
     const { target } = branchTarget(state, b);
-    b.members = Math.max(0, b.members + (target - b.members) * N.dailyApproach);
+    b.members = Math.max(0, b.members + (target - b.members) * branchApproach(b));
     revenue += (b.members * branchFee(state, b)) / days;
     cost += branchMonthlyCost(b) / days;
   }

@@ -1,7 +1,7 @@
 'use client';
 import { useGame } from '../../hooks/useGame.js';
 import {
-  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses, openCityMap,
+  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses, openCityMap, viewMatriz,
 } from '../../game/engine/store.js';
 import { lotCost } from '../../game/systems/network.js';
 import { repairCost } from '../../game/systems/maintenance.js';
@@ -19,6 +19,31 @@ export default function CanvasToolbar({ rendererRef }) {
   const available = zones.filter((z) => z.status === 'available').length;
   const broken = rt.academy.brokenItems;
   const brokenCost = broken.reduce((s, i) => s + repairCost(i), 0);
+
+  const camera = (
+    <div className="toolbar toolbar-right" role="toolbar" aria-label="Câmera">
+      <button type="button" className="tool icon-only" onClick={() => zoom(1.2)} aria-label="Aproximar"><Icon name="zoomIn" /></button>
+      <button type="button" className="tool icon-only" onClick={() => zoom(1 / 1.2)} aria-label="Afastar"><Icon name="zoomOut" /></button>
+      <button type="button" className="tool icon-only" onClick={() => rendererRef.current?.resetCamera()} aria-label="Enquadrar"><Icon name="fit" /></button>
+    </div>
+  );
+
+  // Visitando uma filial: só dá para voltar, abrir o mapa e mexer na câmera.
+  if (ui.view?.kind === 'branch') {
+    return (
+      <>
+        <div className="toolbar toolbar-left" role="toolbar" aria-label="Visita à filial">
+          <button type="button" className="tool" onClick={viewMatriz} title="Voltar para a Matriz (Esc)">
+            <Icon name="door" /><span>Voltar à Matriz</span>
+          </button>
+          <button type="button" className="tool tool-map" onClick={openCityMap} title="Mapa da cidade: filiais da rede">
+            <Icon name="map" /><span>Mapa da cidade</span>
+          </button>
+        </div>
+        {camera}
+      </>
+    );
+  }
 
   return (
     <>
@@ -52,11 +77,7 @@ export default function CanvasToolbar({ rendererRef }) {
           </button>
         ) : null}
       </div>
-      <div className="toolbar toolbar-right" role="toolbar" aria-label="Câmera">
-        <button type="button" className="tool icon-only" onClick={() => zoom(1.2)} aria-label="Aproximar"><Icon name="zoomIn" /></button>
-        <button type="button" className="tool icon-only" onClick={() => zoom(1 / 1.2)} aria-label="Afastar"><Icon name="zoomOut" /></button>
-        <button type="button" className="tool icon-only" onClick={() => rendererRef.current?.resetCamera()} aria-label="Enquadrar academia"><Icon name="fit" /></button>
-      </div>
+      {camera}
       {ui.maintenanceView ? (
         <div className="legend" aria-label="Legenda da manutenção">
           <span><i style={{ background: '#7cc98a' }} />Ok</span>

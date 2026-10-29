@@ -9,7 +9,7 @@ import {
 } from '../../game/systems/network.js';
 import {
   closeModal, openModal, openNetworkSpot, confirmOpenBranch, upgradeBranchAction, changeBranchStyleAction,
-  swapManagerAction, requestSellBranch,
+  swapManagerAction, requestSellBranch, viewBranch,
 } from '../../game/engine/store.js';
 import Modal from '../dialogs/Modal.js';
 import Icon from '../ui/Icon.js';
@@ -267,7 +267,10 @@ export function BranchDialog({ branchId }) {
         </div>
       </div>
       <div className="modal-actions">
-        <button type="button" className="btn" onClick={back} data-autofocus>Voltar ao mapa</button>
+        <button type="button" className="btn" onClick={back}>Voltar ao mapa</button>
+        <button type="button" className="btn btn-primary" onClick={() => viewBranch(b.id)} data-autofocus title="Ver a filial por dentro, como a Matriz">
+          <Icon name="eye" size={15} /> Ver a filial
+        </button>
       </div>
     </Modal>
   );

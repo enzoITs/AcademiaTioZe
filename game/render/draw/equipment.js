@@ -385,6 +385,14 @@ Object.assign(DRAW, {
     box(ctx, -3, -7, 6, 10, 1.5, INK, null);
     if (Math.floor(t * 1.6) % 2 === 0) circle(ctx, 2, -5, 1.4, P.pad, null);
   },
+  recepcao(ctx, w, h) {
+    box(ctx, -w / 2 + 4, -h / 2 + 8, w - 8, h - 14, 5, '#c9a27a');
+    box(ctx, -w / 2 + 4, -h / 2 + 6, w - 8, 9, 4, P.white);
+    box(ctx, 8, -h / 2 + 2, 18, 12, 2, INK, null);
+    box(ctx, 10, -h / 2 + 4, 14, 8, 1, P.blue, null);
+    circle(ctx, -18, -h / 2 + 10, 3.5, P.metal, INK, 1);
+    circle(ctx, -w / 2 + 16, -h / 2 + 8, 5, P.green, INK, 1);
+  },
   trofeus(ctx, w, h) {
     box(ctx, -w / 2 + 5, -h / 2 + 6, w - 10, 18, 3, '#c9a27a');
     cupTop(ctx, -10, -h / 2 + 15, 5, '#c9cbd6');

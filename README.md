@@ -146,10 +146,22 @@ cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tip
 - **Lotes infinitos:** sempre 2 lotes à venda no mapa; cada filial aberta faz surgir outro (R$ 20.000 × 1,45 por
   filial aberta, ajustado pelo bairro). Reforma da filial em 3 níveis (capacidade ×1,5 e ×2). Vender devolve 50%.
 - **Matriz Histórica:** a garagem volta no mapa e dá +5% de membros em todas as filiais.
+- **Oito estilos:** Acolhedora, Hardcore, Família, Premium, Funcional, Luta, Zen e Express 24h. Cada um tem
+  capacidade, mensalidade, custo, ritmo de crescimento (`growth`), aparelhos (`kit`), perfis de aluno e cara
+  própria (parede, porta, piso). 16 bairros, cada um com o estilo que prefere e um tipo de cidade; 4 lotes à venda.
+- **Ver a filial** (botão "Ver" na aba Rede ou "Ver a filial" na ficha): a filial aparece em 3D como a Matriz,
+  com prédio do tamanho do nível, aparelhos do estilo, a gerente atrás da recepção e os membros treinando
+  conforme o horário. É só para olhar: lá quem manda é o gerente (`game/systems/branchScene.js` monta a cena;
+  o desenho troca a grade por um instante com `withLayout`). Esc volta; ← e → passam de filial.
 - **Personagens:** o Tio Zé volta de surpresa na cerimônia; a Valéria manda uma cesta a cada filial aberta.
 - **Visual:** bandeirinhas na fachada da Matriz, letreiro "matriz da rede" e mapa com bandeirinhas nas filiais.
 
 ## Pedidos depois do documento
+
+- **Cidade em volta** (`game/render/cityLayout.js` + `game/render/three/cityscape.js`): ruas em grade, quarteirões
+  com casas, sobrados, lojas com toldo e letreiro, prédios, torres, galpões, praças, rio com ponte, postes que
+  acendem à noite, carros passando e pedestres. O bairro muda com a era (casas na garagem, comércio no ponto,
+  centro no prédio, com a MegaFit do outro lado da rua e o Museu/Matriz Histórica ao lado) e, nas filiais, com o bairro.
 
 - **Níveis 1 a 3 em todos os aparelhos** (`levels` no JSON): melhorar custa 50% e depois 100% do preço do
   aparelho; dá +25%/+50% de capacidade (ou de Vibe na decoração) e desgaste 10%/20% menor. Em troca, conserto e

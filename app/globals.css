@@ -499,6 +499,26 @@ kbd {
 .branch-bar { display: flex; align-items: center; gap: 8px; }
 .branch-bar .bar { width: 110px; }
 .btn-block { width: 100%; justify-content: center; margin: 4px 0; }
+.branch-item { position: relative; }
+.branch-item.here .branch-card { border-color: var(--yellow-deep); box-shadow: 0 0 0 3px #fdf0cc; }
+.branch-view-btn { position: absolute; top: 9px; right: 10px; }
+.branch-card { padding-right: 76px; }
+.branch-view-bar {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 4;
+  display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); width: max-content;
+  padding: 8px 10px 8px 12px; background: var(--paper); border: 2.5px solid var(--ink);
+  border-left: 10px solid var(--style, var(--yellow)); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  animation: fadein 0.15s ease;
+}
+.branch-view-bar .icon-btn { width: 30px; height: 30px; border-radius: 9px; font-size: 22px; font-weight: 800; line-height: 1; }
+.bvb-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bvb-info strong { font-size: 14.5px; display: flex; align-items: center; gap: 6px; }
+.bvb-info .style-dot { background: var(--style); }
+.bvb-actions { display: flex; gap: 6px; margin-left: 4px; }
+@media (max-width: 980px) {
+  .branch-view-bar { flex-wrap: wrap; width: calc(100% - 24px); }
+  .bvb-info .subtle { display: none; }
+}
 .btn.active { background: var(--cream); box-shadow: inset 0 0 0 2px var(--ink); }
 
 /* ---------------------------------------------------------------- responsivo */

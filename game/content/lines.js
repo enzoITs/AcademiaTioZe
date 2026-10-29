@@ -19,6 +19,19 @@ export const EQUIPMENT_SHORT = {
   plataforma: 'plataforma', saco_pancada: 'saco de pancada', barra_fixa: 'barra fixa',
   corda_naval: 'corda naval', extensora: 'extensora', smith: 'smith', crossover: 'crossover',
   ring_light: 'ring light', geladeira: 'geladeira de isotônicos', caixa_som: 'caixa de som', trofeus: 'estante de troféus',
+  recepcao: 'recepção',
+};
+
+// Conversa de quem treina em cada estilo de filial (balões na visita à filial).
+export const STYLE_CHATTER = {
+  acolhedora: ['Que cheirinho de café!', 'Aqui todo mundo sabe meu nome.', 'Vim pelo sofá, fiquei pela esteira.', 'O gerente me deu bom-dia duas vezes!'],
+  hardcore: ['Mais uma série!', 'Cadê o giz?', 'Hoje é dia de perna, não tem desculpa.', 'Essa música dá força!'],
+  familia: ['Mãe, olha eu na bike!', 'Enquanto as crianças brincam, eu treino.', 'Aqui até o vovô corre!', 'Domingo tem gincana!'],
+  premium: ['A toalha está geladinha!', 'Que vista, gente.', 'Espelho com luz, foto garantida.', 'Vale cada centavo.'],
+  funcional: ['Bora, turma, mais uma rodada!', 'A corda naval me venceu hoje.', 'Burpee de novo?!', 'Treino em grupo é outro nível.'],
+  luta: ['Jab, direto, esquiva!', 'O saco de pancada que lute.', 'Ganhei a faixa nova!', 'Bandagem bem apertada, bora.'],
+  zen: ['Inspira... expira...', 'Que plantinha linda.', 'Minha coluna agradece.', 'Silêncio bom, né?'],
+  express: ['Treino rápido antes do trabalho!', 'Meia-noite e a esteira livre.', 'Pagou pouco, treinou muito.', 'Entro, treino, saio. Perfeito.'],
 };
 
 // Mensagens do mural e quadros da cerimônia em cada mudança de era.

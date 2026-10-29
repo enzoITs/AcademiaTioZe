@@ -11,14 +11,16 @@ import {
 import { conditionState, hasWear, CONDITION_STATES, itemLevel } from '../../systems/maintenance.js';
 import { placementPreview } from '../../engine/store.js';
 import { SceneDirector } from '../director.js';
-import { floorOf, BLOCK_TINT, eraLook } from '../look.js';
+import { floorOf, BLOCK_TINT, lookOf } from '../look.js';
+import { matrizTheme, matrizLandmarks } from '../cityLayout.js';
+import { Cityscape } from './cityscape.js';
 import {
   PALETTE as P, INK, FONT_UI, FONT_TITLE, box, circle, line, speechBubble,
 } from '../draw/primitives.js';
 import { formatMoney } from '../../utils/format.js';
 import { Builder, MATS, solid, col, setNoRaycast } from './kit.js';
 import {
-  makeEquipment, makePerson, posePerson, setMood, makeCleaner, poseCleaner, makeWhey, poseWhey,
+  makeEquipment, makePerson, posePerson, setMood, makeCleaner, poseCleaner, makeWhey, poseWhey, makeManager, poseManager,
 } from './models.js';
 import { USE_SPOT } from './moreEquipment.js';
 
@@ -164,6 +166,10 @@ export class Renderer3D extends SceneDirector {
     this.actorsRoot.position.y = FLOOR_Y;
     this.helpersRoot = new THREE.Group();
     scene.add(this.terrainRoot, this.itemsRoot, this.actorsRoot, this.helpersRoot);
+    // Cidade em volta (ruas, prédios, carros e pedestres) e câmera de cada cena.
+    this.city = new Cityscape();
+    scene.add(this.city.group);
+    this.cameraMemory = new Map();
 
     this.terrainKey = null;
     this.zoneSigns = [];
@@ -204,6 +210,7 @@ export class Renderer3D extends SceneDirector {
     for (const v of this.itemViews.values()) disposeTree(v.group);
     disposeTree(this.terrainRoot);
     if (this.inaug) disposeTree(this.inaug.group);
+    this.city.dispose();
     this.gl.dispose();
   }
 
@@ -214,8 +221,10 @@ export class Renderer3D extends SceneDirector {
     this.gl.setSize(w, h, false);
     this.overlay.width = Math.round(w * dpr);
     this.overlay.height = Math.round(h * dpr);
-    if (!this.userMovedCamera) this.fit();
-    else this.clampCamera();
+    this.inView(() => {
+      if (!this.userMovedCamera) this.fit();
+      else this.clampCamera();
+    });
   }
 
   updateCamera() {
@@ -280,11 +289,11 @@ export class Renderer3D extends SceneDirector {
 
   resetCamera() {
     this.userMovedCamera = false;
-    this.fit();
+    this.inView(() => this.fit());
   }
 
   clampCamera() {
-    const W = world();
+    const W = this.inView(world);
     this.cam.target.x = clamp(this.cam.target.x, W.x0, W.x1);
     this.cam.target.z = clamp(this.cam.target.z, W.z0, W.z1);
     this.cam.target.y = 0;
@@ -408,8 +417,56 @@ export class Renderer3D extends SceneDirector {
 
   // ------------------------------------------------------------ quadro
   render(now) {
+    const home = this.store;
+    if (!home.state || !home.rt || this.disposed) return;
+    // Matriz ou filial visitada: a cena da filial desenha dentro da grade dela.
+    this.renderScene(now, (n) => this.renderFrame(n));
+  }
+
+  /** A cena mudou (entrou ou saiu de uma filial): guarda a câmera e limpa o que era da outra. */
+  onSourceChange(prev, src) {
+    const keyOf = (s) => (s === this.store ? 'home' : `branch:${s.branchId}`);
+    if (prev) {
+      this.cameraMemory.set(keyOf(prev), {
+        target: this.cam.target.clone(), zoom: this.cam.zoom, moved: this.userMovedCamera, fitted: this.fittedSize,
+      });
+    }
+    for (const [id, v] of [...this.itemViews]) this.removeItemView(id, v);
+    for (const v of this.personViews.values()) this.actorsRoot.remove(v.rig.root);
+    this.personViews.clear();
+    for (const v of this.staffViews.values()) this.actorsRoot.remove(v.rig.root);
+    this.staffViews.clear();
+    for (const v of this.dirtViews.values()) {
+      this.actorsRoot.remove(v.mesh, v.ring);
+      v.ring.geometry.dispose();
+    }
+    this.dirtViews.clear();
+    if (this.selection) this.helpersRoot.remove(this.selection);
+    this.selection = null;
+    this.selectionKey = null;
+    if (this.preview) {
+      this.helpersRoot.remove(this.preview.group);
+      disposeTree(this.preview.group);
+    }
+    this.preview = null;
+    this.previewKey = null;
+    if (this.glow) this.helpersRoot.remove(this.glow);
+    this.glow = null;
+    this.newZoneGlow = null;
+    this.terrainKey = null;
+    this.wheyRig.root.position.set(this.whey.x / T, 0, this.whey.y / T);
+    const mem = this.cameraMemory.get(keyOf(src));
+    if (mem) {
+      this.cam.target.copy(mem.target);
+      this.cam.zoom = mem.zoom;
+      this.userMovedCamera = mem.moved;
+      this.fittedSize = mem.fitted;
+      this.updateCamera();
+    } else this.refitCamera = true;
+  }
+
+  renderFrame(now) {
     const { state, rt, ui } = this.game;
-    if (!state || !rt || this.disposed) return;
     this.followWorldGrowth();
     const dt = this.step(now);
     const t = this.time;
@@ -422,6 +479,7 @@ export class Renderer3D extends SceneDirector {
     this.syncPreview(state, ui, t);
     this.updateParticles(now);
     this.updateLights(state, ui, t);
+    this.city.update(t, dt, { night: state.time.block === 2, truck: state.closedDay != null && state.closedDay === state.time.day });
     this.gl.render(this.scene, this.camera);
     this.drawOverlay(state, rt, ui, now, t);
   }
@@ -514,12 +572,24 @@ export class Renderer3D extends SceneDirector {
     this.zoneSigns = [];
     this.mask = buildUnlockedMask(state.unlockedZones);
     const unlocked = (x, y) => isUnlocked(this.mask, x, y);
-    const look = eraLook(state.era);
+    const look = lookOf(state);
     const WALL = look.wall;
     const own = (o) => {
       o.userData.ownGeometry = true;
       return o;
     };
+
+    // Cidade em volta: o bairro da era (ou o da filial visitada).
+    this.city.build({
+      cols: COLS,
+      rows: ROWS,
+      door: { x: DOOR.x, y: DOOR.y },
+      theme: state.city?.theme ?? matrizTheme(state.era),
+      seed: state.city?.seed ?? state.seed ?? 1,
+      landmarks: state.isBranchView ? [] : matrizLandmarks(state.era),
+      historic: state.era >= 4,
+    });
+    const crossings = (this.city.plan?.streets ?? []).filter((s) => s.dir === 'v').map((s) => [s.x0, s.x1]);
 
     // Chão: pisos, rua, calçada e terrenos à venda (recebem sombra, sem contorno).
     const g = new Builder();
@@ -527,7 +597,12 @@ export class Renderer3D extends SceneDirector {
     const sx0 = -40;
     const sx1 = COLS + 40;
     g.box(sx1 - sx0, 0.02, 3, '#b9b4c4', { x: (sx0 + sx1) / 2, y: -0.02, z: streetZ + 1.5 });
-    g.box(sx1 - sx0, 0.06, 0.5, '#e6e1d8', { x: (sx0 + sx1) / 2, y: -0.02, z: streetZ + 0.1 });
+    // calçada da frente, interrompida onde as ruas laterais chegam
+    let cx0 = sx0;
+    for (const [a, b] of [...crossings.sort((p, q) => p[0] - q[0]), [sx1, sx1]]) {
+      if (a > cx0) g.box(a - cx0, 0.06, 0.5, '#e6e1d8', { x: (cx0 + a) / 2, y: -0.02, z: streetZ + 0.1 });
+      cx0 = Math.max(cx0, b);
+    }
     for (let x = -2; x < COLS + 3; x += 1.5) g.box(0.7, 0.006, 0.085, '#fffdf8', { x: x + 0.35, z: streetZ + 1.2 });
     for (let y = DOOR.y + 1; y < ROWS; y++) g.rbox(0.75, 0.035, 0.83, '#efe6d6', { x: DOOR.x + 0.5, y: -0.01, z: y + 0.5 }, 0.08);
     for (let y = 0; y < ROWS; y++) {
@@ -1036,8 +1111,9 @@ export class Renderer3D extends SceneDirector {
 
     for (const [id, sp] of this.staffSprites) {
       let v = this.staffViews.get(id);
+      const manager = sp.member.role === 'gerente';
       if (!v) {
-        const rig = makeCleaner(sp.member.look, sp.member.role);
+        const rig = manager ? makeManager(sp.member.look, sp.member.color) : makeCleaner(sp.member.look, sp.member.role);
         v = { rig, heading: 0 };
         this.actorsRoot.add(rig.root);
         this.staffViews.set(id, v);
@@ -1053,12 +1129,14 @@ export class Renderer3D extends SceneDirector {
         const { w, h } = footprintSize(job.type, job.rot);
         face(v, Math.atan2(job.x + w / 2 - x, job.y + h / 2 - z));
       } else if (dx * dx + dz * dz > 1e-6) face(v, Math.atan2(dx, dz));
+      else if (manager) face(v, 0); // atrás do balcão, de frente para a porta
       root.position.set(x, 0, z);
       root.rotation.y = v.heading;
       const a = ease(sp.alpha);
       root.visible = a > 0.01;
       root.scale.copy(root.userData.scale).multiplyScalar(Math.max(0.01, a));
-      poseCleaner(v.rig, sp.mode, t, sp.seed);
+      if (manager) poseManager(v.rig, sp.mode, t, sp.seed);
+      else poseCleaner(v.rig, sp.mode, t, sp.seed);
     }
     for (const [id, v] of this.staffViews) {
       if (this.staffSprites.has(id)) continue;
@@ -1066,8 +1144,9 @@ export class Renderer3D extends SceneDirector {
       this.staffViews.delete(id);
     }
 
-    // Whey
+    // Whey (mora na Matriz: não aparece na visita às filiais)
     const wr = this.wheyRig.root;
+    wr.visible = !state.isBranchView;
     const wx = this.whey.x / T;
     const wz = this.whey.y / T;
     const wdx = wx - wr.position.x;
@@ -1245,7 +1324,7 @@ export class Renderer3D extends SceneDirector {
 
     // Whey: "z" dormindo, "!" em alerta
     const wp = this.wheyRig.root.position;
-    const mood = this.wheyWalking ? 'worried' : this.wheyMood ?? 'sleep';
+    const mood = state.isBranchView ? null : this.wheyWalking ? 'worried' : this.wheyMood ?? 'sleep';
     if (mood === 'sleep') {
       const s = this.toScreen(wp.x, 0.3, wp.z);
       const z = (t * 0.8) % 1;
@@ -1290,7 +1369,23 @@ export class Renderer3D extends SceneDirector {
       const s = this.toScreen(r.position.x, r.position.y + 0.85 * r.scale.y, r.position.z);
       speechBubble(ctx, s.x, s.y, b.text, { tone: b.tone, alpha, scale: pop });
     }
-    const wb = ui.wheyBubble;
+    // Na filial: crachá do gerente em cima da cabeça.
+    for (const [id, sp] of this.staffSprites) {
+      if (sp.member.role !== 'gerente') continue;
+      const v = this.staffViews.get(id);
+      if (!v || sp.alpha < 0.5) continue;
+      const r = v.rig.root;
+      const s = this.toScreen(r.position.x, 1.02 * r.scale.y, r.position.z);
+      const stars = sp.member.rating ? ` ${'★'.repeat(sp.member.rating)}` : '';
+      const text = `${sp.member.name} · gerente${stars}`;
+      ctx.font = `800 11px ${FONT_UI}`;
+      const tw = ctx.measureText(text).width + 14;
+      box(ctx, s.x - tw / 2, s.y - 16, tw, 18, 9, '#fffdf8', INK, 1.5);
+      ctx.fillStyle = INK;
+      ctx.textAlign = 'center';
+      ctx.fillText(text, s.x, s.y - 3);
+    }
+    const wb = state.isBranchView ? null : ui.wheyBubble;
     if (wb && now < wb.until) {
       const s = this.toScreen(wp.x, 0.55, wp.z);
       speechBubble(ctx, s.x, s.y, wb.text, { tone: 'whey', maxWidth: 190 });

@@ -3,10 +3,11 @@
 // cada boneco, o gato, as partículas e os textos flutuantes estão.
 // Coordenadas no plano do chão, em pixels de grade (CONFIG.grid.tileSize por célula).
 import { CONFIG } from '../config.js';
-import { COLS, DOOR, footprintSize, footprintCells, zoneById } from '../grid/grid.js';
+import { COLS, DOOR, footprintSize, footprintCells, zoneById, withLayout } from '../grid/grid.js';
 import { nearestWalkable, pathFromDoor } from '../pathfinding/floodFill.js';
 import { wheyMood } from '../systems/characters.js';
 import { repairQueue } from '../systems/staff.js';
+import { branchScene } from '../systems/branchScene.js';
 import { buildTargets, walkPath } from './scene.js';
 import { PALETTE as P } from './draw/primitives.js';
 
@@ -14,6 +15,9 @@ const T = CONFIG.grid.tileSize;
 
 export class SceneDirector {
   constructor(game) {
+    // `store` é a partida de verdade; `game` é a cena desenhada agora: a própria
+    // partida (Matriz) ou a cena de uma filial visitada (só para ver).
+    this.store = game;
     this.game = game;
     this.sprites = new Map();
     this.lastStats = null;
@@ -25,6 +29,69 @@ export class SceneDirector {
     this.whey = { x: (DOOR.x + 1.5) * T, y: (DOOR.y + 0.6) * T };
     this.staffSprites = new Map();
     this.time = 0;
+    this.viewDepth = 0;
+  }
+
+  /** Cena que deve aparecer agora: a Matriz ou a filial que o jogador está visitando. */
+  sourceFor() {
+    const home = this.store;
+    const view = home.ui.view;
+    if (view?.kind === 'branch') return branchScene(home, view.branchId) ?? home;
+    return home;
+  }
+
+  /** Troca de cena: limpa bonecos e efeitos da anterior (o renderizador limpa o resto). */
+  adopt(src) {
+    if (src === this.game) return;
+    const prev = this.game;
+    this.game = src;
+    this.sprites.clear();
+    this.staffSprites.clear();
+    this.bubbles = [];
+    this.particles = [];
+    this.floaters = [];
+    this.itemAnims.clear();
+    this.lastStats = null;
+    this.wheyGoal = null;
+    this.whey = { x: (DOOR.x + 1.5) * T, y: (DOOR.y + 0.6) * T };
+    this.onSourceChange?.(prev, src);
+  }
+
+  /**
+   * Roda `fn` com a grade da cena atual. Desenhar uma filial troca COLS, ROWS e
+   * DOOR por um instante; a grade da partida sempre volta no fim.
+   */
+  inView(fn) {
+    if (this.game === this.store || !this.store.state || this.viewDepth > 0) return fn();
+    this.viewDepth = 1;
+    try {
+      return withLayout(this.game.state, this.store.state, fn);
+    } finally {
+      this.viewDepth = 0;
+    }
+  }
+
+  /**
+   * Quadro: escolhe a cena e desenha dentro da grade dela. Na visita a uma
+   * filial, os efeitos da Matriz (dinheiro, limpeza) são descartados.
+   */
+  renderScene(now, draw) {
+    const home = this.store;
+    const src = this.sourceFor();
+    if (src === home) {
+      this.adopt(src);
+      return draw(now);
+    }
+    home.ui.fx.length = 0;
+    this.viewDepth = 1;
+    try {
+      return withLayout(src.state, home.state, () => {
+        this.adopt(src);
+        return draw(now);
+      });
+    } finally {
+      this.viewDepth = 0;
+    }
   }
 
   /** Avança o estado visual; devolve dt em segundos. */
@@ -224,7 +291,14 @@ export class SceneDirector {
       let goal = { x: (restCell.x + 0.5) * T, y: (restCell.y + 0.7) * T };
       let working = false;
       sp.itemId = null;
-      if (member.role === 'tecnico') {
+      if (member.role === 'gerente') {
+        // Gerente da filial: fica atrás do balcão da recepção, de frente para a porta.
+        const spot = state.managerSpot;
+        if (spot) {
+          goalCell = spot;
+          goal = { x: (spot.x + 0.5) * T, y: (spot.y + 0.3) * T };
+        }
+      } else if (member.role === 'tecnico') {
         const item = jobs[techs++] ?? null;
         const cell = item && ((usageCells.get(item.id) ?? [])[0] ?? nearestWalkable(flood, [{ x: item.x, y: item.y }], 1)[0]);
         if (cell) {

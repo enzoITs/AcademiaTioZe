@@ -158,7 +158,7 @@
     }
   },
   "network": {
-    "lotsForSale": 2,
+    "lotsForSale": 4,
     "branchCost": 20000,
     "branchCostGrowth": 1.45,
     "costRoundTo": 500,
@@ -170,36 +170,41 @@
     "styleChangeMemberLoss": 0.25,
     "feeSensitivity": 1.2,
     "districtMatchBonus": 0.2,
+    "maxViewMembers": 240,
     "manager": { "candidates": 3, "baseSalary": 700, "salaryPerStar": 350, "factorBase": 0.5, "factorPerStar": 0.1 },
     "reputation": { "base": 0.4, "perStar": 0.12 },
     "levels": [
-      { "level": 1, "label": "Nível 1", "capacityMultiplier": 1, "costMultiplier": 1 },
-      { "level": 2, "label": "Nível 2", "upgradeRate": 0.6, "capacityMultiplier": 1.5, "costMultiplier": 1.35 },
-      { "level": 3, "label": "Nível 3", "upgradeRate": 1.0, "capacityMultiplier": 2, "costMultiplier": 1.7 }
+      { "level": 1, "label": "Nível 1", "capacityMultiplier": 1, "costMultiplier": 1, "building": [10, 8] },
+      { "level": 2, "label": "Nível 2", "upgradeRate": 0.6, "capacityMultiplier": 1.5, "costMultiplier": 1.35, "building": [12, 9] },
+      { "level": 3, "label": "Nível 3", "upgradeRate": 1.0, "capacityMultiplier": 2, "costMultiplier": 1.7, "building": [14, 10] }
     ],
     "styles": {
-      "acolhedora": { "label": "Acolhedora", "color": "#f2cd5c", "capacity": 90, "feeMultiplier": 0.9, "monthlyCost": 2200,
-        "description": "Sofá na recepção e café passado na hora. Quem está começando se sente em casa." },
-      "hardcore": { "label": "Hardcore", "color": "#e8646a", "capacity": 80, "feeMultiplier": 1.0, "monthlyCost": 2300,
-        "description": "Ferro, giz e música alta. Marombeiro atravessa a cidade para treinar lá." },
-      "familia": { "label": "Família", "color": "#7cc98a", "capacity": 120, "feeMultiplier": 0.8, "monthlyCost": 2600,
-        "description": "Recreação para as crianças enquanto os pais treinam. Lota rápido e cobra menos." },
-      "premium": { "label": "Premium", "color": "#b9a3e3", "capacity": 55, "feeMultiplier": 1.7, "monthlyCost": 3300,
-        "description": "Toalha gelada, espelho iluminado e vista bonita. Pouca gente, mensalidade alta." }
+      "acolhedora": {"label":"Acolhedora","color":"#f2cd5c","capacity":90,"feeMultiplier":0.9,"monthlyCost":2200,"growth":1,"description":"Sofá na recepção e café passado na hora. Quem está começando se sente em casa.","profiles":{"iniciante":0.5,"idoso":0.3,"corredor":0.2},"kit":["esteira","bicicleta","eliptico","colchonete","maquina_peito","extensora","bebedouro","espelho","planta","planta","ventilador","poster"],"look":{"wall":"#f6d7a8","door":"awning","floor":["#f3e3c8","#ead6b5"]}},
+      "hardcore": {"label":"Hardcore","color":"#e8646a","capacity":80,"feeMultiplier":1,"monthlyCost":2300,"growth":1,"description":"Ferro, giz e música alta. Marombeiro atravessa a cidade para treinar lá.","profiles":{"marombeiro":0.75,"iniciante":0.15,"corredor":0.1},"kit":["supino","rack_agachamento","halteres","halteres","plataforma","leg_press","kettlebell","saco_pancada","esteira","caixa_som","poster","ventilador"],"look":{"wall":"#9a92ad","door":"gate","floor":["#d3cedb","#c7c1d1"]}},
+      "familia": {"label":"Família","color":"#7cc98a","capacity":120,"feeMultiplier":0.8,"monthlyCost":2600,"growth":1,"description":"Recreação para as crianças enquanto os pais treinam. Lota rápido e cobra menos.","profiles":{"iniciante":0.45,"idoso":0.25,"corredor":0.2,"marombeiro":0.1},"kit":["colchonete","colchonete","bicicleta","bicicleta","esteira","barra_fixa","eliptico","maquina_peito","bebedouro","planta","ventilador","espelho"],"look":{"wall":"#bfe3c8","door":"awning","floor":["#e3f1dc","#d6e9cd"]}},
+      "premium": {"label":"Premium","color":"#b9a3e3","capacity":55,"feeMultiplier":1.7,"monthlyCost":3300,"growth":0.8,"tier":"profissional","description":"Toalha gelada, espelho iluminado e vista bonita. Pouca gente, mensalidade alta.","profiles":{"influencer":0.45,"corredor":0.35,"iniciante":0.2},"kit":["esteira","eliptico","escada","crossover","smith","puxador","colchonete","espelho","espelho","ring_light","planta","geladeira"],"look":{"wall":"#e7dcf5","mullion":"#fffdf8","door":"glass","floor":["#f4f1f7","#e9e4ef"],"neon":true}},
+      "funcional": {"label":"Funcional","color":"#f29a5c","capacity":75,"feeMultiplier":1.1,"monthlyCost":2300,"growth":1,"description":"Box de treino funcional: kettlebell, corda naval e barra. Turma animada que treina em grupo.","profiles":{"corredor":0.35,"marombeiro":0.3,"influencer":0.2,"iniciante":0.15},"kit":["kettlebell","kettlebell","corda_naval","barra_fixa","barra_fixa","plataforma","colchonete","remo","remo","saco_pancada","caixa_som","bebedouro"],"look":{"wall":"#f5b98a","door":"gate","floor":["#f3d9bf","#ebcba9"]}},
+      "luta": {"label":"Luta","color":"#c94f55","capacity":60,"feeMultiplier":1.2,"monthlyCost":1900,"growth":1.25,"description":"Saco de pancada, tatame e luva. Turma pequena e fiel, que enche rápido.","profiles":{"iniciante":0.35,"marombeiro":0.25,"corredor":0.2,"influencer":0.2},"kit":["saco_pancada","saco_pancada","saco_pancada","colchonete","colchonete","corda_naval","esteira","remo","halteres","espelho","trofeus","caixa_som"],"look":{"wall":"#e8a0a0","door":"gate","floor":["#cfe3f5","#f6d0cc"]}},
+      "zen": {"label":"Zen","color":"#a8e6cf","capacity":70,"feeMultiplier":1.15,"monthlyCost":2000,"growth":0.9,"description":"Ioga, alongamento e plantas por todo lado. Calmo, cheiroso e perfeito para a turma da manhã.","profiles":{"idoso":0.45,"iniciante":0.35,"influencer":0.2},"kit":["colchonete","colchonete","colchonete","colchonete","bicicleta","eliptico","halteres","planta","planta","planta","espelho","caixa_som","bebedouro"],"look":{"wall":"#cfe0c3","door":"awning","floor":["#efe3cc","#e5d6ba"]}},
+      "express": {"label":"Express 24h","color":"#8ec5e8","capacity":150,"feeMultiplier":0.65,"monthlyCost":2900,"growth":1.4,"description":"Aberta 24 horas, só o essencial e mensalidade baixinha. Enche rápido, mas cobra pouco.","profiles":{"iniciante":0.35,"corredor":0.35,"marombeiro":0.3},"kit":["esteira","esteira","esteira","bicicleta","bicicleta","maquina_peito","puxador","extensora","leg_press","halteres","colchonete","bebedouro"],"look":{"wall":"#bcd8ee","mullion":"#fffdf8","door":"glass","floor":["#e2ecf3","#d6e3ec"]}}
     },
     "districts": [
-      { "name": "Vila Esperança", "likes": "familia", "demand": 1.0 },
-      { "name": "Jardim das Flores", "likes": "acolhedora", "demand": 1.05 },
-      { "name": "Centro", "likes": "premium", "demand": 1.15 },
-      { "name": "Morro do Ferro", "likes": "hardcore", "demand": 0.95 },
-      { "name": "Beira-Rio", "likes": "acolhedora", "demand": 1.0 },
-      { "name": "Parque Industrial", "likes": "hardcore", "demand": 1.05 },
-      { "name": "Alto da Colina", "likes": "premium", "demand": 0.95 },
-      { "name": "Conjunto Novo", "likes": "familia", "demand": 1.1 },
-      { "name": "Vila Operária", "likes": "hardcore", "demand": 1.0 },
-      { "name": "Bela Vista", "likes": "premium", "demand": 1.05 },
-      { "name": "Recanto Verde", "likes": "acolhedora", "demand": 0.95 },
-      { "name": "Cidade Nova", "likes": "familia", "demand": 1.05 }
+      {"name":"Vila Esperança","likes":"familia","demand":1,"theme":"residencial"},
+      {"name":"Jardim das Flores","likes":"zen","demand":1.05,"theme":"verde"},
+      {"name":"Centro","likes":"premium","demand":1.15,"theme":"centro"},
+      {"name":"Morro do Ferro","likes":"hardcore","demand":0.95,"theme":"residencial"},
+      {"name":"Beira-Rio","likes":"acolhedora","demand":1,"theme":"rio"},
+      {"name":"Parque Industrial","likes":"funcional","demand":1.05,"theme":"industrial"},
+      {"name":"Alto da Colina","likes":"premium","demand":0.95,"theme":"residencial"},
+      {"name":"Conjunto Novo","likes":"express","demand":1.1,"theme":"comercial"},
+      {"name":"Vila Operária","likes":"luta","demand":1,"theme":"industrial"},
+      {"name":"Bela Vista","likes":"premium","demand":1.05,"theme":"centro"},
+      {"name":"Recanto Verde","likes":"zen","demand":0.95,"theme":"verde"},
+      {"name":"Cidade Nova","likes":"familia","demand":1.05,"theme":"comercial"},
+      {"name":"Porto Velho","likes":"luta","demand":1,"theme":"rio"},
+      {"name":"Cidade Universitária","likes":"funcional","demand":1.1,"theme":"comercial"},
+      {"name":"Estação","likes":"express","demand":1.1,"theme":"centro"},
+      {"name":"Lagoa Azul","likes":"acolhedora","demand":0.95,"theme":"rio"}
     ]
   },
   "categories": {
@@ -408,6 +413,11 @@
       "name": "Estante de troféus", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 6, "minRep": 2,
       "description": "As medalhas do Tio Zé e do bairro. Brilha que dá gosto.",
       "tiers": [{ "id": "usado", "price": 90, "capacity": 0 }]
+    },
+    "recepcao": {
+      "name": "Recepção da filial", "category": "conforto", "size": [3, 1], "needsAccess": true, "hidden": true,
+      "description": "Balcão do gerente, com computador e campainha. Só existe nas filiais.",
+      "tiers": [{ "id": "usado", "price": 0, "capacity": 0 }]
     }
   },
   "profiles": {

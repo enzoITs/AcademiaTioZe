@@ -4,13 +4,13 @@ import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import {
   STYLES, branchTarget, branchMonthly, branchCapacity, networkMonthly, historicBonus, lotCost, districtName,
 } from '../../game/systems/network.js';
-import { openCityMap, openNetworkSpot } from '../../game/engine/store.js';
+import { openCityMap, openNetworkSpot, viewBranch, viewMatriz } from '../../game/engine/store.js';
 import Icon from '../ui/Icon.js';
 import { StarsRow } from './NetworkDialogs.js';
 
 /** Aba Rede (Era 4): resumo das filiais e atalho para o mapa da cidade. */
 export default function NetworkPanel() {
-  const { state } = useGame();
+  const { state, ui } = useGame();
   const net = state.network;
   if (!net) return <p className="empty small">A rede de filiais chega na Era 4.</p>;
   const total = networkMonthly(state);
@@ -38,8 +38,9 @@ export default function NetworkPanel() {
           {net.branches.map((b) => {
             const t = branchTarget(state, b);
             const m = branchMonthly(state, b);
+            const here = ui.view?.branchId === b.id;
             return (
-              <li key={b.id}>
+              <li key={b.id} className={`branch-item ${here ? 'here' : ''}`}>
                 <button type="button" className="staff-card branch-card" onClick={() => openNetworkSpot({ kind: 'branch', id: b.id })}>
                   <span className="staff-card-head">
                     <span className="style-dot" style={{ '--style': STYLES[b.style].color }} />
@@ -53,6 +54,14 @@ export default function NetworkPanel() {
                     <span className="small">{formatNumber(b.members, 0)}/{branchCapacity(b)} (meta {formatNumber(t.target, 0)})</span>
                   </span>
                   <span className={`small ${m.result >= 0 ? 'pos' : 'neg'}`}>{formatMoney(m.result)}/mês</span>
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm branch-view-btn ${here ? '' : 'btn-primary'}`}
+                  onClick={() => (here ? viewMatriz() : viewBranch(b.id))}
+                  title={here ? 'Voltar para a Matriz' : 'Ver a filial por dentro'}
+                >
+                  <Icon name={here ? 'door' : 'eye'} size={14} /> {here ? 'Matriz' : 'Ver'}
                 </button>
               </li>
             );

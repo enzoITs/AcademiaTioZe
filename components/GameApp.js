@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame.js';
 import {
-  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, isModalOpen, nudgeSelected, requestSell,
+  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView,
 } from '../game/engine/store.js';
 import TopBar from './hud/TopBar.js';
 import SidePanel from './hud/SidePanel.js';
@@ -11,6 +11,7 @@ import GameCanvas from './game/GameCanvas.js';
 import CanvasToolbar from './game/CanvasToolbar.js';
 import PlacementBar from './game/PlacementBar.js';
 import ItemInspector from './equipment/ItemInspector.js';
+import BranchViewBar from './network/BranchViewBar.js';
 import Dialogs from './dialogs/Dialogs.js';
 import TitleScreen from './screens/TitleScreen.js';
 
@@ -38,6 +39,10 @@ function useKeyboard() {
       else if (key === 'm') toggleMaintenanceView();
       else if (key === 'e') toggleEditMode();
       else if (key === 'escape') cancelMode();
+      else if (inBranchView() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        cycleBranchView(e.key === 'ArrowLeft' ? -1 : 1);
+      }
       else if (key === '1' || key === '2' || key === '3') setSpeed(Number(key));
       else if ((key === 'delete' || key === 'backspace') && game.ui.selectedId && game.ui.mode === 'normal') {
         e.preventDefault();
@@ -103,6 +108,7 @@ export default function GameApp() {
           <CanvasToolbar rendererRef={rendererRef} />
           <PlacementBar />
           <ItemInspector />
+          <BranchViewBar />
         </section>
         <SidePanel />
       </main>

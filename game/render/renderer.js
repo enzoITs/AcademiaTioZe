@@ -13,7 +13,9 @@ import {
   PALETTE as P, INK, FONT_UI, FONT_TITLE, box, circle, ellipse, line, roundRect, dropShadow, speechBubble,
 } from './draw/primitives.js';
 import { formatMoney } from '../utils/format.js';
-import { floorOf, BLOCK_TINT, eraLook } from './look.js';
+import { floorOf, BLOCK_TINT, lookOf } from './look.js';
+import { cityPlan, matrizTheme, matrizLandmarks } from './cityLayout.js';
+import { drawCity2D } from './draw/city2d.js';
 
 const T = CONFIG.grid.tileSize;
 const MIN_ZOOM = 0.18;
@@ -45,7 +47,7 @@ export class GameRenderer extends SceneDirector {
 
   fit() {
     const { w, h } = this.viewport;
-    const W = world();
+    const W = this.inView(world);
     const zoom = Math.min(w / W.w, h / W.h) * 0.98;
     this.camera.zoom = Math.max(MIN_ZOOM, Math.min(2.5, zoom));
     this.camera.x = W.x + W.w / 2 - w / 2 / this.camera.zoom;
@@ -55,7 +57,7 @@ export class GameRenderer extends SceneDirector {
 
   resetCamera() {
     this.userMovedCamera = false;
-    this.fit();
+    this.inView(() => this.fit());
   }
 
   clampCamera() {
@@ -64,7 +66,7 @@ export class GameRenderer extends SceneDirector {
     const vw = w / z;
     const vh = h / z;
     const clampAxis = (pos, view, min, size) => (view >= size ? min + size / 2 - view / 2 : Math.min(Math.max(pos, min - view * 0.3), min + size - view * 0.7));
-    const W = world();
+    const W = this.inView(world);
     this.camera.x = clampAxis(this.camera.x, vw, W.x, W.w);
     this.camera.y = clampAxis(this.camera.y, vh, W.y, W.h);
   }
@@ -136,8 +138,36 @@ export class GameRenderer extends SceneDirector {
 
   // ------------------------------------------------------------ desenho
   render(now) {
+    if (!this.store.state || !this.store.rt) return;
+    // Matriz ou filial visitada: a cena da filial desenha dentro da grade dela.
+    this.renderScene(now, (n) => this.renderFrame(n));
+  }
+
+  onSourceChange() {
+    this.userMovedCamera = false;
+    this.refitCamera = true;
+    this.cityKey = null;
+  }
+
+  /** Cidade em volta, com a mesma planta do 3D. */
+  drawCity(ctx, state) {
+    const opts = {
+      cols: COLS, rows: ROWS, door: { x: DOOR.x, y: DOOR.y },
+      theme: state.city?.theme ?? matrizTheme(state.era),
+      seed: state.city?.seed ?? state.seed ?? 1,
+      landmarks: state.isBranchView ? [] : matrizLandmarks(state.era),
+      historic: state.era >= 4,
+    };
+    const key = JSON.stringify(opts);
+    if (key !== this.cityKey) {
+      this.cityKey = key;
+      this.cityPlan = cityPlan(opts);
+    }
+    drawCity2D(ctx, this.cityPlan, T);
+  }
+
+  renderFrame(now) {
     const { state, rt, ui } = this.game;
-    if (!state || !rt) return;
     this.followWorldGrowth();
     this.step(now);
     const t = this.time;
@@ -149,6 +179,7 @@ export class GameRenderer extends SceneDirector {
     ctx.fillRect(0, 0, w, h);
     ctx.setTransform(dpr * this.camera.zoom, 0, 0, dpr * this.camera.zoom, -this.camera.x * this.camera.zoom * dpr, -this.camera.y * this.camera.zoom * dpr);
 
+    this.drawCity(ctx, state);
     this.drawOutside(ctx, t);
     this.drawFloor(ctx, state);
     this.drawLockedZones(ctx, state, t);
@@ -176,7 +207,7 @@ export class GameRenderer extends SceneDirector {
         },
       });
     }
-    drawables.push({ y: this.whey.y, draw: () => this.drawWheyAt(ctx, t) });
+    if (!state.isBranchView) drawables.push({ y: this.whey.y, draw: () => this.drawWheyAt(ctx, t) });
     drawables.sort((a, b) => a.y - b.y);
     for (const d of drawables) d.draw();
 
@@ -220,7 +251,7 @@ export class GameRenderer extends SceneDirector {
     });
     // placa da academia
     ctx.save();
-    const sign = eraLook(this.game.state.era).sign;
+    const sign = lookOf(this.game.state).sign;
     ctx.translate((DOOR.x + 1.25) * T + sign.w / 2, (DOOR.y + 1.55) * T);
     box(ctx, -sign.w / 2, -14, sign.w, 24, 6, sign.fill);
     ctx.fillStyle = sign.ink;
@@ -350,7 +381,7 @@ export class GameRenderer extends SceneDirector {
       }
     }
     ctx.lineCap = 'square';
-    for (const [lw, color] of [[11, INK], [7, eraLook(state.era).wall]]) {
+    for (const [lw, color] of [[11, INK], [7, lookOf(state).wall]]) {
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
       ctx.beginPath();

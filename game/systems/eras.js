@@ -59,15 +59,16 @@ const area = (item) => {
  * Mudança inteligente: reencaixa os aparelhos no espaço novo, um a um, na
  * primeira posição (de cima para baixo, da esquerda para a direita) que cabe e
  * mantém corredor até a frente de todos. Itens de parede vão primeiro, depois
- * os maiores. Retorna { placed, leftovers }.
+ * os maiores. `fixed` são peças que já estão no lugar (a recepção da filial)
+ * e continuam com acesso. Retorna { placed, leftovers } (placed inclui `fixed`).
  */
-export function smartLayout(state, items) {
+export function smartLayout(state, items, fixed = []) {
   const order = [...items].sort((a, b) => {
     const wa = getEquipmentDef(a.type).wallMounted ? 1 : 0;
     const wb = getEquipmentDef(b.type).wallMounted ? 1 : 0;
     return wb - wa || area(b) - area(a) || a.id - b.id;
   });
-  const placed = [];
+  const placed = [...fixed];
   const leftovers = [];
   const probe = { ...state, items: placed };
   for (const item of order) {

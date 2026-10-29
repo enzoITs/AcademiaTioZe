@@ -908,6 +908,71 @@ export function makeCleaner(look, role = 'zelador') {
   return rig;
 }
 
+// ------------------------------------------------------------ gerente da filial
+// Blazer na cor do estilo da filial, camisa branca, crachá e prancheta.
+function managerBodyGeo(look, color) {
+  return cached(`manager|${color}|${look.skin}|${look.hair}|${look.hairStyle}`, () => {
+    const b = new Builder();
+    b.rbox(0.27, 0.26, 0.18, '#fffdf8', { y: HIP - 0.01 }, 0.06);
+    for (const s of [-1, 1]) b.rbox(0.1, 0.25, 0.19, color, { x: s * 0.085, y: HIP - 0.005 }, 0.04);
+    b.rbox(0.27, 0.25, 0.08, color, { y: HIP - 0.005, z: -0.055 }, 0.04);
+    b.box(0.035, 0.12, 0.012, INK, { y: HIP + 0.1, z: 0.095 });
+    b.box(0.06, 0.035, 0.01, P.yellow, { x: 0.075, y: HIP + 0.17, z: 0.1 });
+    addFace(b, look.skin);
+    addHair(b, look);
+    return b.build();
+  });
+}
+
+const clipboardGeo = () => cached('clipboard', () => {
+  const b = new Builder();
+  b.box(0.13, 0.17, 0.015, '#c9a27a', {});
+  b.box(0.11, 0.13, 0.017, '#fffdf8', { y: 0.015 });
+  b.box(0.05, 0.02, 0.02, P.metalDark, { y: 0.16 });
+  return b.build();
+});
+
+export function makeManager(look, color = P.blue) {
+  const root = new THREE.Group();
+  const inner = new THREE.Group();
+  root.add(inner);
+  const rig = { root, inner, role: 'gerente' };
+  rig.body = solid(managerBodyGeo(look, color));
+  inner.add(rig.body);
+  for (const s of [-1, 1]) {
+    const leg = solid(legGeo('#4a4560', INK), LIMB);
+    leg.position.set(s * 0.07, HIP, 0);
+    inner.add(leg);
+    const arm = solid(staffArmGeo(look.skin, color), LIMB);
+    arm.position.set(s * 0.17, SHOULDER, 0);
+    inner.add(arm);
+    rig[s < 0 ? 'legL' : 'legR'] = leg;
+    rig[s < 0 ? 'armL' : 'armR'] = arm;
+  }
+  rig.clip = solid(clipboardGeo(), LIMB);
+  rig.clip.position.set(0, -0.3, 0.06);
+  rig.clip.rotation.x = -0.9;
+  rig.armL.add(rig.clip);
+  const k = 0.92 + (look.body - 0.85) * 0.25;
+  root.userData.scale = new THREE.Vector3(k, look.height, k);
+  return rig;
+}
+
+/** Gerente: anda até o balcão e, parado, confere a prancheta e acena para quem chega. */
+export function poseManager(rig, mode, t, seed) {
+  const phase = t * 6 + seed;
+  const walk = mode === 'walk';
+  const swing = walk ? Math.sin(phase * 1.2) * 0.6 : 0;
+  rig.inner.position.y = walk ? Math.abs(Math.sin(phase * 1.2)) * 0.035 : Math.sin(t * 1.6 + seed) * 0.006;
+  rig.legL.rotation.x = swing;
+  rig.legR.rotation.x = -swing;
+  rig.armL.rotation.x = walk ? -swing * 0.5 - 0.4 : -0.85;
+  const wave = !walk && (t * 0.35 + seed) % 4 < 0.9;
+  rig.armR.rotation.x = walk ? swing * 0.7 : wave ? -2.6 : -0.15;
+  rig.armR.rotation.z = wave ? 0.35 + Math.sin(t * 10) * 0.3 : 0;
+  rig.inner.rotation.y = walk ? 0 : Math.sin(t * 0.5 + seed) * 0.25;
+}
+
 function staffArmGeo(skin, sleeve) {
   return cached(`carm|${skin}|${sleeve}`, () => {
     const b = new Builder();

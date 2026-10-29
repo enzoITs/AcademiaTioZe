@@ -70,9 +70,17 @@ export function currentLayout() {
   return layout;
 }
 
+/**
+ * Planta de uma partida. A cena de uma filial (Era 4) traz a própria planta em
+ * `customLayout`; a Matriz usa a planta da era, com o deslocamento.
+ */
+export function layoutOf(state) {
+  return state?.customLayout ?? shiftedLayout(state?.era ?? 1, layoutShift(state));
+}
+
 /** Terrenos desenhados da era da partida. */
 export function baseZones(state) {
-  return shiftedLayout(state?.era ?? 1, layoutShift(state)).zones;
+  return layoutOf(state).zones;
 }
 
 /** Terrenos da partida: os desenhados da era + os gerados (infinitos). */
@@ -105,10 +113,11 @@ export function syncLayout(state) {
   const zones = allZones(state);
   const era = state?.era ?? 1;
   const shift = layoutShift(state);
-  const key = `${era}@${shift.x},${shift.y}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
+  const own = state?.customLayout ? `custom:${state.customLayout.id}` : era;
+  const key = `${own}@${shift.x},${shift.y}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
   if (key === layoutKey) return false;
   layoutKey = key;
-  layout = shiftedLayout(era, shift);
+  layout = layoutOf(state);
   DOOR = layout.door;
   for (const z of zones) zoneCatalog.set(z.id, z);
   layoutZones = zones;
@@ -116,6 +125,21 @@ export function syncLayout(state) {
   ROWS = Math.max(layout.rows, ...zones.map((z) => z.y + z.h));
   rebuildCellZone();
   return true;
+}
+
+/**
+ * Roda `fn` com a grade de outra cena (a de uma filial) e depois devolve a
+ * grade da partida (`home`). COLS, ROWS e DOOR são globais, então quem desenha
+ * uma filial precisa passar por aqui.
+ */
+export function withLayout(view, home, fn) {
+  if (!view || view === home) return fn();
+  syncLayout(view);
+  try {
+    return fn();
+  } finally {
+    if (home) syncLayout(home);
+  }
 }
 
 export function zoneAtCell(x, y) {

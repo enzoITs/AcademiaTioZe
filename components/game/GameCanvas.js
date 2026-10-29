@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { GameRenderer } from '../../game/render/renderer.js';
 import { Renderer3D } from '../../game/render/three/renderer3d.js';
 import {
-  game, tick, setHover, clickCell, clickWhey, requestUnlockZone, cleanDirt, startMove, dropDrag, cancelMode,
+  game, tick, setHover, clickCell, clickWhey, requestUnlockZone, cleanDirt, startMove, dropDrag, cancelMode, inBranchView,
 } from '../../game/engine/store.js';
 import { inBounds, cellIndex } from '../../game/grid/grid.js';
 
@@ -86,7 +86,8 @@ export default function GameCanvas({ rendererRef }) {
       canvas.setPointerCapture(e.pointerId);
       const p = pos(e);
       drag = { button: e.button, start: p, last: p, moved: false, cleaning: false, combo: 0, itemId: -1, draggingItem: false };
-      if (e.button !== 0 || game.ui.mode !== 'normal') return;
+      // Visitando uma filial: o mouse só move a câmera.
+      if (inBranchView() || e.button !== 0 || game.ui.mode !== 'normal') return;
       const dirt = renderer.dirtAt(p.x, p.y);
       if (dirt) {
         drag.cleaning = true;
@@ -102,6 +103,18 @@ export default function GameCanvas({ rendererRef }) {
 
     const onMove = (e) => {
       const p = pos(e);
+      if (inBranchView()) {
+        if (!drag) return;
+        const dx = p.x - drag.last.x;
+        const dy = p.y - drag.last.y;
+        drag.last = p;
+        if (Math.hypot(p.x - drag.start.x, p.y - drag.start.y) > 6) drag.moved = true;
+        if (drag.moved) {
+          renderer.pan(dx, dy);
+          canvas.style.cursor = 'grabbing';
+        }
+        return;
+      }
       const cell = renderer.cellAt(p.x, p.y);
       setHover(cell);
       if (!drag) {
@@ -151,7 +164,7 @@ export default function GameCanvas({ rendererRef }) {
         dropDrag(renderer.cellAt(p.x, p.y));
         return;
       }
-      if (!d || d.cleaning || d.moved || d.button !== 0) return;
+      if (!d || d.cleaning || d.moved || d.button !== 0 || inBranchView()) return;
       const hit = renderer.hitTest(p.x, p.y);
       if (game.ui.mode === 'normal') {
         if (hit.kind === 'whey') return clickWhey();

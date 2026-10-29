@@ -64,7 +64,23 @@ function createUi() {
     fx: [], // efeitos visuais consumidos pelo renderer
     wheyBubble: null,
     soundOn: true,
+    view: null, // { kind: 'branch', branchId }: visitando uma filial (só para ver)
+    prevTab: null,
   };
+}
+
+/** Visitando uma filial: a tela mostra a filial e as ações da Matriz ficam paradas. */
+export function inBranchView() {
+  return game.ui.view?.kind === 'branch';
+}
+
+/** Ações da Matriz feitas pelo painel (comprar, ver um aparelho) trazem de volta para a Matriz. */
+function leaveView() {
+  const { ui } = game;
+  if (!ui.view) return;
+  ui.view = null;
+  if (ui.prevTab) ui.tab = ui.prevTab;
+  ui.prevTab = null;
 }
 
 // ---------------------------------------------------------------- assinatura
@@ -326,6 +342,7 @@ export function setHover(cell) {
 }
 
 export function startPlacement(type, tierId) {
+  leaveView();
   const { state, ui } = game;
   const def = getEquipmentDef(type);
   const tier = getTierDef(type, tierId);
@@ -345,6 +362,7 @@ export function startPlacement(type, tierId) {
 
 export function cancelMode() {
   const { ui } = game;
+  if (inBranchView()) return viewMatriz();
   if (ui.mode !== 'normal') {
     ui.mode = 'normal';
     ui.placing = null;
@@ -399,6 +417,7 @@ function findRotation(state, item) {
 }
 
 export function rotate() {
+  if (inBranchView()) return;
   const { ui, state } = game;
   if (ui.mode === 'place') ui.placing.rot = (ui.placing.rot + 1) % 4;
   else if (ui.mode === 'move') {
@@ -470,7 +489,7 @@ function dropMovedItem(preview) {
 /** Fim do arrastar: solta se couber; senão o aparelho volta para onde estava. */
 export function dropDrag(cell) {
   const { ui } = game;
-  if (ui.mode !== 'move') return;
+  if (ui.mode !== 'move' || inBranchView()) return;
   ui.hover = cell;
   const preview = placementPreview();
   if (!preview || !preview.ok) {
@@ -487,7 +506,7 @@ export function dropDrag(cell) {
 /** Empurra o aparelho selecionado uma célula (setas do teclado). */
 export function nudgeSelected(dx, dy) {
   const { state, ui } = game;
-  const item = ui.mode === 'normal' ? itemById(ui.selectedId) : null;
+  const item = ui.mode === 'normal' && !inBranchView() ? itemById(ui.selectedId) : null;
   if (!item) return false;
   const next = { type: item.type, x: item.x + dx, y: item.y + dy, rot: item.rot };
   const check = validatePlacement(state, next, item.id);
@@ -502,6 +521,7 @@ export function nudgeSelected(dx, dy) {
 }
 
 export function clickCell(cell) {
+  if (inBranchView()) return;
   const { ui, state } = game;
   if (ui.mode === 'place' || ui.mode === 'move') {
     ui.hover = cell;
@@ -526,18 +546,21 @@ export function clickCell(cell) {
 }
 
 export function selectItem(id) {
+  if (id != null) leaveView();
   game.ui.selectedId = id;
   emit();
 }
 
 export function toggleEditMode() {
   const { ui } = game;
+  if (inBranchView()) return;
   ui.editMode = !ui.editMode;
   playSound('click');
   emit();
 }
 
 export function toggleMaintenanceView() {
+  if (inBranchView()) return;
   game.ui.maintenanceView = !game.ui.maintenanceView;
   playSound('click');
   emit();
@@ -550,7 +573,7 @@ export function toggleMaintenanceView() {
 export function startMove(id, grabCell = null) {
   const { ui } = game;
   const item = itemById(id);
-  if (!item) return;
+  if (!item || inBranchView()) return;
   ui.mode = 'move';
   ui.placing = null;
   ui.moving = {
@@ -584,7 +607,7 @@ export function refundFor(item, { withLevels = true } = {}) {
 
 export function requestSell(id) {
   const item = itemById(id);
-  if (!item) return;
+  if (!item || inBranchView()) return;
   const refund = refundFor(item);
   const sameDay = item.purchasedDay === game.state.time.day;
   game.ui.confirm = {
@@ -687,7 +710,7 @@ export function repairAllBroken() {
 export function cleanDirt(id) {
   const { state, rt } = game;
   const dirt = state.dirt.find((d) => d.id === id);
-  if (!dirt) return;
+  if (!dirt || inBranchView()) return;
   state.dirt = state.dirt.filter((d) => d.id !== id);
   state.stats.cleaned += 1;
   fx({ kind: 'clean', x: dirt.x, y: dirt.y });
@@ -716,6 +739,7 @@ export function zoneStatuses() {
 }
 
 export function openExpansions() {
+  leaveView();
   game.ui.selectedId = null;
   openModal({ kind: 'expansions' });
 }
@@ -802,6 +826,42 @@ export function confirmEraMove() {
 }
 
 // ---------------------------------------------------------------- rede (Era 4)
+/** Visita a filial em 3D, como a Matriz (só para ver: quem manda lá é o gerente). */
+export function viewBranch(branchId) {
+  const { state, ui } = game;
+  const b = state.network?.branches.find((x) => x.id === branchId);
+  if (!b) return fail('Essa filial não existe mais.');
+  if (!ui.view) ui.prevTab = ui.tab;
+  ui.view = { kind: 'branch', branchId };
+  ui.modal = null;
+  ui.mode = 'normal';
+  ui.placing = null;
+  ui.moving = null;
+  ui.selectedId = null;
+  ui.editMode = false;
+  ui.maintenanceView = false;
+  ui.tab = 'network';
+  playSound('click');
+  emit();
+  return true;
+}
+
+export function viewMatriz() {
+  if (!game.ui.view) return;
+  leaveView();
+  playSound('click');
+  emit();
+}
+
+/** Passa para a filial anterior (-1) ou a próxima (+1) sem sair da visita. */
+export function cycleBranchView(dir) {
+  const branches = game.state.network?.branches ?? [];
+  if (!branches.length || !inBranchView()) return;
+  const i = branches.findIndex((b) => b.id === game.ui.view.branchId);
+  const next = branches[(i + dir + branches.length) % branches.length];
+  viewBranch(next.id);
+}
+
 export function openCityMap() {
   game.ui.selectedId = null;
   openModal({ kind: 'city' });
@@ -879,6 +939,7 @@ export function requestSellBranch(branchId) {
     danger: true,
     onConfirm: () => {
       const value = sellBranch(game.state, branchId);
+      if (game.ui.view?.branchId === branchId) leaveView();
       toast(`${b.name} vendida por ${formatMoney(value)}.`, 'info');
       game.ui.modal = { kind: 'city' };
       playSound('sell');
@@ -984,6 +1045,7 @@ export function setFee(value) {
 }
 
 export function clickWhey() {
+  if (inBranchView()) return;
   const { state, rt, ui } = game;
   const now = typeof performance !== 'undefined' ? performance.now() : 0;
   playSound('meow');
@@ -1043,5 +1105,6 @@ export function toggleSound() {
 }
 
 export function catalogEntries() {
-  return Object.entries(EQUIPMENT).map(([type, def]) => ({ type, ...def }));
+  // A recepção (e o que mais for marcado como "hidden") só existe nas filiais.
+  return Object.entries(EQUIPMENT).filter(([, def]) => !def.hidden).map(([type, def]) => ({ type, ...def }));
 }

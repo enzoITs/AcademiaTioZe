@@ -401,6 +401,29 @@ export const MORE_EQUIP = {
     },
   },
 
+  // ------------------------------------------------------------ filial
+  // Balcão da recepção: a frente (+z) é o lado do gerente, com o computador;
+  // as costas, com a faixa colorida e a campainha, ficam para quem chega.
+  recepcao: {
+    build() {
+      const b = new Builder();
+      b.box(2.7, 0.6, 0.6, '#c9a27a', { y: 0.02, z: -0.05 });
+      b.box(2.82, 0.06, 0.72, P.white, { y: 0.62, z: -0.05 });
+      b.box(2.74, 0.16, 0.03, P.pink, { y: 0.3, z: -0.37 });
+      b.box(2.74, 0.05, 0.03, P.white, { y: 0.24, z: -0.375 });
+      b.box(0.08, 0.06, 0.08, INK, { x: 0.45, y: 0.68, z: -0.06 });
+      b.box(0.5, 0.32, 0.04, INK, { x: 0.45, y: 0.72, z: -0.04 });
+      b.box(0.44, 0.26, 0.012, P.blue, { x: 0.45, y: 0.75, z: -0.017 });
+      b.box(0.42, 0.02, 0.15, '#d8d4e2', { x: 0.45, y: 0.68, z: 0.16 });
+      b.cyl(0.07, 0.08, 0.04, P.metal, { x: -0.55, y: 0.68, z: -0.24 }, 10);
+      b.sphere(0.022, P.metalDark, { x: -0.55, y: 0.74, z: -0.24 }, 6, 4);
+      b.cyl(0.08, 0.065, 0.13, '#e07b5c', { x: -1.12, y: 0.68, z: -0.12 }, 8);
+      b.sphere(0.13, P.green, { x: -1.12, y: 0.92, z: -0.12 }, 6, 4);
+      for (let i = 0; i < 3; i++) b.box(0.16, 0.012, 0.2, ['#fffdf8', P.yellow, P.mint][i], { x: 1.05, y: 0.68 + i * 0.013, z: 0.05, ry: 0.2 * i });
+      return { base: b, parts: [] };
+    },
+  },
+
   // ------------------------------------------------------------ conforto
   geladeira: {
     build() {
