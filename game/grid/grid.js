@@ -2,26 +2,50 @@
 // Tudo em células, independente da resolução da tela.
 import { CONFIG, getEquipmentDef } from '../config.js';
 
-// A grade cresce junto com os terrenos (áreas infinitas). COLS e ROWS são
-// "live bindings": quem importa sempre enxerga o tamanho atual.
+// A grade cresce junto com os terrenos (áreas infinitas). COLS, ROWS e DOOR são
+// "live bindings": quem importa sempre enxerga o tamanho e a porta atuais
+// (a porta muda de lugar quando a academia se muda de era).
 let COLS = CONFIG.grid.cols;
 let ROWS = CONFIG.grid.rows;
-export { COLS, ROWS };
-
-export const DOOR = CONFIG.grid.door;
+let DOOR = CONFIG.grid.door;
+export { COLS, ROWS, DOOR };
 
 export const cellIndex = (x, y) => y * COLS + x;
 export const inBounds = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
 
 // ---------------------------------------------------------------- terrenos
-const zoneCatalog = new Map(CONFIG.grid.zones.map((z) => [z.id, z]));
-let layoutZones = CONFIG.grid.zones;
+/**
+ * Planta de cada era: terrenos desenhados, porta, tamanho mínimo e a faixa
+ * reservada da porta até a rua. A Era 1 usa `grid`; as outras, `eras[n]`.
+ */
+export function eraLayout(era = 1) {
+  const e = CONFIG.eras?.[String(era)];
+  if (e?.zones) return { era, zones: e.zones, door: e.door, cols: e.cols, rows: e.rows, reserved: e.reserved };
+  const g = CONFIG.grid;
+  return { era: 1, zones: g.zones, door: g.door, cols: g.cols, rows: g.rows, reserved: g.procedural.reserved };
+}
+
+const allEraZones = Object.keys(CONFIG.eras ?? {}).flatMap((k) => eraLayout(Number(k)).zones);
+const zoneCatalog = new Map([...CONFIG.grid.zones, ...allEraZones].map((z) => [z.id, z]));
+let layout = eraLayout(1);
+let layoutZones = layout.zones;
 let layoutKey = '';
 let cellZone = new Int32Array(0);
 
-/** Terrenos da partida: os desenhados no JSON + os gerados (infinitos). */
+/** Planta em uso (a da era da partida carregada). */
+export function currentLayout() {
+  return layout;
+}
+
+/** Terrenos desenhados da era da partida. */
+export function baseZones(state) {
+  return eraLayout(state?.era ?? 1).zones;
+}
+
+/** Terrenos da partida: os desenhados da era + os gerados (infinitos). */
 export function allZones(state) {
-  return state?.extraZones?.length ? [...CONFIG.grid.zones, ...state.extraZones] : CONFIG.grid.zones;
+  const base = baseZones(state);
+  return state?.extraZones?.length ? [...base, ...state.extraZones] : base;
 }
 
 export function zoneById(id) {
@@ -41,18 +65,21 @@ function rebuildCellZone() {
 rebuildCellZone();
 
 /**
- * Ajusta a grade aos terrenos da partida (tamanho e índice célula → terreno).
- * Barato quando nada mudou; chamado sempre que os derivados são recalculados.
+ * Ajusta a grade aos terrenos da partida (tamanho, porta e índice célula →
+ * terreno). Barato quando nada mudou; chamado sempre que os derivados são recalculados.
  */
 export function syncLayout(state) {
   const zones = allZones(state);
-  const key = zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|');
+  const era = state?.era ?? 1;
+  const key = `${era}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
   if (key === layoutKey) return false;
   layoutKey = key;
+  layout = eraLayout(era);
+  DOOR = layout.door;
   for (const z of zones) zoneCatalog.set(z.id, z);
   layoutZones = zones;
-  COLS = Math.max(CONFIG.grid.cols, ...zones.map((z) => z.x + z.w));
-  ROWS = Math.max(CONFIG.grid.rows, ...zones.map((z) => z.y + z.h));
+  COLS = Math.max(layout.cols, ...zones.map((z) => z.x + z.w));
+  ROWS = Math.max(layout.rows, ...zones.map((z) => z.y + z.h));
   rebuildCellZone();
   return true;
 }

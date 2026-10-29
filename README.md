@@ -1,7 +1,7 @@
-# Academia do Tio Zé — protótipo da Era 1
+# Academia do Tio Zé — protótipo das Eras 1 e 2
 
 Tycoon casual de navegador: transforme a garagem herdada do Tio Zé em uma academia de sucesso.
-Implementa a Era 1 (Garagem) descrita no documento de design.
+Implementa a Era 1 (Garagem) descrita no documento de design e a passagem para a Era 2 (Ponto de bairro).
 
 ## Como rodar
 
@@ -93,11 +93,31 @@ abaixo de −R$ 500; desgaste por uso, quebra, conserto/revisão e sujeira clic�
 Tio Zé, Whey, Valéria Leão e Seu Armando; salvamento automático, exportação/importação validada
 e progresso offline de até 3 dias sem quebrar aparelhos.
 
+## Era 2: Ponto de bairro
+
+Na aba Academia, "Rumo à Era 2" mostra as metas (60 alunos, 3,5★, 7 tipos de aparelho, 2 ampliações).
+Batidas as metas, a mudança segue os cinco passos do documento (`game/systems/eras.js`):
+
+1. **Planta antes de pagar:** o novo ponto 14×12 com Sala dos fundos 6×6 (R$ 4.000) e Sobreloja 8×6
+   (R$ 9.000) à venda, já mostrando onde cada aparelho vai ficar.
+2. **Mudança inteligente:** os aparelhos vão junto (nível e condição mantidos) e são reencaixados um a um,
+   sempre com corredor até a frente de todos. O que não couber é vendido pelo preço pago.
+3. **Cerimônia:** caminhão de mudança, corte de fita, postal do Tio Zé, o Whey inspecionando e o Seu Armando.
+   No mapa, o caminhão fica na rua e a fita na porta durante o dia da inauguração.
+4. **Um dia fechado:** sem mensalidade no dia da mudança.
+5. **Bônus de novidade:** todos os alunos ganham +8 de satisfação por 7 dias.
+
+O que muda na Era 2: caução de R$ 1.500, aluguel de R$ 1.500/mês, mensalidade base de R$ 55, matrículas
+×1,4, equipe até 6 pessoas, perfil **Idoso** (treina de manhã, quer colchonete e bicicleta, toalhinha no
+ombro e garrafa térmica), paredes cor de pêssego, porta com toldo listrado e letreiro pintado à mão.
+A planta de cada era fica em `eras` no JSON; a grade (`syncLayout`) troca porta, tamanho e terrenos.
+A garagem vira o Museu do Tio Zé só na história (não aparece no mapa).
+
 ## Limitações conhecidas / adiado de propósito
 
-- **Eras 2–4, instrutores e recepção, pool de candidatos,
-  planos, aulas, suplementos e filiais** não estão implementados. O painel
-  "Rumo à Era 2" mostra metas de referência, sem mudança de era.
+- **Eras 3–4, instrutores e recepção, pool de candidatos,
+  planos, aulas, suplementos e filiais** não estão implementados. Na Era 2, "instrutor no turno"
+  ainda não é necessidade do Iniciante (não há instrutores).
 - **Efeito Janeiro:** só o multiplicador de matrículas (×2,5). A "Motivação que decai" ainda não existe.
 - **Verão, apagão e outros eventos sazonais:** ainda não implementados.
 - **Afinidade de estilo** (Acolhedora/Hardcore/Família/Premium) e **energia** (opcional no documento)

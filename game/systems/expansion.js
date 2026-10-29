@@ -2,7 +2,7 @@
 // um terreno novo encostado no que foi comprado (ou em outra área sua),
 // para sempre existir algo a desejar. Determinístico: usa o RNG da partida.
 import { CONFIG } from '../config.js';
-import { allZones, rectsOverlap, syncLayout } from '../grid/grid.js';
+import { allZones, rectsOverlap, syncLayout, currentLayout, DOOR } from '../grid/grid.js';
 import { nextRandom } from '../utils/random.js';
 
 const P = CONFIG.grid.procedural;
@@ -10,7 +10,7 @@ const TARGET_ASPECT = 1.5;
 
 /** A faixa de entrada (da porta até a rua) nunca vira terreno. */
 function hitsReserved(r) {
-  const R = P.reserved;
+  const R = currentLayout().reserved;
   return r.x < R.x + R.w && r.x + r.w > R.x && r.y + r.h > R.y;
 }
 
@@ -53,7 +53,7 @@ function zoneName(n) {
 export function generateZone(state, nearId = null) {
   const zones = allZones(state);
   const owned = zones.filter((z) => state.unlockedZones.includes(z.id));
-  const door = CONFIG.grid.door;
+  const door = DOOR;
   const box = {
     minX: Math.min(...zones.map((z) => z.x)),
     minY: Math.min(...zones.map((z) => z.y)),

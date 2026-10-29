@@ -1,7 +1,7 @@
 // Salvamento local, exportação/importação JSON e validação de saves.
 // Nunca é chamado no servidor: todas as funções verificam `window`.
-import { CONFIG, EQUIPMENT, PROFILES } from '../config.js';
-import { validatePlacement, rectsOverlap, syncLayout, allZones } from '../grid/grid.js';
+import { CONFIG, EQUIPMENT, PROFILES, MAX_ERA, eraDef } from '../config.js';
+import { validatePlacement, rectsOverlap, syncLayout, allZones, baseZones } from '../grid/grid.js';
 import { createNewGame } from './state.js';
 import { POSTCARDS } from '../systems/characters.js';
 
@@ -90,6 +90,8 @@ export function parseSave(text) {
   state.time.blockProgress = Math.min(Math.max(0, state.time.blockProgress), 0.999);
   state.time.speedIndex = Math.min(Math.max(0, Math.floor(state.time.speedIndex)), CONFIG.time.speeds.length - 1);
   state.rng = data.rng && isNum(data.rng.s) ? { s: data.rng.s >>> 0 } : base.rng;
+  state.era = Number.isInteger(data.era) && data.era >= 1 && data.era <= MAX_ERA ? data.era : 1;
+  state.closedDay = isNum(data.closedDay) ? Math.floor(data.closedDay) : null;
   // Terrenos gerados: retângulos válidos, sem sobreposição e dentro do limite.
   const P = CONFIG.grid.procedural;
   const extraZones = [];
@@ -99,7 +101,7 @@ export function parseSave(text) {
     const rect = { x: Math.floor(z.x), y: Math.floor(z.y), w: Math.floor(z.w), h: Math.floor(z.h) };
     if (rect.x < 0 || rect.y < 0 || rect.w < 1 || rect.h < 1 || rect.w > 12 || rect.h > 12) continue;
     if (rect.x + rect.w > P.maxCoordinate || rect.y + rect.h > P.maxCoordinate) continue;
-    if ([...CONFIG.grid.zones, ...extraZones].some((o) => o.id === z.id || rectsOverlap(o, rect))) continue;
+    if ([...baseZones(state), ...extraZones].some((o) => o.id === z.id || rectsOverlap(o, rect))) continue;
     extraZones.push({
       id: z.id,
       label: String(z.label ?? 'Área').slice(0, 40),
@@ -118,7 +120,7 @@ export function parseSave(text) {
   syncLayout(state);
   const knownZones = new Set(allZones(state).map((z) => z.id));
   state.unlockedZones = [...new Set(arr(data.unlockedZones).filter((z) => knownZones.has(z)))];
-  if (!state.unlockedZones.includes('garagem')) state.unlockedZones.unshift('garagem');
+  for (const z of baseZones(state)) if (z.startsUnlocked && !state.unlockedZones.includes(z.id)) state.unlockedZones.unshift(z.id);
   state.fee = isNum(data.fee) ? Math.min(Math.max(data.fee, CONFIG.economy.feeSlider.min), CONFIG.economy.feeSlider.max) : base.fee;
   state.reputation = isNum(data.reputation) ? Math.min(Math.max(data.reputation, 0), 5) : base.reputation;
 
@@ -146,7 +148,7 @@ export function parseSave(text) {
   state.nextStudentId = Math.max(base.nextStudentId, ...state.students.map((s) => s.id + 1));
   state.staff = arr(data.staff)
     .filter((m) => m && isNum(m.id) && CONFIG.staff.roles[m.role] && m.look && Array.isArray(m.shifts))
-    .slice(0, CONFIG.staff.maxStaff)
+    .slice(0, eraDef(state.era).maxStaff ?? CONFIG.staff.maxStaff)
     .map((m) => ({ ...m, shifts: CONFIG.time.blocks.map((_, i) => m.shifts[i] === true) }));
   state.nextStaffId = Math.max(base.nextStaffId, ...state.staff.map((m) => m.id + 1));
   state.time.staffCleaned = isNum(state.time.staffCleaned) ? Math.max(0, Math.floor(state.time.staffCleaned)) : 0;
@@ -156,7 +158,8 @@ export function parseSave(text) {
 
   for (const key of ['reports', 'reviews', 'cancellations', 'messages']) state[key] = arr(data[key]);
   state.pendingModals = arr(data.pendingModals).filter(
-    (m) => m && ((m.kind === 'postcard' && POSTCARDS[m.id]) || (m.kind === 'vovo' && isNum(m.debt))),
+    (m) => m && ((m.kind === 'postcard' && POSTCARDS[m.id]) || (m.kind === 'vovo' && isNum(m.debt))
+      || (m.kind === 'era' && m.era === state.era)),
   );
   state.ledger = data.ledger && typeof data.ledger === 'object' && data.ledger.totals ? data.ledger : base.ledger;
   state.ledger.log = arr(state.ledger.log);

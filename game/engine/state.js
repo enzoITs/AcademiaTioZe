@@ -17,6 +17,7 @@ export function createNewGame(seed = Date.now() % 2147483647) {
     seed,
     rng: { s: seed >>> 0 },
     era: 1,
+    closedDay: null, // dia da mudança de era (academia fechada, sem mensalidade)
     money,
     fee: CONFIG.economy.startingFee,
     reputation: CONFIG.reputation.start,

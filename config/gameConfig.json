@@ -87,6 +87,32 @@
       ]
     }
   },
+  "eras": {
+    "1": { "label": "Garagem", "rent": 0, "maxStaff": 3 },
+    "2": {
+      "label": "Ponto de bairro",
+      "rent": 1500,
+      "maxStaff": 6,
+      "moveCost": 1500,
+      "noveltyBonus": 8,
+      "noveltyDays": 7,
+      "goals": { "students": 60, "reputation": 3.5, "equipmentTypes": 7, "expansions": 2 },
+      "description": "Um salão alugado de esquina, com letreiro pintado à mão. Agora é academia de verdade.",
+      "door": { "x": 2, "y": 11 },
+      "cols": 14,
+      "rows": 13,
+      "reserved": { "x": 0, "y": 12, "w": 5 },
+      "zones": [
+        { "id": "ponto", "label": "Ponto de bairro", "x": 0, "y": 0, "w": 14, "h": 12, "cost": 0, "startsUnlocked": true,
+          "description": "O salão alugado na esquina, com vitrine para a rua." },
+        { "id": "sala_fundos", "label": "Sala dos fundos", "x": 14, "y": 0, "w": 6, "h": 6, "cost": 4000, "requires": null,
+          "description": "O depósito do antigo mercadinho vira mais uma sala." },
+        { "id": "sobreloja", "label": "Sobreloja", "x": 14, "y": 6, "w": 8, "h": 6, "cost": 9000, "requires": "sala_fundos",
+          "description": "O espaço do lado, com mezanino. O maior da Era 2.",
+          "reaction": { "from": "valeria", "text": "Sobreloja, é? A MegaFit tem três andares, mas tudo bem, vizinho(a). Tudo bem." } }
+      ]
+    }
+  },
   "categories": {
     "cardio": { "label": "Cardio", "demand": "cardio" },
     "pesoLivre": { "label": "Peso livre", "demand": "peso" },
@@ -319,6 +345,21 @@
       "desired": ["bicicleta", "ventilador", "vestiario"],
       "vibeMultipliers": { "ventilador": 1.5, "bebedouro": 1.3 },
       "signature": { "shirt": "#b8e986", "accent": "#d4ff3a", "accessory": "visor" }
+    },
+    "idoso": {
+      "label": "Idoso",
+      "minEra": 2,
+      "visitsPerDay": 0.5,
+      "categoryShare": { "funcional": 0.5, "cardio": 0.5 },
+      "blockShare": { "manha": 0.6, "tarde": 0.3, "noite": 0.1 },
+      "patience": "Alta",
+      "queueMultiplier": 0.8,
+      "priceMultiplier": 1.2,
+      "spawnWeight": 0.25,
+      "essentials": ["colchonete", "bicicleta"],
+      "desired": ["bebedouro", "eliptico", "planta", "vestiario"],
+      "vibeMultipliers": { "planta": 1.5, "caixa_som": 0.5 },
+      "signature": { "shirt": "#c9b8e8", "accent": "#fffdf8", "accessory": "towel" }
     }
   },
   "manias": {
@@ -363,7 +404,7 @@
   "enrollment": {
     "base": 0.5,
     "perStarAboveOne": 0.8,
-    "eraFactor": { "1": 1.0 },
+    "eraFactor": { "1": 1.0, "2": 1.4 },
     "maxMembersPerPeakCapacity": 2
   },
   "wear": {
@@ -403,11 +444,5 @@
   "reviews": {
     "dailyChance": 0.3,
     "maxStored": 30
-  },
-  "era2Preview": {
-    "students": 60,
-    "reputation": 3.5,
-    "equipmentTypes": 7,
-    "expansions": 2
   }
 }

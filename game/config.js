@@ -24,3 +24,17 @@ export function getTierDef(type, tierId) {
 export function demandCategoryOf(type) {
   return CONFIG.categories[getEquipmentDef(type).category].demand;
 }
+
+// ---------------------------------------------------------------- eras
+export const ERAS = CONFIG.eras;
+export const MAX_ERA = Math.max(...Object.keys(ERAS).map(Number));
+
+/** Regras de uma era (aluguel, equipe máxima, metas para chegar nela...). */
+export function eraDef(era) {
+  return ERAS[String(era)] ?? ERAS['1'];
+}
+
+/** Perfis que já frequentam a academia nesta era (o Idoso chega na Era 2). */
+export function profilesForEra(era) {
+  return PROFILE_IDS.filter((p) => (PROFILES[p].minEra ?? 1) <= era);
+}

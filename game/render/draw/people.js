@@ -103,6 +103,13 @@ function drawAccessory(ctx, kind, r, bodyW, bodyTop, accent) {
     box(ctx, bodyW / 2 + 1, bodyTop + 6, 7, 9, 2, '#fffdf8', INK, 1.2);
     box(ctx, bodyW / 2 + 1, bodyTop + 5, 7, 3, 1, P.pad, INK, 1);
   }
+  if (kind === 'towel') {
+    // toalhinha no ombro e garrafa térmica
+    box(ctx, bodyW / 2 - 6, bodyTop - 1, 7, 10, 2, accent, INK, 1.2);
+    line(ctx, bodyW / 2 - 5, bodyTop + 6, bodyW / 2, bodyTop + 6, P.blue, 1.5);
+    box(ctx, -bodyW / 2 - 7, bodyTop + 3, 6, 12, 2, P.metalDark, INK, 1.2);
+    box(ctx, -bodyW / 2 - 7, bodyTop + 2, 6, 3, 1, P.pad, INK, 1);
+  }
   if (kind === 'bottle') {
     box(ctx, -bodyW / 2 - 7, bodyTop + 4, 6, 11, 2, '#dff2ff', INK, 1.2);
     box(ctx, -bodyW / 2 - 6, bodyTop + 9, 4, 3, 1, P.yellow, null);

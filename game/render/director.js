@@ -124,6 +124,25 @@ export class SceneDirector {
         }
       }
       if (e.kind === 'finally') this.celebrate(e, now);
+      if (e.kind === 'era') {
+        // Endereço novo: todo mundo entra de novo pela porta nova e a câmera reenquadra.
+        this.sprites.clear();
+        this.staffSprites.clear();
+        this.bubbles = [];
+        this.whey.x = (DOOR.x + 1.5) * T;
+        this.whey.y = (DOOR.y + 0.6) * T;
+        this.refitCamera = true;
+        for (const id of state.unlockedZones) {
+          const z = zoneById(id);
+          if (!z) continue;
+          for (let i = 0; i < 70; i++) {
+            this.particles.push({
+              x: (z.x + Math.random() * z.w) * T, y: (z.y + Math.random() * z.h) * T, vx: (Math.random() - 0.5) * 60, vy: -40 - Math.random() * 90,
+              t0: now, life: 1.2 + Math.random() * 0.8, color: [P.yellow, P.pink, P.blue, P.mint, P.orange][i % 5], kind: 'confetti',
+            });
+          }
+        }
+      }
       if (e.kind === 'newZone') {
         const z = zoneById(e.zoneId);
         if (z) {

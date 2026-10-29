@@ -81,7 +81,7 @@ export default function TitleScreen() {
           <li>Deixe corredor da porta até a frente de cada aparelho.</li>
           <li>Leia a caixa de sugestões: ela diz o que os alunos pedem.</li>
         </ul>
-        <p className="small subtle">Protótipo da Era 1 (Garagem). Progresso salvo apenas neste navegador.</p>
+        <p className="small subtle">Protótipo das Eras 1 (Garagem) e 2 (Ponto de bairro). Progresso salvo apenas neste navegador.</p>
       </div>
     </main>
   );

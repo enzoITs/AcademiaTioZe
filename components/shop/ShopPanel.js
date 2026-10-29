@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useGame } from '../../hooks/useGame.js';
-import { CONFIG, PROFILES, PROFILE_IDS } from '../../game/config.js';
+import { CONFIG, PROFILES, profilesForEra } from '../../game/config.js';
 import { formatMoney } from '../../game/utils/format.js';
 import { startPlacement, setShopFilter, getSuggestions, catalogEntries } from '../../game/engine/store.js';
 import { mostRequestedTypes, isTypeLocked } from '../../game/systems/suggestions.js';
@@ -10,12 +10,12 @@ import Icon from '../ui/Icon.js';
 
 const FILTERS = [['all', 'Tudo'], ...Object.entries(CONFIG.categories).map(([id, c]) => [id, c.label])];
 
-function attractedProfiles(type) {
-  return PROFILE_IDS.filter((p) => PROFILES[p].essentials.includes(type) || PROFILES[p].desired.includes(type))
+function attractedProfiles(type, era) {
+  return profilesForEra(era).filter((p) => PROFILES[p].essentials.includes(type) || PROFILES[p].desired.includes(type))
     .map((p) => ({ id: p, essential: PROFILES[p].essentials.includes(type) }));
 }
 
-function ShopCard({ entry, money, reputation, requested }) {
+function ShopCard({ entry, money, reputation, requested, era }) {
   const [tierId, setTierId] = useState(entry.tiers[0].id);
   const tier = entry.tiers.find((t) => t.id === tierId);
   const tierCfg = CONFIG.tiers[tier.id];
@@ -25,7 +25,7 @@ function ShopCard({ entry, money, reputation, requested }) {
   const needRep = Math.max(entry.minRep ?? 0, tier.minRep ?? 0);
   const affordable = money >= tier.price;
   const [w, h] = entry.size;
-  const attracts = attractedProfiles(entry.type);
+  const attracts = attractedProfiles(entry.type, era);
 
   return (
     <article className={`shop-card ${locked ? 'locked' : ''}`}>
@@ -111,7 +111,7 @@ export default function ShopPanel() {
       {sorted.length === 0 ? <p className="empty">Nenhum item nesta categoria ainda.</p> : null}
       <div className="shop-list">
         {sorted.map((entry) => (
-          <ShopCard key={entry.type} entry={entry} money={state.money} reputation={state.reputation} requested={requested.has(entry.type)} />
+          <ShopCard key={entry.type} entry={entry} money={state.money} reputation={state.reputation} requested={requested.has(entry.type)} era={state.era} />
         ))}
       </div>
       <p className="hint">Itens com ★ são essenciais para o perfil. Itens travados liberam com reputação.</p>

@@ -2,7 +2,7 @@
 // do bloco: o faxineiro(a) limpa até `cleanPerBlock` sujeiras; o técnico(a)
 // conserta ou revisa até `fixPerBlock` aparelhos.
 // Salário mensal: base × (1 + taxa × turnos extras), cobrado por dia.
-import { CONFIG, BLOCKS } from '../config.js';
+import { CONFIG, BLOCKS, eraDef } from '../config.js';
 import {
   hasWear, conditionState, repairItem, serviceItem, conditionCeiling,
 } from './maintenance.js';
@@ -60,7 +60,7 @@ export function nextRepairJob(state) {
 /** Motivo para não poder contratar este cargo agora (ou null). */
 export function hireBlocker(state, role) {
   const def = roleDef(role);
-  if (!canHire(state)) return `A garagem comporta no máximo ${STAFF.maxStaff} pessoas na equipe.`;
+  if (!canHire(state)) return `A academia comporta no máximo ${maxStaff(state)} pessoas na equipe nesta era.`;
   if ((def.minRep ?? 0) > state.reputation + 1e-9) return `Precisa de ${String(def.minRep).replace('.', ',')}★ de reputação.`;
   if ((def.hireCost ?? 0) > 0 && state.money < def.hireCost) return 'Saldo insuficiente para a contratação.';
   return null;
@@ -71,8 +71,13 @@ export function cleaningCapacityByBlock(state) {
   return BLOCKS.map((_, i) => cleanersOnBlock(state, i).length * roleDef('zelador').cleanPerBlock);
 }
 
+/** Limite da equipe: cresce com a era (3 na garagem, 6 no ponto de bairro). */
+export function maxStaff(state) {
+  return eraDef(state.era).maxStaff ?? STAFF.maxStaff;
+}
+
 export function canHire(state) {
-  return state.staff.length < STAFF.maxStaff;
+  return state.staff.length < maxStaff(state);
 }
 
 /** Novo(a) faxineiro(a): começa cobrindo o pico (noite). */

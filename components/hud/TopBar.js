@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../../hooks/useGame.js';
-import { CONFIG } from '../../game/config.js';
+import { CONFIG, eraDef } from '../../game/config.js';
 import { formatMoney, formatDate } from '../../game/utils/format.js';
 import { averageSatisfaction } from '../../game/simulation/students.js';
 import { monthSummary } from '../../game/economy/economy.js';
@@ -50,7 +50,7 @@ export default function TopBar() {
     <header className="topbar">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">TZ</span>
-        <span className="brand-name">Academia do Tio Zé<small>Era 1 · Garagem</small></span>
+        <span className="brand-name">Academia do Tio Zé<small>Era {state.era} · {eraDef(state.era).label}</small></span>
       </div>
 
       <div className="stats" role="group" aria-label="Indicadores">

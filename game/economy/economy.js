@@ -1,6 +1,6 @@
 // Economia. Regra de ouro: o dinheiro só muda via transact(), que registra
 // categoria, rótulo e valor no livro do mês e no histórico.
-import { CONFIG } from '../config.js';
+import { CONFIG, eraDef } from '../config.js';
 import { calendarOf } from '../utils/format.js';
 import { totalMonthlySalaries } from '../systems/staff.js';
 
@@ -15,6 +15,8 @@ export const LEDGER_CATEGORIES = {
   vovo: { label: 'Ajuda da Vovó Dalva', kind: 'revenue' },
   equipamentos: { label: 'Compra de aparelhos', kind: 'expense' },
   ampliacoes: { label: 'Ampliações', kind: 'expense' },
+  mudanca: { label: 'Mudança de era', kind: 'expense' },
+  aluguel: { label: 'Aluguel', kind: 'expense' },
   energia: { label: 'Energia', kind: 'expense' },
   agua: { label: 'Água e limpeza', kind: 'expense' },
   consertos: { label: 'Consertos e revisões', kind: 'expense' },
@@ -51,10 +53,14 @@ export function canAfford(state, price) {
 export function applyDailyEconomy(state) {
   const days = CONFIG.time.daysPerMonth;
   const students = state.students.length;
-  if (students > 0) transact(state, (students * state.fee) / days, 'mensalidades', 'Mensalidades do dia');
+  // No dia da mudança de era a academia fica fechada: sem mensalidade.
+  const closed = state.closedDay === state.time.day;
+  if (students > 0 && !closed) transact(state, (students * state.fee) / days, 'mensalidades', 'Mensalidades do dia');
   for (const cost of ECON.fixedMonthlyCosts) {
     transact(state, -cost.amount / days, cost.id, cost.label);
   }
+  const rent = monthlyRent(state);
+  if (rent > 0) transact(state, -rent / days, 'aluguel', 'Aluguel do ponto');
   const salaries = totalMonthlySalaries(state);
   if (salaries > 0) transact(state, -salaries / days, 'salarios', 'Salários da equipe');
   if (state.money < 0) {
@@ -104,8 +110,13 @@ export function closeMonth(state) {
   return report;
 }
 
+/** Aluguel mensal da era (zero na garagem herdada). */
+export function monthlyRent(state) {
+  return eraDef(state.era).rent ?? ECON.rent ?? 0;
+}
+
 export function projectedMonthly(state) {
-  const fixed = ECON.fixedMonthlyCosts.reduce((s, c) => s + c.amount, 0) + ECON.rent;
+  const fixed = ECON.fixedMonthlyCosts.reduce((s, c) => s + c.amount, 0) + monthlyRent(state);
   const salaries = totalMonthlySalaries(state);
   const revenue = state.students.length * state.fee;
   return { revenue, fixed, salaries, result: revenue - fixed - salaries };

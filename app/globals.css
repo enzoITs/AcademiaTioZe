@@ -204,6 +204,7 @@ kbd {
 .chip-iniciante { background: #dcedf9; }
 .chip-marombeiro { background: #fbe0dc; }
 .chip-corredor { background: #e6f6d5; }
+.chip-idoso { background: #ece4f7; }
 .tier-picker { display: flex; gap: 4px; margin-top: 7px; }
 .tier-btn { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 8px; border: 1.5px solid var(--ink-faint); background: var(--paper); cursor: pointer; }
 .tier-btn.active { background: var(--blue); border-color: var(--ink); }
@@ -242,6 +243,13 @@ kbd {
 .era-card p { margin: 0 0 8px; }
 .era-goals li { display: grid; grid-template-columns: 1fr 80px 44px; gap: 8px; align-items: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; }
 .era-goals li.done { color: var(--green-deep); }
+.era-card .btn { margin-top: 8px; width: 100%; justify-content: center; }
+.era-move-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 13px; max-height: 420px; overflow-y: auto; }
+.era-move-list li { padding: 7px 10px; background: var(--cream); border: 2px solid var(--line); border-radius: 10px; }
+.era-portrait { display: grid; place-items: center; aspect-ratio: 5/3; background: #f3e3d3; border: 1.5px solid var(--ink); border-radius: 3px; }
+.era-dots { display: flex; gap: 6px; margin-top: 10px; }
+.era-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); border: 1.5px solid var(--ink-faint); }
+.era-dots span.on { background: var(--yellow); border-color: var(--ink); }
 
 /* finanças */
 .fee-box { background: var(--cream); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; }

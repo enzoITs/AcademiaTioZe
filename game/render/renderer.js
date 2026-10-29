@@ -13,7 +13,7 @@ import {
   PALETTE as P, INK, FONT_UI, FONT_TITLE, box, circle, ellipse, line, roundRect, dropShadow, speechBubble,
 } from './draw/primitives.js';
 import { formatMoney } from '../utils/format.js';
-import { floorOf, BLOCK_TINT } from './look.js';
+import { floorOf, BLOCK_TINT, eraLook } from './look.js';
 
 const T = CONFIG.grid.tileSize;
 const MIN_ZOOM = 0.18;
@@ -71,6 +71,11 @@ export class GameRenderer extends SceneDirector {
 
   /** O mundo cresceu (terreno novo): reenquadra se o jogador não mexeu na câmera. */
   followWorldGrowth() {
+    if (this.refitCamera) {
+      this.refitCamera = false;
+      this.userMovedCamera = false;
+      this.fittedSize = null;
+    }
     if (this.fittedSize === `${COLS}x${ROWS}`) return;
     if (!this.userMovedCamera) this.fit();
     else {
@@ -198,9 +203,11 @@ export class GameRenderer extends SceneDirector {
     for (let y = DOOR.y + 1; y < ROWS; y++) {
       box(ctx, DOOR.x * T + 6, y * T + 4, T - 12, T - 8, 8, '#efe6d6', 'rgba(61,53,80,0.25)', 1.5);
     }
-    // arbustos decorativos
-    // Só no quintal da frente (x 0–3, y 8–11), que nunca vira academia.
-    [[0.3, 9.4], [2.6, 10.6], [0.5, 11.3], [3.1, 11.4]].forEach(([x, y], i) => {
+    // arbustos decorativos no jardim da frente, ao lado do caminho da porta
+    [[-0.7, 2.4], [1.6, 3.6], [-0.5, 4.3], [2.1, 4.4]].forEach(([ox, oy], i) => {
+      const x = DOOR.x + ox;
+      const y = DOOR.y + oy;
+      if (y >= ROWS + 0.2 || zoneAtCell(Math.floor(x), Math.floor(y))) return;
       const s = 1 + Math.sin(t * 1.2 + i) * 0.02;
       ellipse(ctx, x * T + 3, y * T + 8, 16, 6, P.shadow);
       circle(ctx, x * T, y * T, 15 * s, '#9ccf8a', INK, 2);
@@ -208,13 +215,18 @@ export class GameRenderer extends SceneDirector {
     });
     // placa da academia
     ctx.save();
-    ctx.translate((DOOR.x + 2.05) * T, (DOOR.y + 1.55) * T);
-    box(ctx, -38, -14, 76, 24, 6, P.yellow);
-    ctx.fillStyle = INK;
+    const sign = eraLook(this.game.state.era).sign;
+    ctx.translate((DOOR.x + 1.25) * T + sign.w / 2, (DOOR.y + 1.55) * T);
+    box(ctx, -sign.w / 2, -14, sign.w, 24, 6, sign.fill);
+    ctx.fillStyle = sign.ink;
     ctx.font = `700 10px ${FONT_TITLE}`;
     ctx.textAlign = 'center';
-    ctx.fillText('ACADEMIA', 0, -3);
-    ctx.fillText('DO TIO ZÉ', 0, 8);
+    ctx.fillText(sign.lines[0], 0, -3);
+    if (sign.sub) {
+      ctx.fillStyle = sign.sub;
+      ctx.font = `700 7px ${FONT_TITLE}`;
+    }
+    ctx.fillText(sign.lines[1], 0, 8);
     ctx.restore();
   }
 
@@ -333,7 +345,7 @@ export class GameRenderer extends SceneDirector {
       }
     }
     ctx.lineCap = 'square';
-    for (const [lw, color] of [[11, INK], [7, '#c8b6dc']]) {
+    for (const [lw, color] of [[11, INK], [7, eraLook(state.era).wall]]) {
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
       ctx.beginPath();

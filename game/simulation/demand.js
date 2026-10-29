@@ -17,13 +17,19 @@ export function demandMultipliers(day) {
   return mult;
 }
 
+/** Fatia das visitas do perfil neste bloco (o Idoso prefere a manhã). */
+export function blockShareOf(profile, blockIndex) {
+  const block = BLOCKS[blockIndex];
+  return profile.blockShare?.[block.id] ?? block.share;
+}
+
 export function computeDemand(profileCounts, blockIndex, day) {
-  const share = BLOCKS[blockIndex].share;
   const mult = demandMultipliers(day);
   const demand = Object.fromEntries(DEMAND_CATEGORIES.map((c) => [c, 0]));
   const byProfile = {};
   for (const pid of PROFILE_IDS) {
     const p = PROFILES[pid];
+    const share = blockShareOf(p, blockIndex);
     byProfile[pid] = {};
     for (const [cat, catShare] of Object.entries(p.categoryShare)) {
       const d = profileCounts[pid] * p.visitsPerDay * share * catShare * mult[cat];
@@ -85,9 +91,9 @@ export function computeBlockStats(state, academy, blockIndex, day) {
 
 /** Exposição à fila de cada perfil, ponderada pelos blocos e categorias. */
 export function queueExposureForBlock(stats) {
-  const share = BLOCKS[stats.blockIndex].share;
   const out = {};
   for (const pid of PROFILE_IDS) {
+    const share = blockShareOf(PROFILES[pid], stats.blockIndex);
     let exp = 0;
     for (const [cat, catShare] of Object.entries(PROFILES[pid].categoryShare)) {
       exp += catShare * stats.queuePct[cat];

@@ -6,7 +6,7 @@ import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import { computeBlockStats } from '../../game/simulation/demand.js';
 import {
   roleDef, staffSalary, totalMonthlySalaries, cleaningCapacityByBlock, repairCapacityByBlock, repairQueue,
-  hireBlocker, PEAK_BLOCK,
+  hireBlocker, maxStaff, PEAK_BLOCK,
 } from '../../game/systems/staff.js';
 import { hireStaff, toggleStaffShift, requestFire } from '../../game/engine/store.js';
 import { drawCleaner } from '../../game/render/draw/people.js';
@@ -84,7 +84,7 @@ export default function StaffPanel() {
           </div>
         );
       })}
-      <p className="small subtle">Equipe: {state.staff.length}/{CONFIG.staff.maxStaff}. Faxineiro(a) não tem taxa de contratação; os salários são cobrados por dia.</p>
+      <p className="small subtle">Equipe: {state.staff.length}/{maxStaff(state)}. Faxineiro(a) não tem taxa de contratação; os salários são cobrados por dia.</p>
 
       <h2 className="section-title">Cobertura de limpeza por turno</h2>
       <div className="coverage">

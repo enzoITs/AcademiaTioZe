@@ -1,6 +1,6 @@
 'use client';
 import { useGame } from '../../hooks/useGame.js';
-import { PROFILES, PROFILE_IDS, CONFIG } from '../../game/config.js';
+import { PROFILES, CONFIG, profilesForEra } from '../../game/config.js';
 import { countProfiles } from '../../game/simulation/academy.js';
 import { averageSatisfaction, dailyEnrollmentRate } from '../../game/simulation/students.js';
 import { formatNumber } from '../../game/utils/format.js';
@@ -25,7 +25,7 @@ export default function StudentsPanel() {
     <section className="panel-section" aria-label="Alunos">
       <h2 className="section-title">Perfis</h2>
       <div className="profile-grid">
-        {PROFILE_IDS.map((pid) => {
+        {profilesForEra(state.era).map((pid) => {
           const list = state.students.filter((s) => s.profile === pid);
           const p = PROFILES[pid];
           return (

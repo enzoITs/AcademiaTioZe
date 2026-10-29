@@ -11,7 +11,7 @@ import {
 import { conditionState, hasWear, CONDITION_STATES } from '../../systems/maintenance.js';
 import { placementPreview } from '../../engine/store.js';
 import { SceneDirector } from '../director.js';
-import { floorOf, BLOCK_TINT } from '../look.js';
+import { floorOf, BLOCK_TINT, eraLook } from '../look.js';
 import {
   PALETTE as P, INK, FONT_UI, FONT_TITLE, box, circle, line, speechBubble,
 } from '../draw/primitives.js';
@@ -26,7 +26,6 @@ const T = CONFIG.grid.tileSize;
 const PI = Math.PI;
 const GRASS = '#cfe6c0';
 const LOCKED = '#c3dfb2';
-const WALL = '#c8b6dc';
 const WALL_H = 0.85;
 const WALL_LOW = 0.24;
 const WALL_T = 0.16;
@@ -204,6 +203,7 @@ export class Renderer3D extends SceneDirector {
     this.disposed = true;
     for (const v of this.itemViews.values()) disposeTree(v.group);
     disposeTree(this.terrainRoot);
+    if (this.inaug) disposeTree(this.inaug.group);
     this.gl.dispose();
   }
 
@@ -292,6 +292,11 @@ export class Renderer3D extends SceneDirector {
   }
 
   followWorldGrowth() {
+    if (this.refitCamera) {
+      this.refitCamera = false;
+      this.userMovedCamera = false;
+      this.fittedSize = null;
+    }
     if (this.fittedSize === `${COLS}x${ROWS}`) return;
     if (!this.userMovedCamera) this.fit();
     else {
@@ -402,6 +407,7 @@ export class Renderer3D extends SceneDirector {
     const dt = this.step(now);
     const t = this.time;
     this.syncTerrain(state, t);
+    this.syncInauguration(state, t);
     this.syncItems(state, rt, ui, t, now);
     this.syncDirt(state, ui, t);
     this.syncActors(state, dt, t);
@@ -426,10 +432,51 @@ export class Renderer3D extends SceneDirector {
     }
   }
 
+  // ------------------------------------------------------------ inauguração
+  /** Dia da mudança de era: caminhão de mudança na rua e fita vermelha na porta. */
+  syncInauguration(state, t) {
+    const show = state.closedDay != null && state.closedDay === state.time.day;
+    if (!show) {
+      if (this.inaug) this.inaug.group.visible = false;
+      return;
+    }
+    if (!this.inaug) {
+      const g = new THREE.Group();
+      const truck = new Builder();
+      truck.rbox(1.7, 0.95, 0.85, '#fffdf8', { x: -0.35, y: 0.18 }, 0.06);
+      truck.box(1.5, 0.12, 0.02, P.pad, { x: -0.35, y: 0.62, z: 0.43 });
+      truck.box(1.5, 0.05, 0.02, P.blueDark, { x: -0.35, y: 0.52, z: 0.43 });
+      truck.rbox(0.62, 0.62, 0.8, P.orange, { x: 0.82, y: 0.18 }, 0.08);
+      truck.box(0.03, 0.26, 0.6, '#bfe3f5', { x: 1.13, y: 0.5 });
+      for (const z of [-0.43, 0.43]) truck.box(0.3, 0.22, 0.02, '#bfe3f5', { x: 0.85, y: 0.5, z });
+      for (const x of [-0.85, 0.15, 0.82]) {
+        for (const z of [-0.4, 0.4]) truck.cyl(0.17, 0.17, 0.1, P.rubber, { rx: Math.PI / 2, x, y: 0.17, z }, 10);
+      }
+      // caixas da mudança encostadas na calçada
+      truck.rbox(0.3, 0.26, 0.3, '#d9b07a', { x: -1.5, z: -0.75 }, 0.02);
+      truck.rbox(0.24, 0.2, 0.24, '#c9a27a', { x: -1.48, y: 0.26, z: -0.74, ry: 0.4 }, 0.02);
+      const truckMesh = solid(truck.build());
+      truckMesh.userData.ownGeometry = true;
+      const ribbon = new Builder();
+      ribbon.box(1.05, 0.06, 0.03, P.pad, {});
+      ribbon.torus(0.07, 0.022, P.pad, { x: 0, y: 0.03, z: 0.02, ry: 0.3 });
+      ribbon.torus(0.07, 0.022, P.pad, { x: 0, y: 0.03, z: 0.02, ry: -0.3, rz: 1.2 });
+      const ribbonMesh = solid(ribbon.build(), { outline: MATS.outlineThin });
+      ribbonMesh.userData.ownGeometry = true;
+      g.add(truckMesh, ribbonMesh);
+      setNoRaycast(g);
+      this.scene.add(g);
+      this.inaug = { group: g, truck: truckMesh, ribbon: ribbonMesh };
+    }
+    this.inaug.group.visible = true;
+    this.inaug.truck.position.set(DOOR.x + 4.6, 0, ROWS + 1.25);
+    this.inaug.ribbon.position.set(DOOR.x + 0.5, 0.32 + Math.sin(t * 2) * 0.01, DOOR.y + 1.06);
+  }
+
   // ------------------------------------------------------------ terreno e paredes
   syncTerrain(state, t) {
     const zones = allZones(state);
-    const key = `${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => z.id).join(',')}`;
+    const key = `${state.era}|${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => z.id).join(',')}`;
     if (key !== this.terrainKey) {
       this.terrainKey = key;
       this.buildTerrain(state, zones);
@@ -460,6 +507,8 @@ export class Renderer3D extends SceneDirector {
     this.zoneSigns = [];
     this.mask = buildUnlockedMask(state.unlockedZones);
     const unlocked = (x, y) => isUnlocked(this.mask, x, y);
+    const look = eraLook(state.era);
+    const WALL = look.wall;
     const own = (o) => {
       o.userData.ownGeometry = true;
       return o;
@@ -509,11 +558,20 @@ export class Renderer3D extends SceneDirector {
         if (!unlocked(x, y + 1) && !(x === DOOR.x && y === DOOR.y)) wb.box(1 + WALL_T, WALL_LOW, WALL_T, WALL, { x: x + 0.5, z: y + 1 });
       }
     }
-    // portão de enrolar aberto sobre a porta
     const dz = DOOR.y + 1;
     for (const x of [DOOR.x, DOOR.x + 1]) wb.box(WALL_T, WALL_H, WALL_T, WALL, { x, z: dz });
-    wb.rbox(1.25, 0.18, 0.24, '#9aa0b5', { x: DOOR.x + 0.5, y: WALL_H - 0.1, z: dz }, 0.05);
-    for (let i = 1; i < 4; i++) wb.box(1.2, 0.012, 0.245, '#7f8499', { x: DOOR.x + 0.5, y: WALL_H - 0.1 + i * 0.045, z: dz });
+    if (look.door === 'awning') {
+      // ponto de bairro: batente de porta de vidro e toldo listrado
+      wb.box(1.04, 0.07, WALL_T, '#fffdf8', { x: DOOR.x + 0.5, y: WALL_H - 0.18, z: dz });
+      for (let i = 0; i < 6; i++) {
+        wb.box(0.2, 0.03, 0.42, i % 2 ? '#fffdf8' : P.pad, { x: DOOR.x - 0.0 + 0.1 + i * 0.2, y: WALL_H - 0.08, z: dz + 0.18, rx: 0.32 });
+      }
+      wb.box(1.24, 0.06, 0.04, P.padDark, { x: DOOR.x + 0.5, y: WALL_H - 0.2, z: dz + 0.38 });
+    } else {
+      // garagem: portão de enrolar aberto sobre a porta
+      wb.rbox(1.25, 0.18, 0.24, '#9aa0b5', { x: DOOR.x + 0.5, y: WALL_H - 0.1, z: dz }, 0.05);
+      for (let i = 1; i < 4; i++) wb.box(1.2, 0.012, 0.245, '#7f8499', { x: DOOR.x + 0.5, y: WALL_H - 0.1 + i * 0.045, z: dz });
+    }
     const walls = own(solid(wb.build()));
     walls.receiveShadow = true;
     walls.raycast = () => {};
@@ -539,14 +597,20 @@ export class Renderer3D extends SceneDirector {
 
     // Cenário: arbustos, placa da academia, cercas dos terrenos à venda.
     const d = new Builder();
-    [[0.3, 9.4], [2.6, 10.6], [0.5, 11.3], [3.1, 11.4]].forEach(([x, z]) => {
-      if (z >= ROWS + 0.2) return;
+    // Arbustos no jardim da frente, ao lado do caminho da porta.
+    [[-0.7, 2.4], [1.6, 3.6], [-0.5, 4.3], [2.1, 4.4], [-1.2, 1.4], [3.4, 1.5]].forEach(([ox, oz]) => {
+      const x = DOOR.x + ox;
+      const z = DOOR.y + oz;
+      if (z >= ROWS + 0.2 || x < -1 || zoneAtCell(Math.floor(x), Math.floor(z))) return;
       d.add(new THREE.IcosahedronGeometry(0.32, 0), '#9ccf8a', { x, y: 0.22, z });
       d.add(new THREE.IcosahedronGeometry(0.21, 0), '#b0dc9e', { x: x + 0.19, y: 0.38, z: z - 0.12 });
     });
     const signX = DOOR.x + 2.05;
     const signZ = DOOR.y + 1.55;
-    if (signZ < ROWS + 0.2) for (const s of [-1, 1]) d.box(0.06, 0.5, 0.06, '#a07f5c', { x: signX + s * 0.55, z: signZ });
+    const signLook = look.sign;
+    const signHalf = signLook.w / T / 2 + 0.05;
+    const signX2 = signX + signHalf - 0.8;
+    if (signZ < ROWS + 0.2) for (const s of [-1, 1]) d.box(0.06, 0.5, 0.06, '#a07f5c', { x: signX2 + s * (signHalf - 0.25), z: signZ });
     for (const z of zones) {
       if (state.unlockedZones.includes(z.id)) continue;
       const x0 = z.x + 0.12;
@@ -575,15 +639,25 @@ export class Renderer3D extends SceneDirector {
     this.terrainRoot.add(decor);
 
     if (signZ < ROWS + 0.2) {
-      const sign = this.signBoard(76, 24, (ctx) => {
-        box(ctx, -38, -12, 76, 24, 6, P.yellow);
-        ctx.fillStyle = INK;
-        ctx.font = `700 10px ${FONT_TITLE}`;
+      const sw = signLook.w;
+      const sign = this.signBoard(sw, 24, (ctx) => {
+        box(ctx, -sw / 2, -12, sw, 24, 6, signLook.fill);
         ctx.textAlign = 'center';
-        ctx.fillText('ACADEMIA', 0, -1);
-        ctx.fillText('DO TIO ZÉ', 0, 10);
+        ctx.fillStyle = signLook.ink;
+        if (signLook.sub) {
+          // letreiro pintado à mão: nome grande e uma linha menor
+          ctx.font = `700 10px ${FONT_TITLE}`;
+          ctx.fillText(signLook.lines[0], 0, -1);
+          ctx.fillStyle = signLook.sub;
+          ctx.font = `700 7px ${FONT_UI}`;
+          ctx.fillText(signLook.lines[1], 0, 9);
+        } else {
+          ctx.font = `700 10px ${FONT_TITLE}`;
+          ctx.fillText(signLook.lines[0], 0, -1);
+          ctx.fillText(signLook.lines[1], 0, 10);
+        }
       });
-      sign.position.set(signX, 0.62, signZ);
+      sign.position.set(signX2, 0.62, signZ);
       sign.raycast = () => {};
       this.terrainRoot.add(sign);
     }

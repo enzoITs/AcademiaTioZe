@@ -1,9 +1,10 @@
 'use client';
 import { useGame } from '../../hooks/useGame.js';
-import { CONFIG, PROFILES, EQUIPMENT, DEMAND_CATEGORIES } from '../../game/config.js';
+import { CONFIG, PROFILES, EQUIPMENT, DEMAND_CATEGORIES, eraDef } from '../../game/config.js';
+import { nextEra, eraGoals, canMoveEra } from '../../game/systems/eras.js';
 import { formatMoney, formatNumber, formatPercent } from '../../game/utils/format.js';
 import {
-  getSuggestions, selectItem, startPlacement, repair, setTab, setShopFilter,
+  getSuggestions, selectItem, startPlacement, repair, setTab, setShopFilter, openEraMove,
 } from '../../game/engine/store.js';
 import { repairCost } from '../../game/systems/maintenance.js';
 import Icon from '../ui/Icon.js';
@@ -129,29 +130,45 @@ function Occupancy({ rt, peak }) {
   );
 }
 
-function Era2({ state }) {
-  const goal = CONFIG.era2Preview;
-  const types = new Set(state.items.map((i) => i.type)).size;
-  const rows = [
-    ['Alunos ativos', state.students.length, goal.students],
-    ['Reputação', Number(state.reputation.toFixed(1)), goal.reputation],
-    ['Tipos de aparelho', types, goal.equipmentTypes],
-    ['Ampliações', state.unlockedZones.length - 1, goal.expansions],
-  ];
+function EraCard({ state }) {
+  const era = nextEra(state);
+  if (!era) {
+    const def = eraDef(state.era);
+    return (
+      <div className="era-card">
+        <p className="small">
+          Você está na <strong>Era {state.era} · {def.label}</strong>. A Era {state.era + 1} (Academia completa) ainda não existe neste protótipo:
+          por enquanto, amplie o ponto, contrate equipe e conquiste a turma da manhã.
+        </p>
+      </div>
+    );
+  }
+  const def = eraDef(era);
+  const goals = eraGoals(state);
+  const check = canMoveEra(state);
   return (
     <div className="era-card">
       <p className="small">
-        Metas de referência para a Era 2 (Ponto de bairro). <strong>A mudança de era ainda não está implementada neste protótipo.</strong>
+        Metas para a <strong>Era {era} ({def.label})</strong>. Ao bater todas, a mudança libera: espaço maior, mensalidade base maior,
+        aluguel de {formatMoney(def.rent)}/mês e gente nova no bairro.
       </p>
       <ul className="era-goals">
-        {rows.map(([label, v, g]) => (
-          <li key={label} className={v >= g ? 'done' : ''}>
-            <span>{label}</span>
-            <Bar value={v} max={g} tone={v >= g ? 'good' : ''} />
-            <span className="occ-num">{v}/{g}</span>
+        {goals.map((g) => (
+          <li key={g.key} className={g.done ? 'done' : ''}>
+            <span>{g.label}</span>
+            <Bar value={g.value} max={g.goal} tone={g.done ? 'good' : ''} />
+            <span className="occ-num">{g.value}/{g.goal}</span>
           </li>
         ))}
       </ul>
+      <button
+        type="button"
+        className={`btn btn-sm ${check.ok ? 'btn-primary' : ''}`}
+        onClick={openEraMove}
+        title={check.ok ? 'Ver a planta do novo ponto' : check.reason}
+      >
+        <Icon name={check.ok ? 'door' : 'lock'} size={15} /> {check.ok ? `Ver o ${def.label.toLowerCase()}` : 'Ver a planta (metas pendentes)'}
+      </button>
     </div>
   );
 }
@@ -168,8 +185,8 @@ export default function AcademyPanel() {
       <h2 className="section-title">Ocupação e filas</h2>
       <Occupancy rt={rt} peak={suggestions.peak} />
       <p className="hint">Demanda/capacidade por bloco. Só contam aparelhos alcançáveis e funcionando (cansado ×0,75).</p>
-      <h2 className="section-title">Rumo à Era 2</h2>
-      <Era2 state={state} />
+      <h2 className="section-title">{nextEra(state) ? `Rumo à Era ${nextEra(state)}` : `Era ${state.era}`}</h2>
+      <EraCard state={state} />
     </section>
   );
 }

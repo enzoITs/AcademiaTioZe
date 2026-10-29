@@ -521,6 +521,12 @@ function bodyGeo(look, profileId) {
     addFace(b, look.skin);
     addHair(b, look);
     if (look.age === 'senior') for (const s of [-1, 1]) b.torus(0.036, 0.008, INK, { x: s * 0.06, y: HEAD_Y + 0.02, z: HEAD_R + 0.005 });
+    if (sig.accessory === 'towel') {
+      // toalhinha dobrada no ombro, caindo na frente e nas costas
+      b.rbox(0.11, 0.035, 0.2, sig.accent, { x: 0.085, y: SHOULDER + 0.005 }, 0.012);
+      for (const z of [-0.095, 0.095]) b.rbox(0.1, 0.13, 0.025, sig.accent, { x: 0.085, y: SHOULDER - 0.12, z }, 0.01);
+      b.box(0.102, 0.012, 0.027, P.blue, { x: 0.085, y: SHOULDER - 0.1, z: 0.095 });
+    }
     if (sig.accessory === 'visor') {
       b.torus(HEAD_R + 0.006, 0.02, sig.accent, { y: HEAD_Y + 0.08, rx: PI / 2 });
       b.rbox(0.26, 0.025, 0.12, sig.accent, { y: HEAD_Y + 0.07, z: HEAD_R }, 0.01);
@@ -542,6 +548,11 @@ function armGeo(look, profileId, side) {
     if (sig.accessory === 'wristband' && side > 0) {
       b.rbox(0.075, 0.095, 0.075, '#fffdf8', { y: -0.33, z: 0.05 }, 0.015);
       b.box(0.078, 0.025, 0.078, P.pad, { y: -0.25, z: 0.05 });
+    }
+    if (sig.accessory === 'towel' && side < 0) {
+      // garrafa térmica de café
+      b.cyl(0.032, 0.032, 0.15, P.metalDark, { y: -0.36, z: 0.05 }, 8);
+      b.cyl(0.034, 0.034, 0.035, P.pad, { y: -0.225, z: 0.05 }, 8);
     }
     if (sig.accessory === 'bottle' && side < 0) {
       b.cyl(0.03, 0.03, 0.13, '#dff2ff', { y: -0.34, z: 0.05 }, 8);

@@ -2,7 +2,7 @@
 import { useGame } from '../../hooks/useGame.js';
 import { CONFIG } from '../../game/config.js';
 import { formatMoney, calendarOf } from '../../game/utils/format.js';
-import { LEDGER_CATEGORIES, monthSummary, projectedMonthly } from '../../game/economy/economy.js';
+import { LEDGER_CATEGORIES, monthSummary, projectedMonthly, monthlyRent } from '../../game/economy/economy.js';
 import { setFee, openModal } from '../../game/engine/store.js';
 
 function LedgerTable({ totals, opening, closing }) {
@@ -62,7 +62,7 @@ export default function FinancePanel() {
         </div>
         <p className="small">
           Faixa justa agora: <strong>{formatMoney(fairLow)}–{formatMoney(fairHigh)}</strong> (valor percebido {formatMoney(rt.academy.perceivedValue)},
-          base da Era 1 {formatMoney(CONFIG.economy.eraBaseFee['1'])}). Cada 5% acima do valor percebido tira 5 pontos da nota de Preço justo
+          base da Era {state.era} {formatMoney(CONFIG.economy.eraBaseFee[String(state.era)])}). Cada 5% acima do valor percebido tira 5 pontos da nota de Preço justo
           (Iniciante sente ×1,5). Qualidade sobe o valor percebido.
         </p>
         {over > 0 ? <p className="small neg">Você está {over.toFixed(0)}% acima do valor percebido.</p> : null}
@@ -75,7 +75,10 @@ export default function FinancePanel() {
 
       <h2 className="section-title">Relatório de {cal.monthName} (em andamento)</h2>
       <LedgerTable totals={state.ledger.totals} opening={state.ledger.opening} closing={state.money} />
-      <p className="hint">Custos fixos da Era 1: energia R$ 150 e água/limpeza R$ 80 por mês, cobrados por dia. Aluguel zero (herança do Tio Zé).</p>
+      <p className="hint">
+        Custos fixos da Era {state.era}: energia R$ 150 e água/limpeza R$ 80 por mês, cobrados por dia.
+        {monthlyRent(state) ? ` Aluguel do ponto: ${formatMoney(monthlyRent(state))}/mês.` : ' Aluguel zero (herança do Tio Zé).'}
+      </p>
 
       <h2 className="section-title">Meses anteriores</h2>
       {state.reports.length === 0 ? <p className="empty small">O primeiro mês fecha no dia 30.</p> : (

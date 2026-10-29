@@ -1,6 +1,6 @@
 // Alunos: criação, satisfação diária, reclamações, cancelamentos, matrículas,
 // reputação e avaliações. Tudo calculado por números; os sprites só mostram.
-import { CONFIG, PROFILES, PROFILE_IDS, DEMAND_CATEGORIES } from '../config.js';
+import { CONFIG, PROFILES, DEMAND_CATEGORIES, profilesForEra } from '../config.js';
 import { needsScoreFor } from './academy.js';
 import { nextRandom, pick, weightedPick, randInt } from '../utils/random.js';
 import { clamp, calendarOf } from '../utils/format.js';
@@ -19,8 +19,7 @@ const HAIR_STYLES = ['short', 'long', 'bun', 'curly', 'bald', 'ponytail'];
 const AGES = ['young', 'adult', 'adult', 'senior'];
 
 /** Aparência modular: tom de pele, cabelo, corpo e idade variam livremente. */
-export function createLook(rng) {
-  const age = pick(rng, AGES);
+export function createLook(rng, age = pick(rng, AGES)) {
   return {
     skin: pick(rng, SKIN_TONES),
     hair: age === 'senior' ? '#d9d4dc' : pick(rng, HAIR_COLORS),
@@ -33,13 +32,13 @@ export function createLook(rng) {
 }
 
 export function createStudent(state, rng, profileId = null) {
-  const profile = profileId ?? weightedPick(rng, PROFILE_IDS.map((p) => [p, PROFILES[p].spawnWeight]));
+  const profile = profileId ?? weightedPick(rng, profilesForEra(state.era ?? 1).map((p) => [p, PROFILES[p].spawnWeight]));
   const student = {
     id: state.nextStudentId++,
     name: pick(rng, FIRST_NAMES),
     profile,
     mania: pick(rng, MANIA_IDS),
-    look: createLook(rng),
+    look: profile === 'idoso' ? createLook(rng, 'senior') : createLook(rng),
     S: SAT.newStudentSatisfaction,
     joinedDay: state.time.day,
     novelty: null,

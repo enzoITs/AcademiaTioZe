@@ -18,6 +18,7 @@ import { grantNovelty } from '../simulation/students.js';
 import { checkMilestones, wheyTip, addMessage } from '../systems/characters.js';
 import { buildSuggestions, isTypeLocked } from '../systems/suggestions.js';
 import { createStaffMember, hireBlocker, roleDef } from '../systems/staff.js';
+import { canMoveEra, performEraMove } from '../systems/eras.js';
 import { ensureFrontier } from '../systems/expansion.js';
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal,
@@ -724,6 +725,36 @@ function unlockZone(zoneId) {
   playSound('celebrate');
   afterLayoutChange();
   emit();
+}
+
+// ---------------------------------------------------------------- eras
+/** Passo 1 da mudança: abre a planta do novo ponto antes de pagar. */
+export function openEraMove() {
+  game.ui.modal = { kind: 'eraMove' };
+  game.ui.mode = 'normal';
+  game.ui.placing = null;
+  game.ui.moving = null;
+  game.ui.selectedId = null;
+  playSound('click');
+  emit();
+}
+
+/** Passos 2 a 5: paga, muda os aparelhos, fecha um dia e dá bônus de novidade. */
+export function confirmEraMove() {
+  const { state } = game;
+  const check = canMoveEra(state);
+  if (!check.ok) return fail(check.reason);
+  const summary = performEraMove(state);
+  game.ui.modal = null;
+  game.ui.editMode = false;
+  refreshDerived(state, game.rt);
+  fx({ kind: 'era', era: summary.era });
+  playSound('celebrate');
+  if (summary.leftovers) {
+    toast(`${summary.leftovers} aparelho(s) não couberam e foram vendidos por ${formatMoney(summary.refund)}.`, 'warn');
+  }
+  emit();
+  return true;
 }
 
 // ---------------------------------------------------------------- equipe

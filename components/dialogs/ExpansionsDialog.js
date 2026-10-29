@@ -2,13 +2,12 @@
 import { useState } from 'react';
 import { useGame } from '../../hooks/useGame.js';
 import { CONFIG } from '../../game/config.js';
-import { COLS, ROWS } from '../../game/grid/grid.js';
+import { COLS, ROWS, DOOR } from '../../game/grid/grid.js';
 import { formatMoney } from '../../game/utils/format.js';
 import { closeModal, requestUnlockZone, zoneStatuses } from '../../game/engine/store.js';
 import Modal from './Modal.js';
 import Icon from '../ui/Icon.js';
 
-const DOOR = CONFIG.grid.door;
 const FILL = { owned: '#ece4d6', available: '#dff3e2', blocked: '#ece8ef' };
 const STROKE = { owned: '#3d3550', available: '#4fa463', blocked: '#9a92ad' };
 

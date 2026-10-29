@@ -127,4 +127,3 @@ export function wheyTip(state, academy, blockStats, suggestions) {
   return WHEY_TIPS.happy;
 }
 
-export const ERA2_PREVIEW = CONFIG.era2Preview;
