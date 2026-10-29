@@ -7,8 +7,9 @@ import {
   itemLevel, levelDef, levelUpCost, capacityAtLevel, vibeAtLevel, itemCapacity, itemVibe, MAX_LEVEL,
 } from '../../game/systems/maintenance.js';
 import {
-  selectItem, startMove, rotate, requestSell, upgradeItem, levelUpItem, repair, refundFor,
+  selectItem, startMove, rotate, requestSell, upgradeItem, levelUpItem, repair, refundFor, site,
 } from '../../game/engine/store.js';
+import { isFixedItem } from '../../game/systems/branchEdit.js';
 import EquipmentThumb from './EquipmentThumb.js';
 import Icon from '../ui/Icon.js';
 
@@ -24,13 +25,17 @@ function LevelPips({ level }) {
 }
 
 export default function ItemInspector() {
-  const { state, rt, ui } = useGame();
+  const { state, ui } = useGame();
   if (!ui.selectedId || ui.mode !== 'normal') return null;
-  const item = state.items.find((i) => i.id === ui.selectedId);
-  if (!item) return null;
+  // O aparelho pode estar na Matriz ou no andar da filial visitada (Era 5).
+  const here = site();
+  const rt = here.rt;
+  const item = here.state.items.find((i) => i.id === ui.selectedId);
+  if (!item || !rt.academy) return null;
   const def = getEquipmentDef(item.type);
+  const fixed = isFixedItem(item);
   const info = rt.academy.itemInfo.get(item.id);
-  const stats = rt.blockStats.perItem[item.id];
+  const stats = rt.blockStats?.perItem[item.id];
   const wear = hasWear(item);
   const st = wear ? conditionState(item.condition) : 'ok';
   const tierIndex = def.tiers.findIndex((t) => t.id === item.tier);
@@ -113,7 +118,7 @@ export default function ItemInspector() {
         ) : null}
       </div>
 
-      <div className="level-box">
+      <div className="level-box" style={fixed ? { display: 'none' } : undefined}>
         {nextLevel ? (
           <>
             <button
@@ -134,6 +139,9 @@ export default function ItemInspector() {
         )}
       </div>
 
+      {fixed ? (
+        <p className="inspector-tip small subtle">Fica sempre no mesmo lugar: não dá para mover nem vender.</p>
+      ) : (
       <div className="inspector-actions edit">
         <button type="button" className="btn btn-sm" onClick={() => startMove(item.id)} title="Também dá para arrastar o aparelho no mapa">
           <Icon name="move" size={15} /> Mover
@@ -143,6 +151,8 @@ export default function ItemInspector() {
           <Icon name="trash" size={15} /> Vender {formatMoney(refundFor(item))}
         </button>
       </div>
+      )}
+      {item.gift ? <p className="inspector-tip small subtle">Veio com a filial: vender não devolve o preço.</p> : null}
       <p className="inspector-tip small subtle">
         Mover é grátis: arraste no mapa ou use as setas <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd>. <kbd>Del</kbd> vende.
       </p>

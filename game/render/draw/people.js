@@ -115,6 +115,12 @@ function drawAccessory(ctx, kind, r, bodyW, bodyTop, accent) {
     box(ctx, -bodyW / 2 - 7, bodyTop + 3, 6, 12, 2, P.metalDark, INK, 1.2);
     box(ctx, -bodyW / 2 - 7, bodyTop + 2, 6, 3, 1, P.pad, INK, 1);
   }
+  if (kind === 'medal') {
+    // medalha de ouro na fita azul
+    line(ctx, -3, bodyTop, 0, bodyTop + 7, P.blueDark, 2);
+    line(ctx, 3, bodyTop, 0, bodyTop + 7, P.blueDark, 2);
+    circle(ctx, 0, bodyTop + 9, 3, P.yellow, INK, 1);
+  }
   if (kind === 'bottle') {
     box(ctx, -bodyW / 2 - 7, bodyTop + 4, 6, 11, 2, '#dff2ff', INK, 1.2);
     box(ctx, -bodyW / 2 - 6, bodyTop + 9, 4, 3, 1, P.yellow, null);

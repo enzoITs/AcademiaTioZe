@@ -118,6 +118,11 @@ export class GameRenderer extends SceneDirector {
 
   /** O que está sob o cursor, em ordem de prioridade de clique. */
   hitTest(sx, sy) {
+    // Na filial (Era 5) a grade é a do andar visitado.
+    return this.inView(() => this.hitTestHere(sx, sy));
+  }
+
+  hitTestHere(sx, sy) {
     const { state } = this.game;
     const w = this.screenToWorld(sx, sy);
     for (const d of state.dirt) {

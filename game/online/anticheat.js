@@ -16,7 +16,7 @@ import { allZones } from '../grid/grid.js';
 import { itemCapacity } from '../systems/maintenance.js';
 import { totalMonthlySalaries } from '../systems/staff.js';
 import { zoneCost } from '../systems/expansion.js';
-import { STYLES, branchCapacity, branchUpgradeCost, networkMonthly } from '../systems/network.js';
+import { STYLES, branchCapacity, branchUpgradeCost, networkMonthly, styleDensity } from '../systems/network.js';
 import { formatMoney } from '../utils/format.js';
 
 const C = CONFIG.online.anticheat;
@@ -45,17 +45,42 @@ function minLevelCost(item) {
   return total;
 }
 
-/** Quanto o aparelho vale: nunca menos que o preço de catálogo (aparelho "de graça" conta como pago). */
+/**
+ * Quanto o aparelho vale: nunca menos que o preço de catálogo (aparelho "de graça" conta como pago).
+ * O que veio de presente com a filial (Era 5) não vale o preço, só as melhorias pagas.
+ */
 export function itemValue(item) {
+  if (item.fixed) return 0;
+  const levels = Math.max(item.upgradeSpent ?? 0, minLevelCost(item));
+  if (item.gift) return item.upgradeSpent ?? 0;
   const catalog = getTierDef(item.type, item.tier).price;
-  return Math.max(item.pricePaid ?? 0, catalog) + Math.max(item.upgradeSpent ?? 0, minLevelCost(item));
+  return Math.max(item.pricePaid ?? 0, catalog) + levels;
 }
 
-/** Quanto a filial vale: nunca menos que a filial mais barata possível com as reformas do nível. */
+/** Preço mínimo de catálogo dos andares construídos (o térreo vem com a filial). */
+function floorsCatalog(branch) {
+  const F = N.floors;
+  let total = 0;
+  for (let n = 1; n < (branch.floors?.length ?? 1); n++) total += Math.round((F.cost * F.growth ** (n - 1)) / N.costRoundTo) * N.costRoundTo;
+  return total;
+}
+
+/**
+ * Quanto a filial vale: nunca menos que a filial mais barata possível com as
+ * reformas do nível e os andares; na Era 5 somam os aparelhos montados nela.
+ */
 export function branchValue(branch) {
-  let floor = MIN_BRANCH_COST;
+  let floor = MIN_BRANCH_COST + floorsCatalog(branch);
   for (let lv = 1; lv < branch.level; lv++) floor += branchUpgradeCost({ ...branch, level: lv }) ?? 0;
-  return Math.max(branch.invested ?? 0, floor);
+  const items = (branch.floors ?? []).reduce((s, f) => s + f.items.reduce((t, i) => t + itemValue(i), 0), 0);
+  return Math.max(branch.invested ?? 0, floor) + items;
+}
+
+/** Capacidade máxima da filial: na Era 5, pelos aparelhos (mesmo quebrados ou sem corredor). */
+function branchCapacityBound(branch) {
+  if (!branch.floors) return branchCapacity(branch);
+  const peak = branch.floors.reduce((s, f) => s + f.items.reduce((t, i) => t + (demandCategoryOf(i.type) ? itemCapacity(i) : 0), 0), 0);
+  return Math.ceil(peak * CONFIG.enrollment.maxMembersPerPeakCapacity * N.floors.capacityFactor * styleDensity(branch.style));
 }
 
 /** Matrículas por dia no melhor caso (5 estrelas, janeiro). */
@@ -84,8 +109,8 @@ export function progressMetrics(state) {
     matriz: state.students.length,
     capacity: Math.floor(peak * CONFIG.enrollment.maxMembersPerPeakCapacity),
     branchMembers: Math.round(branches.reduce((s, b) => s + b.members, 0)),
-    branchCapacity: branches.reduce((s, b) => s + branchCapacity(b), 0),
-    branchOver: branches.filter((b) => b.members > branchCapacity(b) + 1).length,
+    branchCapacity: branches.reduce((s, b) => s + branchCapacityBound(b), 0),
+    branchOver: branches.filter((b) => b.members > branchCapacityBound(b) + 1).length,
     unlockedZones: [...state.unlockedZones],
     nextStaffId: state.nextStaffId,
     dailyCost: Math.round(monthlyCost / T.daysPerMonth),

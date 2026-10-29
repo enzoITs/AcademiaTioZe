@@ -10,6 +10,7 @@ import { grantNovelty } from '../simulation/students.js';
 import { addMessage } from './characters.js';
 import { ERA_MESSAGES } from '../content/lines.js';
 import { initNetwork } from './network.js';
+import { ensureBranchFloors } from './branchEdit.js';
 
 // Como medir cada meta de passagem (as metas de cada era ficam no JSON).
 const GOAL_METRICS = {
@@ -20,6 +21,7 @@ const GOAL_METRICS = {
   staff: { label: 'Pessoas na equipe', value: (s) => s.staff.length },
   idoso: { label: 'Turma da manhã (idosos)', value: (s) => s.students.filter((st) => st.profile === 'idoso').length },
   influencer: { label: 'Influencers treinando', value: (s) => s.students.filter((st) => st.profile === 'influencer').length },
+  branches: { label: 'Filiais abertas', value: (s) => s.network?.branches.length ?? 0 },
 };
 
 /** Próxima era (ou null quando não há outra implementada). */
@@ -143,6 +145,8 @@ export function performEraMove(state) {
   state.pendingModals.push({ kind: 'era', era });
 
   for (const [from, text] of ERA_MESSAGES[era] ?? []) addMessage(state, from, text);
+  // Era 5: o kit de cada filial vira o térreo de verdade, pronto para editar.
+  ensureBranchFloors(state);
   if (leftovers.length) {
     addMessage(state, 'whey', `Miau. (${leftovers.length} aparelho(s) não couberam no novo ponto e foram vendidos pelo preço pago.)`);
   }

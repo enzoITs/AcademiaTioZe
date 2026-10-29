@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame.js';
 import {
-  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, flushCloud, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView,
+  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, flushCloud, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView, viewOnly,
 } from '../game/engine/store.js';
 import TopBar from './hud/TopBar.js';
 import SidePanel from './hud/SidePanel.js';
@@ -39,7 +39,7 @@ function useKeyboard() {
       else if (key === 'm') toggleMaintenanceView();
       else if (key === 'e') toggleEditMode();
       else if (key === 'escape') cancelMode();
-      else if (inBranchView() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      else if (inBranchView() && (viewOnly() || !game.ui.selectedId) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         e.preventDefault();
         cycleBranchView(e.key === 'ArrowLeft' ? -1 : 1);
       }

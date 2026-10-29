@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { GameRenderer } from '../../game/render/renderer.js';
 import { Renderer3D } from '../../game/render/three/renderer3d.js';
 import {
-  game, tick, setHover, clickCell, clickWhey, requestUnlockZone, cleanDirt, startMove, dropDrag, cancelMode, inBranchView,
+  game, tick, setHover, clickCell, clickWhey, requestUnlockZone, cleanDirt, startMove, dropDrag, cancelMode, viewOnly, withSite,
 } from '../../game/engine/store.js';
 import { inBounds, cellIndex } from '../../game/grid/grid.js';
 
@@ -77,17 +77,18 @@ export default function GameCanvas({ rendererRef }) {
     };
     // { button, start, last, moved, cleaning, combo, itemId, grabCell, draggingItem }
     let drag = null;
-    const itemAtCell = (cell) => {
-      if (!inBounds(cell.x, cell.y)) return -1;
-      return game.rt.academy.access.flood.occ[cellIndex(cell.x, cell.y)];
-    };
+    // Aparelho na célula, na grade do lugar editado (Matriz ou andar da filial).
+    const itemAtCell = (cell) => withSite((s) => {
+      if (!inBounds(cell.x, cell.y) || !s.rt.academy) return -1;
+      return s.rt.academy.access.flood.occ[cellIndex(cell.x, cell.y)];
+    });
 
     const onDown = (e) => {
       canvas.setPointerCapture(e.pointerId);
       const p = pos(e);
       drag = { button: e.button, start: p, last: p, moved: false, cleaning: false, combo: 0, itemId: -1, draggingItem: false };
-      // Visitando uma filial: o mouse só move a câmera.
-      if (inBranchView() || e.button !== 0 || game.ui.mode !== 'normal') return;
+      // Visitando uma filial só para olhar (Era 4): o mouse só move a câmera.
+      if (viewOnly() || e.button !== 0 || game.ui.mode !== 'normal') return;
       const dirt = renderer.dirtAt(p.x, p.y);
       if (dirt) {
         drag.cleaning = true;
@@ -103,7 +104,7 @@ export default function GameCanvas({ rendererRef }) {
 
     const onMove = (e) => {
       const p = pos(e);
-      if (inBranchView()) {
+      if (viewOnly()) {
         if (!drag) return;
         const dx = p.x - drag.last.x;
         const dy = p.y - drag.last.y;
@@ -164,7 +165,7 @@ export default function GameCanvas({ rendererRef }) {
         dropDrag(renderer.cellAt(p.x, p.y));
         return;
       }
-      if (!d || d.cleaning || d.moved || d.button !== 0 || inBranchView()) return;
+      if (!d || d.cleaning || d.moved || d.button !== 0 || viewOnly()) return;
       const hit = renderer.hitTest(p.x, p.y);
       if (game.ui.mode === 'normal') {
         if (hit.kind === 'whey') return clickWhey();

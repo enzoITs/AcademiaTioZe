@@ -23,9 +23,9 @@
   },
   "economy": {
     "startingMoney": 1500,
-    "eraBaseFee": { "1": 35, "2": 55, "3": 80, "4": 110 },
+    "eraBaseFee": { "1": 35, "2": 55, "3": 80, "4": 110, "5": 150 },
     "startingFee": 35,
-    "feeSlider": { "min": 15, "max": 90, "step": 1, "maxByEra": { "1": 90, "2": 140, "3": 200, "4": 280 } },
+    "feeSlider": { "min": 15, "max": 90, "step": 1, "maxByEra": { "1": 90, "2": 140, "3": 200, "4": 280, "5": 380 } },
     "fixedMonthlyCosts": [
       { "id": "energia", "label": "Energia", "amount": 150 },
       { "id": "agua", "label": "Água e limpeza", "amount": 80 }
@@ -155,6 +155,37 @@
       "goals": { "students": 200, "reputation": 4.2, "equipmentTypes": 18, "expansions": 3, "staff": 6, "influencer": 12 },
       "description": "Sem mudança de endereço: o prédio vira a Matriz e a visão se abre para o mapa da cidade. As filiais rendem sozinhas, até com a aba fechada.",
       "leaving": "A garagem volta à cena como Matriz Histórica: um pequeno bônus de Comunidade para todas as filiais."
+    },
+    "5": {
+      "label": "Centro Esportivo",
+      "rent": 3000,
+      "rentLabel": "IPTU e manutenção do complexo",
+      "maxStaff": 18,
+      "moveCost": 120000,
+      "moveCostLabel": "Compra do complexo esportivo",
+      "noveltyBonus": 8,
+      "noveltyDays": 7,
+      "goals": { "students": 260, "reputation": 4.4, "equipmentTypes": 22, "expansions": 3, "staff": 8, "branches": 4 },
+      "description": "Um complexo esportivo inteiro, com arquibancada, piscina, ringue e pista. E as filiais deixam de ser só do gerente: dá para entrar e montar cada uma, andar por andar.",
+      "leaving": "O prédio de vidro fica para trás, mas as filiais continuam abertas, e agora você monta cada uma do seu jeito.",
+      "door": { "x": 3, "y": 17 },
+      "cols": 24,
+      "rows": 19,
+      "reserved": { "x": 0, "y": 18, "w": 7 },
+      "zones": [
+        { "id": "complexo", "label": "Centro Esportivo", "x": 0, "y": 0, "w": 24, "h": 18, "cost": 0, "startsUnlocked": true, "description": "O ginásio principal do complexo, com arquibancada e piso de quadra." },
+        { "id": "parque_aquatico", "label": "Parque aquático", "x": 24, "y": 0, "w": 10, "h": 8, "cost": 60000, "requires": null, "description": "Um galpão alto e úmido, pronto para receber piscina e banheiras de gelo." },
+        {
+          "id": "ginasio_lutas", "label": "Ginásio de lutas", "x": 24, "y": 8, "w": 10, "h": 10, "cost": 90000, "requires": "parque_aquatico",
+          "description": "Tatame, ringue e saco de pancada: o canto dos lutadores.",
+          "reaction": { "from": "duda", "text": "Ginásio de lutas! Na minha época a gente treinava no estacionamento. Que luxo." }
+        },
+        {
+          "id": "pista_coberta", "label": "Pista coberta", "x": 34, "y": 0, "w": 4, "h": 18, "cost": 140000, "requires": "ginasio_lutas",
+          "description": "Uma faixa comprida e coberta, do tamanho certo para tiros de corrida.",
+          "reaction": { "from": "valeria", "text": "PISTA COBERTA?! Tá bom, vizinho(a), a MegaFit desiste do rooftop. Por enquanto." }
+        }
+      ]
     }
   },
   "network": {
@@ -178,6 +209,7 @@
       { "level": 2, "label": "Nível 2", "upgradeRate": 0.6, "capacityMultiplier": 1.5, "costMultiplier": 1.35, "building": [12, 9] },
       { "level": 3, "label": "Nível 3", "upgradeRate": 1.0, "capacityMultiplier": 2, "costMultiplier": 1.7, "building": [14, 10] }
     ],
+    "floors": { "max": 3, "cost": 30000, "growth": 1.6, "capacityFactor": 1, "dailyUseShare": 0.6, "careClean": 0.3, "careNeeds": 0.25 },
     "styles": {
       "acolhedora": {"label":"Acolhedora","color":"#f2cd5c","capacity":90,"feeMultiplier":0.9,"monthlyCost":2200,"growth":1,"description":"Sofá na recepção e café passado na hora. Quem está começando se sente em casa.","profiles":{"iniciante":0.5,"idoso":0.3,"corredor":0.2},"kit":["esteira","bicicleta","eliptico","colchonete","maquina_peito","extensora","bebedouro","espelho","planta","planta","ventilador","poster"],"look":{"wall":"#f6d7a8","door":"awning","floor":["#f3e3c8","#ead6b5"]}},
       "hardcore": {"label":"Hardcore","color":"#e8646a","capacity":80,"feeMultiplier":1,"monthlyCost":2300,"growth":1,"description":"Ferro, giz e música alta. Marombeiro atravessa a cidade para treinar lá.","profiles":{"marombeiro":0.75,"iniciante":0.15,"corredor":0.1},"kit":["supino","rack_agachamento","halteres","halteres","plataforma","leg_press","kettlebell","saco_pancada","esteira","caixa_som","poster","ventilador"],"look":{"wall":"#9a92ad","door":"gate","floor":["#d3cedb","#c7c1d1"]}},
@@ -414,8 +446,38 @@
       "description": "As medalhas do Tio Zé e do bairro. Brilha que dá gosto.",
       "tiers": [{ "id": "usado", "price": 90, "capacity": 0 }]
     },
+    "piscina": {
+      "name": "Piscina semiolímpica", "category": "cardio", "size": [6, 4], "needsAccess": true, "visualSlots": 4, "anim": "run", "minEra": 5, "minRep": 4,
+      "description": "Quatro raias de água azulzinha. Natação é cardio que não castiga o joelho.",
+      "tiers": [{ "id": "novo", "price": 18000, "capacity": 20 }]
+    },
+    "pista_corrida": {
+      "name": "Pista de corrida coberta", "category": "cardio", "size": [1, 6], "needsAccess": true, "visualSlots": 2, "anim": "run", "minEra": 5,
+      "description": "Seis metros de piso emborrachado para tiro de velocidade. Atleta não vive sem.",
+      "tiers": [{ "id": "novo", "price": 4200, "capacity": 8 }]
+    },
+    "ringue": {
+      "name": "Ringue de lutas", "category": "funcional", "size": [4, 4], "needsAccess": true, "visualSlots": 2, "anim": "lift", "noisy": true, "minEra": 5, "minRep": 3.5,
+      "description": "Corda, lona e dois lutadores trocando jab. A turma para tudo para assistir.",
+      "tiers": [{ "id": "novo", "price": 6500, "capacity": 8 }]
+    },
+    "banheira_gelo": {
+      "name": "Banheira de gelo", "category": "conforto", "size": [1, 2], "needsAccess": true, "vibe": 14, "minEra": 5,
+      "description": "Crioterapia depois do treino pesado. Dói na hora e salva no dia seguinte.",
+      "tiers": [{ "id": "novo", "price": 1800, "capacity": 0 }]
+    },
+    "sauna": {
+      "name": "Sauna", "category": "conforto", "size": [2, 3], "needsAccess": true, "vibe": 18, "minEra": 5, "minRep": 4,
+      "description": "Cabine de madeira com vapor e pedras quentes. Relaxa até o Seu Armando.",
+      "tiers": [{ "id": "novo", "price": 5500, "capacity": 0 }]
+    },
+    "escada_filial": {
+      "name": "Escada", "category": "conforto", "size": [2, 2], "needsAccess": true, "hidden": true, "fixed": true,
+      "description": "Liga os andares da filial. Fica sempre no canto do fundo.",
+      "tiers": [{ "id": "usado", "price": 0, "capacity": 0 }]
+    },
     "recepcao": {
-      "name": "Recepção da filial", "category": "conforto", "size": [3, 1], "needsAccess": true, "hidden": true,
+      "name": "Recepção da filial", "category": "conforto", "size": [3, 1], "needsAccess": true, "hidden": true, "fixed": true,
       "description": "Balcão do gerente, com computador e campainha. Só existe nas filiais.",
       "tiers": [{ "id": "usado", "price": 0, "capacity": 0 }]
     }
@@ -491,6 +553,22 @@
       "vibeMultipliers": { "espelho": 2, "ring_light": 1.8, "planta": 1.5, "trofeus": 1.4 },
       "signature": { "shirt": "#f5b3c8", "accent": "#b9a3e3", "accessory": "phone" },
       "dirtSensitivity": 1.5
+    },
+    "atleta": {
+      "label": "Atleta",
+      "minEra": 5,
+      "visitsPerDay": 0.7,
+      "categoryShare": { "cardio": 0.4, "peso": 0.35, "funcional": 0.25 },
+      "blockShare": { "manha": 0.5, "tarde": 0.2, "noite": 0.3 },
+      "patience": "Média",
+      "queueMultiplier": 1,
+      "priceMultiplier": 0.8,
+      "spawnWeight": 0.2,
+      "essentials": ["pista_corrida", "plataforma", "banheira_gelo"],
+      "desired": ["piscina", "ringue", "sauna", "trofeus", "bebedouro"],
+      "vibeMultipliers": { "banheira_gelo": 1.8, "sauna": 1.5, "trofeus": 1.6 },
+      "signature": { "shirt": "#2f6f9f", "accent": "#f2cd5c", "accessory": "medal" },
+      "dirtSensitivity": 1.2
     }
   },
   "manias": {
@@ -535,7 +613,7 @@
   "enrollment": {
     "base": 0.5,
     "perStarAboveOne": 0.8,
-    "eraFactor": { "1": 1.0, "2": 1.4, "3": 1.9, "4": 2.2 },
+    "eraFactor": { "1": 1.0, "2": 1.4, "3": 1.9, "4": 2.2, "5": 2.6 },
     "maxMembersPerPeakCapacity": 2
   },
   "wear": {

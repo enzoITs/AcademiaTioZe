@@ -6,10 +6,11 @@ import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import {
   STYLES, STYLE_IDS, lotCost, districtName, districtOf, branchTarget, branchMonthly, branchUpgradeCost,
   branchLevelDef, branchSaleValue, networkMonthly, historicBonus, MAX_BRANCH_LEVEL, branchCapacity, openBlocker,
+  floorCost, MAX_FLOORS,
 } from '../../game/systems/network.js';
 import {
   closeModal, openModal, openNetworkSpot, confirmOpenBranch, upgradeBranchAction, changeBranchStyleAction,
-  swapManagerAction, requestSellBranch, viewBranch,
+  swapManagerAction, requestSellBranch, viewBranch, buildFloorAction,
 } from '../../game/engine/store.js';
 import Modal from '../dialogs/Modal.js';
 import Icon from '../ui/Icon.js';
@@ -192,15 +193,17 @@ export function BranchDialog({ branchId }) {
   const f = t.factors;
   const m = branchMonthly(state, b);
   const upCost = branchUpgradeCost(b);
+  const flCost = b.floors ? floorCost(b) : null;
   const back = () => openModal({ kind: 'city' });
   const style = STYLES[b.style];
-  const ratio = state.fee / CONFIG.economy.eraBaseFee['4'];
+  const eraBase = CONFIG.economy.eraBaseFee[String(state.era)] ?? CONFIG.economy.eraBaseFee['4'];
+  const ratio = state.fee / eraBase;
 
   return (
     <Modal title={b.name} onClose={back} className="modal-wide">
       <div className="exp-head">
         <h2 className="modal-title"><span className="style-dot" style={{ '--style': style.color }} /> {b.name}</h2>
-        <span className="small subtle">{style.label} · {branchLevelDef(b.level).label} · aberta no dia {b.openedDay + 1}</span>
+        <span className="small subtle">{style.label} · {b.floors ? `${b.floors.length} andar(es)` : branchLevelDef(b.level).label} · aberta no dia {b.openedDay + 1}</span>
       </div>
       <div className="exp-layout">
         <div>
@@ -213,10 +216,10 @@ export function BranchDialog({ branchId }) {
           </div>
           <h3 className="section-title">De onde vem a meta</h3>
           <ul className="factor-grid">
-            <FactorRow label="Capacidade" value={`${f.capacity}`} note={`estilo ${style.label}, ${branchLevelDef(b.level).label}`} />
+            <FactorRow label="Capacidade" value={`${f.capacity}`} note={b.floors ? `aparelhos que funcionam e têm corredor, em ${b.floors.length} andar(es)` : `estilo ${style.label}, ${branchLevelDef(b.level).label}`} />
             <FactorRow label="Gerente" value={`×${f.manager.toFixed(2).replace('.', ',')}`} note={b.manager ? `${b.manager.name}, ${b.manager.rating}★` : 'sem gerente'} />
             <FactorRow label="Reputação" value={`×${f.reputation.toFixed(2).replace('.', ',')}`} note={`${state.reputation.toFixed(1).replace('.', ',')}★ da Matriz`} />
-            <FactorRow label="Mensalidade" value={`×${f.price.toFixed(2).replace('.', ',')}`} note={`${formatMoney(state.fee)} é ${pct(ratio)} da base da Era 4`} />
+            <FactorRow label="Mensalidade" value={`×${f.price.toFixed(2).replace('.', ',')}`} note={`${formatMoney(state.fee)} é ${pct(ratio)} da base da Era ${state.era >= 5 ? state.era : 4}`} />
             <FactorRow label="Bairro" value={`×${f.district.toFixed(2).replace('.', ',')}`} note={f.match ? 'gosta deste estilo (+20%)' : `prefere ${STYLES[districtOf(b).likes].label}`} />
             <FactorRow label="Matriz Histórica" value={`×${f.historic.toFixed(2).replace('.', ',')}`} note="bônus de Comunidade" />
           </ul>
@@ -227,9 +230,15 @@ export function BranchDialog({ branchId }) {
             <p className="small"><strong>{b.manager.name}</strong> <StarsRow rating={b.manager.rating} /> · {formatMoney(b.manager.salary)}/mês<br /><span className="subtle">{b.manager.trait}</span></p>
           ) : <p className="small neg">Sem gerente: a filial rende pouco.</p>}
           <div className="inspector-actions">
-            <button type="button" className="btn btn-sm btn-primary" disabled={upCost == null || state.money < upCost} onClick={() => upgradeBranchAction(b.id)}>
-              <Icon name="upgrade" size={15} /> {upCost == null ? 'Nível máximo' : `Reformar (${branchLevelDef(b.level + 1).label}) ${formatMoney(upCost)}`}
-            </button>
+            {b.floors ? (
+              <button type="button" className="btn btn-sm btn-primary" disabled={flCost == null || state.money < flCost} onClick={() => buildFloorAction(b.id)} title="O terreno não cresce: a filial cresce para cima">
+                <Icon name="upgrade" size={15} /> {flCost == null ? `${MAX_FLOORS} andares (máximo)` : `Construir ${b.floors.length}º andar ${formatMoney(flCost)}`}
+              </button>
+            ) : (
+              <button type="button" className="btn btn-sm btn-primary" disabled={upCost == null || state.money < upCost} onClick={() => upgradeBranchAction(b.id)}>
+                <Icon name="upgrade" size={15} /> {upCost == null ? 'Nível máximo' : `Reformar (${branchLevelDef(b.level + 1).label}) ${formatMoney(upCost)}`}
+              </button>
+            )}
             <button type="button" className={`btn btn-sm ${panel === 'manager' ? 'active' : ''}`} onClick={() => setPanel(panel === 'manager' ? null : 'manager')}>
               Trocar gerente
             </button>
@@ -240,7 +249,9 @@ export function BranchDialog({ branchId }) {
               <Icon name="trash" size={15} /> Vender {formatMoney(branchSaleValue(b))}
             </button>
           </div>
-          {upCost != null ? (
+          {b.floors ? (
+            <p className="small subtle">Na Era 5 o terreno da filial não cresce: cada andar novo vem vazio, só com a escada, para você montar.</p>
+          ) : upCost != null ? (
             <p className="small subtle">Reforma: capacidade ×{String(branchLevelDef(b.level + 1).capacityMultiplier).replace('.', ',')} e operação ×{String(branchLevelDef(b.level + 1).costMultiplier).replace('.', ',')} (até o {branchLevelDef(MAX_BRANCH_LEVEL).label}).</p>
           ) : null}
           {panel === 'manager' ? (
@@ -269,7 +280,7 @@ export function BranchDialog({ branchId }) {
       <div className="modal-actions">
         <button type="button" className="btn" onClick={back}>Voltar ao mapa</button>
         <button type="button" className="btn btn-primary" onClick={() => viewBranch(b.id)} data-autofocus title="Ver a filial por dentro, como a Matriz">
-          <Icon name="eye" size={15} /> Ver a filial
+          <Icon name={b.floors ? 'edit' : 'eye'} size={15} /> {b.floors ? 'Entrar e montar' : 'Ver a filial'}
         </button>
       </div>
     </Modal>

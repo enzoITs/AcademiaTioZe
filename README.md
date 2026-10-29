@@ -1,4 +1,4 @@
-# Academia do Tio Zé — protótipo das Eras 1 a 4
+# Academia do Tio Zé — protótipo das Eras 1 a 5
 
 Tycoon casual de navegador: transforme a garagem herdada do Tio Zé em uma academia de sucesso.
 Implementa a Era 1 (Garagem) descrita no documento de design e as passagens para a Era 2 (Ponto de bairro), a Era 3 (Academia completa) e a Era 4 (Rede).
@@ -212,6 +212,37 @@ cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tip
   o desenho troca a grade por um instante com `withLayout`). Esc volta; ← e → passam de filial.
 - **Personagens:** o Tio Zé volta de surpresa na cerimônia; a Valéria manda uma cesta a cada filial aberta.
 - **Visual:** bandeirinhas na fachada da Matriz, letreiro "matriz da rede" e mapa com bandeirinhas nas filiais.
+
+## Era 5: Centro Esportivo (fora do documento)
+
+O documento para na Era 4; a Era 5 foi pedida depois. A Matriz se muda (mudança em cinco passos, como nas Eras 2
+e 3) para um complexo esportivo e as filiais continuam rendendo. Metas: 260 alunos, 4,4★, 22 tipos de aparelho,
+3 ampliações, 8 na equipe e **4 filiais** (métrica nova `branches`). Custa R$ 120.000; IPTU R$ 3.000/mês;
+mensalidade base R$ 150 (teto R$ 380); matrículas ×2,6; equipe até 18.
+
+- **Planta:** ginásio principal 24×18, Parque aquático 10×8 (R$ 60 mil), Ginásio de lutas 10×10 (R$ 90 mil) e
+  Pista coberta 4×18 (R$ 140 mil). Paredes verde-quadra, porta de vidro e letreiro "Centro Esportivo Tio Zé".
+- **Aparelhos novos** (`minEra: 5`): piscina semiolímpica 6×4 (alunos nadam de raia em raia), pista de corrida
+  coberta 1×6 (tiro de ida e volta), ringue de lutas 4×4 (dois lutadores frente a frente), banheira de gelo e sauna.
+- **Perfil Atleta:** treina de manhã, quer pista, plataforma olímpica e banheira de gelo; sente menos o preço (×0,8)
+  e anda com medalha no peito.
+- **Duda Raio:** ex-atleta olímpica, embaixadora do Centro: aparece na cerimônia, no mural e quando um andar fica pronto.
+- **Filiais editáveis** (`game/systems/branchEdit.js`): na Era 5, "Ver a filial" vira "Entrar e montar". Dentro
+  dela valem comprar, mover, girar, vender, melhorar, consertar, limpar e desfazer, como na Matriz; o dinheiro sai
+  do caixa da Matriz. O kit que o gerente montou vira o térreo (marcado como presente: vender não devolve o preço).
+  - **Andares em vez de terreno:** o chão fica do tamanho do nível que a filial tinha; a reforma vira "Construir
+    andar" (térreo + 2, R$ 30 mil × 1,6 por andar). Cada andar nasce vazio, só com a escada fixa no canto do fundo;
+    nos andares de cima a "porta" é a frente da escada. O seletor de andar fica na faixa da filial.
+  - **Capacidade pelos aparelhos:** soma da capacidade dos aparelhos que funcionam e têm corredor, em todos os
+    andares, com o peso do estilo (Família e Express lotam mais por aparelho; Premium e Luta, menos).
+  - **Manutenção igual à da Matriz:** os membros gastam os aparelhos, deixam sujeira e os cansados quebram (offline
+    só desgasta até o piso). Quebrado não conta na capacidade; sujeira e falta do que o público do estilo pede
+    entram no fator "Cuidado" da meta de membros. Um aviso chama para consertar.
+  - A cena da filial (`game/systems/branchScene.js`) aponta para os aparelhos salvos do andar; o store edita
+    "o lugar" (`site()`/`withSite()` em `game/engine/store.js`) dentro da grade dele (`withLayout`).
+- **Save e servidor:** `parseSave` valida cada andar (posição, escada, recepção só no térreo, presentes até o tamanho
+  do kit). O anti-trapaça soma os aparelhos e andares das filiais ao patrimônio (presente vale zero) e usa a
+  capacidade pelos aparelhos.
 
 ## Pedidos depois do documento
 

@@ -36,7 +36,7 @@ export class SceneDirector {
   sourceFor() {
     const home = this.store;
     const view = home.ui.view;
-    if (view?.kind === 'branch') return branchScene(home, view.branchId) ?? home;
+    if (view?.kind === 'branch') return branchScene(home, view.branchId, view.floor ?? 0) ?? home;
     return home;
   }
 

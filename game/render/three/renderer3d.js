@@ -32,6 +32,8 @@ const WALL_H = 0.85;
 const WALL_LOW = 0.24;
 const WALL_T = 0.16;
 const FLOOR_Y = 0.02;
+// Altura de um andar da filial (Era 5): no andar de cima a cidade desce isso por andar.
+const STORY_H = 1.25;
 
 // Câmera elevada em ângulo (isométrica), olhando da rua para dentro da academia.
 const AZIMUTH = THREE.MathUtils.degToRad(30);
@@ -382,16 +384,22 @@ export class Renderer3D extends SceneDirector {
   }
 
   cellAt(sx, sy) {
-    if (this.game.ui.mode === 'normal') {
-      const hit = this.pickItem(sx, sy);
-      if (hit) return hit.cell;
-    }
-    const p = this.groundAt(sx, sy);
-    return p ? { x: Math.floor(p.x), y: Math.floor(p.z) } : { x: -1, y: -1 };
+    return this.inView(() => {
+      if (this.game.ui.mode === 'normal') {
+        const hit = this.pickItem(sx, sy);
+        if (hit) return hit.cell;
+      }
+      const p = this.groundAt(sx, sy);
+      return p ? { x: Math.floor(p.x), y: Math.floor(p.z) } : { x: -1, y: -1 };
+    });
   }
 
   /** O que está sob o cursor, em ordem de prioridade de clique. */
   hitTest(sx, sy) {
+    return this.inView(() => this.hitTestHere(sx, sy));
+  }
+
+  hitTestHere(sx, sy) {
     const { state } = this.game;
     const g = this.groundAt(sx, sy);
     if (g) {
@@ -579,6 +587,11 @@ export class Renderer3D extends SceneDirector {
       return o;
     };
 
+    // Andar de cima da filial (Era 5): sem porta para a rua; a cidade fica lá embaixo.
+    const upper = !!state.customLayout?.upper;
+    const drop = upper ? state.customLayout.floor * STORY_H : 0;
+    this.city.group.position.y = -drop;
+
     // Cidade em volta: o bairro da era (ou o da filial visitada).
     this.city.build({
       cols: COLS,
@@ -593,18 +606,26 @@ export class Renderer3D extends SceneDirector {
 
     // Chão: pisos, rua, calçada e terrenos à venda (recebem sombra, sem contorno).
     const g = new Builder();
-    const streetZ = ROWS + 0.25;
     const sx0 = -40;
     const sx1 = COLS + 40;
-    g.box(sx1 - sx0, 0.02, 3, '#b9b4c4', { x: (sx0 + sx1) / 2, y: -0.02, z: streetZ + 1.5 });
+    if (upper) {
+      // o prédio visto de cima: paredes descendo até a rua, com uma faixa de janelas por andar
+      g.box(COLS, drop, ROWS, WALL, { x: COLS / 2, y: -drop / 2 - 0.02, z: ROWS / 2 });
+      for (let k = 0; k < state.customLayout.floor; k++) {
+        const y = -drop + k * STORY_H + STORY_H * 0.55;
+        for (let x = 0.6; x < COLS - 0.4; x += 1.1) g.box(0.6, 0.32, 0.02, '#bfe3f5', { x, y, z: ROWS + 0.01 });
+        for (let z = 0.6; z < ROWS - 0.4; z += 1.1) g.box(0.02, 0.32, 0.6, '#bfe3f5', { x: COLS + 0.01, y, z });
+      }
+    }
+    g.box(sx1 - sx0, 0.02, 3, '#b9b4c4', { x: (sx0 + sx1) / 2, y: -0.02 - drop, z: ROWS + 0.25 + 1.5 });
     // calçada da frente, interrompida onde as ruas laterais chegam
     let cx0 = sx0;
     for (const [a, b] of [...crossings.sort((p, q) => p[0] - q[0]), [sx1, sx1]]) {
-      if (a > cx0) g.box(a - cx0, 0.06, 0.5, '#e6e1d8', { x: (cx0 + a) / 2, y: -0.02, z: streetZ + 0.1 });
+      if (a > cx0) g.box(a - cx0, 0.06, 0.5, '#e6e1d8', { x: (cx0 + a) / 2, y: -0.02 - drop, z: ROWS + 0.35 });
       cx0 = Math.max(cx0, b);
     }
-    for (let x = -2; x < COLS + 3; x += 1.5) g.box(0.7, 0.006, 0.085, '#fffdf8', { x: x + 0.35, z: streetZ + 1.2 });
-    for (let y = DOOR.y + 1; y < ROWS; y++) g.rbox(0.75, 0.035, 0.83, '#efe6d6', { x: DOOR.x + 0.5, y: -0.01, z: y + 0.5 }, 0.08);
+    for (let x = -2; x < COLS + 3; x += 1.5) g.box(0.7, 0.006, 0.085, '#fffdf8', { x: x + 0.35, y: -drop, z: ROWS + 1.45 });
+    if (!upper) for (let y = DOOR.y + 1; y < ROWS; y++) g.rbox(0.75, 0.035, 0.83, '#efe6d6', { x: DOOR.x + 0.5, y: -0.01, z: y + 0.5 }, 0.08);
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         const z = zoneAtCell(x, y);
@@ -621,8 +642,10 @@ export class Renderer3D extends SceneDirector {
       }
     }
     // tapete da porta
-    g.rbox(0.75, 0.02, 0.6, '#c9a27a', { x: DOOR.x + 0.5, y: FLOOR_Y, z: DOOR.y + 0.55 }, 0.06);
-    for (let i = 0; i < 4; i++) g.box(0.02, 0.004, 0.45, '#dcc0a2', { x: DOOR.x + 0.25 + i * 0.15, y: FLOOR_Y + 0.02, z: DOOR.y + 0.55 });
+    if (!upper) {
+      g.rbox(0.75, 0.02, 0.6, '#c9a27a', { x: DOOR.x + 0.5, y: FLOOR_Y, z: DOOR.y + 0.55 }, 0.06);
+      for (let i = 0; i < 4; i++) g.box(0.02, 0.004, 0.45, '#dcc0a2', { x: DOOR.x + 0.25 + i * 0.15, y: FLOOR_Y + 0.02, z: DOOR.y + 0.55 });
+    }
     const ground = own(new THREE.Mesh(g.build(), MATS.flat));
     ground.receiveShadow = true;
     ground.raycast = () => {};
@@ -643,12 +666,14 @@ export class Renderer3D extends SceneDirector {
           if (look.mullion) wb.box(WALL_T + 0.03, WALL_H + 0.02, 0.06, look.mullion, { x, z: y });
         }
         if (!unlocked(x + 1, y)) wb.box(WALL_T, WALL_LOW, 1 + WALL_T, WALL, { x: x + 1, z: y + 0.5 });
-        if (!unlocked(x, y + 1) && !(x === DOOR.x && y === DOOR.y)) wb.box(1 + WALL_T, WALL_LOW, WALL_T, WALL, { x: x + 0.5, z: y + 1 });
+        if (!unlocked(x, y + 1) && (upper || !(x === DOOR.x && y === DOOR.y))) wb.box(1 + WALL_T, WALL_LOW, WALL_T, WALL, { x: x + 0.5, z: y + 1 });
       }
     }
     const dz = DOOR.y + 1;
-    for (const x of [DOOR.x, DOOR.x + 1]) wb.box(WALL_T, WALL_H, WALL_T, WALL, { x, z: dz });
-    if (look.door === 'glass') {
+    if (!upper) for (const x of [DOOR.x, DOOR.x + 1]) wb.box(WALL_T, WALL_H, WALL_T, WALL, { x, z: dz });
+    if (upper) {
+      // andar de cima: sem porta, a entrada é a escada
+    } else if (look.door === 'glass') {
       // prédio: porta de vidro de correr aberta, batente branco e faixa neon
       wb.box(1.04, 0.1, WALL_T + 0.02, '#fffdf8', { x: DOOR.x + 0.5, y: WALL_H - 0.12, z: dz });
       for (const s of [-1, 1]) wb.box(0.42, WALL_H - 0.14, 0.03, '#bfe3f5', { x: DOOR.x + 0.5 + s * 0.62, z: dz + 0.06 });
@@ -704,7 +729,7 @@ export class Renderer3D extends SceneDirector {
     // Cenário: arbustos, placa da academia, cercas dos terrenos à venda.
     const d = new Builder();
     // Arbustos no jardim da frente, ao lado do caminho da porta.
-    [[-0.7, 2.4], [1.6, 3.6], [-0.5, 4.3], [2.1, 4.4], [-1.2, 1.4], [3.4, 1.5]].forEach(([ox, oz]) => {
+    (upper ? [] : [[-0.7, 2.4], [1.6, 3.6], [-0.5, 4.3], [2.1, 4.4], [-1.2, 1.4], [3.4, 1.5]]).forEach(([ox, oz]) => {
       const x = DOOR.x + ox;
       const z = DOOR.y + oz;
       if (z >= ROWS + 0.2 || x < -1 || zoneAtCell(Math.floor(x), Math.floor(z))) return;
@@ -716,7 +741,7 @@ export class Renderer3D extends SceneDirector {
     const signLook = look.sign;
     const signHalf = signLook.w / T / 2 + 0.05;
     const signX2 = signX + signHalf - 0.8;
-    if (signZ < ROWS + 0.2) for (const s of [-1, 1]) d.box(0.06, 0.5, 0.06, '#a07f5c', { x: signX2 + s * (signHalf - 0.25), z: signZ });
+    if (!upper && signZ < ROWS + 0.2) for (const s of [-1, 1]) d.box(0.06, 0.5, 0.06, '#a07f5c', { x: signX2 + s * (signHalf - 0.25), z: signZ });
     for (const z of zones) {
       if (state.unlockedZones.includes(z.id)) continue;
       const x0 = z.x + 0.12;
@@ -740,11 +765,14 @@ export class Renderer3D extends SceneDirector {
       d.cyl(0.04, 0.04, 0.7, '#a07f5c', { x: z.x + z.w / 2, z: z.y + z.h / 2 }, 6);
       this.addZoneSign(state, z);
     }
-    const decor = own(solid(d.build(), { outline: MATS.outlineThin }));
-    decor.raycast = () => {};
-    this.terrainRoot.add(decor);
+    // No andar de cima da filial pode não sobrar nada aqui (sem arbustos, placa nem cercas).
+    if (d.parts.length) {
+      const decor = own(solid(d.build(), { outline: MATS.outlineThin }));
+      decor.raycast = () => {};
+      this.terrainRoot.add(decor);
+    }
 
-    if (signZ < ROWS + 0.2) {
+    if (!upper && signZ < ROWS + 0.2) {
       const sw = signLook.w;
       const sign = this.signBoard(sw, 24, (ctx) => {
         box(ctx, -sw / 2, -12, sw, 24, 6, signLook.fill);
@@ -1074,8 +1102,16 @@ export class Renderer3D extends SceneDirector {
           const slots = getEquipmentDef(item.type).visualSlots ?? 1;
           const slot = Number(sp.target.key.split(':')[1]) || 0;
           const lx = (slot - (slots - 1) / 2) * (spot.spread ?? 0);
-          const [ox, oz] = rotateLocal(lx, spot.z, item.rot);
-          const [hx, hz] = rotateLocal(0, spot.face, item.rot);
+          let lz = spot.z;
+          let ahead = spot.face;
+          if (spot.travel) {
+            // vai e volta ao longo do aparelho (raia da piscina, pista), cada um num ponto
+            const k = t * (spot.travelRate ?? 0.6) + slot * Math.PI * 0.7;
+            lz += Math.sin(k) * spot.travel;
+            ahead = Math.cos(k) >= 0 ? 1 : -1;
+          }
+          const [ox, oz] = rotateLocal(lx, lz, item.rot);
+          const [hx, hz] = spot.duel ? rotateLocal(slot % 2 ? -1 : 1, 0, item.rot) : rotateLocal(0, ahead, item.rot);
           x = cx + ox;
           z = cz + oz;
           elev = spot.elev ?? 0;

@@ -254,6 +254,7 @@ export function EraCeremony({ era }) {
     { who: 'tioze', title: 'Postal do Tio Zé', text: text.tioze },
     { who: 'whey', title: 'O Whey inspeciona', text: text.whey },
     { who: 'armando', title: 'Seu Armando passou na calçada', text: text.armando },
+    ...(text.duda ? [{ who: 'duda', title: 'A embaixadora chegou', text: text.duda }] : []),
   ];
   const s = steps[step];
   const last = step === steps.length - 1;

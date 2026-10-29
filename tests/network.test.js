@@ -36,7 +36,7 @@ function era3() {
 }
 
 test('Era 4 existe e tem metas próprias', () => {
-  assert.equal(MAX_ERA, 4);
+  assert.ok(MAX_ERA >= 4);
   const s = era3();
   assert.equal(nextEra(s), 4);
   const keys = eraGoals(s).map((g) => g.key);
@@ -61,7 +61,7 @@ test('passagem para a Rede: sem mudança de lugar, rede criada e cerimônia', ()
   assert.equal(s.network.lots.length, CONFIG.network.lotsForSale);
   assert.equal(s.network.candidates.length, CONFIG.network.manager.candidates);
   assert.deepEqual(s.pendingModals.at(-1), { kind: 'era', era: 4 });
-  assert.equal(nextEra(s), null, 'Era 4 é a última');
+  assert.equal(nextEra(s), 5, 'depois da Rede vem o Centro Esportivo');
 });
 
 test('filial: abre num lote, nasce outro lote e rende por dia (também offline)', () => {

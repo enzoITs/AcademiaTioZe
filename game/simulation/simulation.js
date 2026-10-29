@@ -99,7 +99,7 @@ function runDayEnd(state, rt, offline) {
   if (joined.length) events.push({ type: 'joined', count: joined.length });
 
   applyDailyEconomy(state);
-  const network = runNetworkDay(state);
+  const network = runNetworkDay(state, offline);
   if (network) events.push({ type: 'network', ...network });
   const vovo = checkVovo(state);
   if (vovo) {

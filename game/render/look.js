@@ -14,6 +14,10 @@ export const ZONE_FLOOR = {
   predio: ['#eef0f4', '#e3e7ee'],
   ala_aulas: ['#ecd9bd', '#e3cdac'],
   terraco_predio: ['#dcefe6', '#cfe6da'],
+  complexo: ['#f0dfc4', '#e8d3b2'],
+  parque_aquatico: ['#d8eef3', '#c8e5ec'],
+  ginasio_lutas: ['#e9d9e8', '#dfcbdd'],
+  pista_coberta: ['#f2c7b8', '#ebb8a6'],
 };
 
 // Cara de cada era: parede, letreiro e porta (portão de enrolar na garagem,
@@ -30,6 +34,11 @@ export const ERA_LOOK = {
   4: {
     wall: '#cfe3ef', mullion: '#fffdf8', door: 'glass', bunting: true,
     sign: { fill: '#3d3550', ink: '#f2cd5c', sub: '#7ef0e0', lines: ['ACADEMIA DO TIO ZÉ', 'matriz da rede · desde 1987'], w: 124, neon: true },
+  },
+  // Centro Esportivo: ginásio de paredes verde-quadra, porta de vidro e letreiro de clube
+  5: {
+    wall: '#cfe6d2', mullion: '#fffdf8', door: 'glass', bunting: true,
+    sign: { fill: '#2f6f9f', ink: '#fffdf8', sub: '#f2cd5c', lines: ['CENTRO ESPORTIVO TIO ZÉ', 'matriz da rede · desde 1987'], w: 140, neon: true },
   },
 };
 export const eraLook = (era) => ERA_LOOK[era] ?? ERA_LOOK[1];

@@ -19,7 +19,8 @@ export const EQUIPMENT_SHORT = {
   plataforma: 'plataforma', saco_pancada: 'saco de pancada', barra_fixa: 'barra fixa',
   corda_naval: 'corda naval', extensora: 'extensora', smith: 'smith', crossover: 'crossover',
   ring_light: 'ring light', geladeira: 'geladeira de isotônicos', caixa_som: 'caixa de som', trofeus: 'estante de troféus',
-  recepcao: 'recepção',
+  piscina: 'piscina', pista_corrida: 'pista de corrida', ringue: 'ringue', banheira_gelo: 'banheira de gelo', sauna: 'sauna',
+  recepcao: 'recepção', escada_filial: 'escada',
 };
 
 // Conversa de quem treina em cada estilo de filial (balões na visita à filial).
@@ -50,6 +51,12 @@ export const ERA_MESSAGES = {
     ['tioze', 'VOLTEI, sobrinho(a)! Larguei a vara de pescar no meio do robalo para ver a inauguração da rede. A garagem virou Matriz Histórica: o caderno está lá, aberto na primeira página.'],
     ['armando', 'Rede?! Vai ter Tio Zé em cada esquina agora? ...Abre uma perto da casa da minha neta, então.'],
     ['valeria', 'Uma rede de verdade, vizinho(a)! Agora é MegaFit contra Tio Zé no mapa da cidade. Que vença a melhor recepção.'],
+  ],
+  5: [
+    ['tioze', 'Um CENTRO ESPORTIVO, sobrinho(a)! Piscina, ringue, pista... Eu só tinha um supino e um rádio de pilha. A Duda Raio topou ser nossa embaixadora: escuta o que ela fala, que ela sabe.'],
+    ['duda', 'Oi! Sou a Duda, três vezes campeã brasileira nos 400 m. Atleta de verdade vai aparecer de manhã cedo: quer pista, plataforma e banheira de gelo. E as filiais? Agora dá para entrar e montar cada uma, até construir andar.'],
+    ['valeria', 'Um complexo esportivo?! Vizinho(a), a MegaFit vai precisar de uma reunião de emergência. Parabéns. De novo. Que raiva.'],
+    ['armando', 'Arquibancada?! Vai ter torcida gritando aqui do lado? ...Guarda um lugar na frente para mim e para a minha neta.'],
   ],
 };
 
@@ -102,6 +109,14 @@ export const ERA_CEREMONY = {
     whey: 'Miau. (O Whey subiu no mapa da cidade, deitou bem em cima da Matriz e se recusa a sair.)',
     valeria: '“Uma rede, vizinho(a)?! Mandei a primeira cesta de presente. Agora é MegaFit contra Tio Zé no mapa inteiro. Que vença a melhor recepção!”',
   },
+  5: {
+    truck: 'Três caminhões desta vez! Cada aparelho ganhou lugar no ginásio principal do complexo, e ainda sobra quadra para crescer: parque aquático, ginásio de lutas e pista coberta estão à venda.',
+    ribbon: 'Fita cortada no meio da quadra, com a arquibancada lotada e a bateria da escola de samba do bairro.',
+    tioze: 'Sobrinho(a), da garagem ao Centro Esportivo! Guardei a foto da primeira esteira no bolso da camisa para hoje. Agora as filiais também são suas para montar: entra em cada uma, arruma do seu jeito e, quando faltar espaço, constrói para cima.',
+    whey: 'Miau! (O Whey correu a pista inteira, parou na beira da piscina, olhou para a água com desconfiança e voltou para a arquibancada.)',
+    armando: '“Arquibancada, piscina, pista... Isso aqui virou Olimpíada? ...Minha neta já pediu matrícula na natação. Parabéns, vizinho(a).”',
+    duda: 'Duda Raio chegou de agasalho da seleção: “Prazer, sou a embaixadora do Centro! Atleta de verdade treina cedo e cobra estrutura: pista, plataforma olímpica e banheira de gelo. Se tiver piscina e ringue, aí eu trago a equipe inteira.”',
+  },
 };
 
 export const CATEGORY_SHORT = { cardio: 'cardio', peso: 'peso', funcional: 'funcional' };
@@ -114,6 +129,7 @@ export const COMPLAINTS = {
     corredor: (it) => `Cadê ${it}?! Bora, bora, bora!`,
     idoso: (it) => `Cadê ${it}, meu bem? O médico mandou.`,
     influencer: (it) => `Sem ${it} não dá foto, amor.`,
+    atleta: (it) => `Sem ${it} eu perco a temporada, treinador(a)!`,
   },
   missingDesired: {
     iniciante: (it) => `Seria tão bom ter ${it}...`,
@@ -121,6 +137,7 @@ export const COMPLAINTS = {
     corredor: (it) => `Faltou ${it} pra ficar perfeito.`,
     idoso: (it) => `Com ${it} minhas costas iam agradecer.`,
     influencer: (it) => `Com ${it} esse fundo ia bombar nos stories.`,
+    atleta: (it) => `Com ${it} eu baixava meu tempo, certeza.`,
   },
   queue: {
     iniciante: (cat) => `Tem gente demais no ${cat}... vou esperar.`,
@@ -128,6 +145,7 @@ export const COMPLAINTS = {
     corredor: (cat) => `Fila no ${cat}, tudo bem, aqueço aqui.`,
     idoso: (cat) => `Fila no ${cat}? Sem pressa, aproveito e converso.`,
     influencer: (cat) => `Fila no ${cat}?! Perdi a luz boa da tarde.`,
+    atleta: (cat) => `Fila no ${cat}? Meu treino tem cronômetro, gente!`,
   },
   broken: (it) => `O ${it} quebrou! Alguém chama o Tio Zé?`,
   dirty: 'Eca, pisei numa poça de suor.',

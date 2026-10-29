@@ -385,6 +385,53 @@ Object.assign(DRAW, {
     box(ctx, -3, -7, 6, 10, 1.5, INK, null);
     if (Math.floor(t * 1.6) % 2 === 0) circle(ctx, 2, -5, 1.4, P.pad, null);
   },
+  piscina(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 6, '#ece6da');
+    box(ctx, -w / 2 + 12, -h / 2 + 12, w - 24, h - 24, 3, '#4fa6d6');
+    for (let k = 1; k < 4; k++) {
+      const x = -w / 2 + 12 + ((w - 24) * k) / 4;
+      line(ctx, x, -h / 2 + 14, x, h / 2 - 14, '#fffdf8', 2);
+    }
+    const shift = o.active ? Math.sin(t * 1.5) * 4 : 0;
+    for (let k = 0; k < 4; k++) ellipse(ctx, -w / 2 + 30 + k * ((w - 24) / 4), shift + (k % 2 ? 8 : -8), 7, 2.5, '#d8f1fb');
+  },
+  pista_corrida(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 4, '#d9644f');
+    line(ctx, -w / 2 + 7, -h / 2 + 6, -w / 2 + 7, h / 2 - 6, '#fffdf8', 1.5);
+    line(ctx, w / 2 - 7, -h / 2 + 6, w / 2 - 7, h / 2 - 6, '#fffdf8', 1.5);
+    line(ctx, -w / 2 + 7, h / 2 - 16, w / 2 - 7, h / 2 - 16, '#fffdf8', 2.5);
+    box(ctx, -w / 2 + 6, -12, w - 12, 5, 1, P.pad, INK, 1);
+    if (o.active) circle(ctx, 0, (Math.sin(t * 2) * h) / 3, 3, P.yellow, INK, 1);
+  },
+  ringue(ctx, w, h) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, '#3d6ea8');
+    box(ctx, -w / 2 + 12, -h / 2 + 12, w - 24, h - 24, 3, '#f1ece2');
+    for (const [x, y, c] of [[-1, -1, P.pad], [1, 1, P.blueDark], [1, -1, P.white], [-1, 1, P.white]]) {
+      circle(ctx, (x * (w - 18)) / 2, (y * (h - 18)) / 2, 5, c, INK, 1.5);
+    }
+    roundRect(ctx, -w / 2 + 12, -h / 2 + 12, w - 24, h - 24, 3);
+    ctx.strokeStyle = P.pad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  },
+  banheira_gelo(ctx, w, h) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 10, P.white);
+    box(ctx, -w / 2 + 9, -h / 2 + 9, w - 18, h - 18, 7, '#bfe6f5', null);
+    for (let k = 0; k < 4; k++) box(ctx, -6 + (k % 2) * 6, -h / 2 + 16 + k * 12, 5, 5, 1, '#e8f7ff', INK, 1);
+  },
+  sauna(ctx, w, h, t) {
+    box(ctx, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 4, '#c9a27a');
+    for (let y = -h / 2 + 12; y < h / 2 - 6; y += 9) line(ctx, -w / 2 + 6, y, w / 2 - 6, y, '#b88a55', 1.5);
+    box(ctx, -w / 2 + 8, h / 2 - 10, 18, 5, 1, '#cfe6ee', INK, 1);
+    const k = (t * 0.45) % 1;
+    circle(ctx, w / 4, -h / 4 - k * 8, 4 + k * 3, 'rgba(255,253,248,0.8)', null);
+  },
+  escada_filial(ctx, w, h) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 3, '#e6dfd3');
+    for (let k = 0; k < 6; k++) line(ctx, -w / 2 + 8, -h / 2 + 8 + k * ((h - 16) / 5), w / 2 - 8, -h / 2 + 8 + k * ((h - 16) / 5), '#b5a99a', 2);
+    line(ctx, -w / 2 + 6, -h / 2 + 6, -w / 2 + 6, h / 2 - 6, P.metalDark, 3);
+    line(ctx, w / 2 - 6, -h / 2 + 6, w / 2 - 6, h / 2 - 6, P.metalDark, 3);
+  },
   recepcao(ctx, w, h) {
     box(ctx, -w / 2 + 4, -h / 2 + 8, w - 8, h - 14, 5, '#c9a27a');
     box(ctx, -w / 2 + 4, -h / 2 + 6, w - 8, 9, 4, P.white);

@@ -1,43 +1,24 @@
-// Visita a uma filial (Era 4). A filial continua semiautomática (rede em
-// network.js); esta cena existe só para VER: monta um estado no mesmo formato
-// do da Matriz, com a planta da filial, os aparelhos do estilo, a recepção com
-// o gerente e os membros treinando. Assim o desenho reaproveita tudo
-// (aparelhos, bonecos, filas, balões) sem tocar na partida.
-import { CONFIG, getEquipmentDef, demandCategoryOf } from '../config.js';
-import { syncLayout, validatePlacement } from '../grid/grid.js';
+// Visita a uma filial. Na Era 4 a cena existe só para VER: monta um estado no
+// mesmo formato do da Matriz, com a planta da filial, os aparelhos do estilo, a
+// recepção com o gerente e os membros treinando. Na Era 5 a filial é editável:
+// a cena aponta para os aparelhos salvos do andar visitado (sem cópia) e usa a
+// interface do jogo, então comprar, mover e consertar funcionam como na Matriz.
+import { CONFIG } from '../config.js';
+import { syncLayout, validatePlacement, withLayout } from '../grid/grid.js';
 import { evaluateAcademy } from '../simulation/academy.js';
 import { computeBlockStats } from '../simulation/demand.js';
 import { createStudent, createLook } from '../simulation/students.js';
 import { smartLayout } from './eras.js';
-import { STYLES, branchLevelDef, districtOf, districtName, hasNetwork } from './network.js';
+import {
+  STYLES, districtOf, districtName, hasNetwork, branchBuilding, branchKit, kitTier, floorState,
+} from './network.js';
 import { createRng, nextRandom, pick, weightedPick } from '../utils/random.js';
 import { STYLE_CHATTER } from '../content/lines.js';
 
 const N = CONFIG.network;
 const scenes = new Map(); // branchId → cena montada
 
-/** Prédio da filial: cresce com a reforma (nível 1 a 3). A porta fica na frente, à esquerda. */
-export function branchBuilding(branch) {
-  const [w, h] = branchLevelDef(branch.level).building ?? [10, 8];
-  return { w, h, door: { x: 2, y: h - 1 } };
-}
-
-/** Aparelhos do estilo. A reforma acrescenta mais unidades dos aparelhos de treino. */
-export function branchKit(branch) {
-  const kit = STYLES[branch.style].kit;
-  const core = kit.filter((t) => demandCategoryOf(t));
-  if (branch.level >= 3) return [...kit, ...core];
-  if (branch.level === 2) return [...kit, ...core.slice(0, Math.ceil(core.length / 2))];
-  return [...kit];
-}
-
-/** Melhor nível de qualidade do aparelho que o estilo pede (Premium usa profissional). */
-function tierFor(type, wanted) {
-  const tiers = getEquipmentDef(type).tiers.map((t) => t.id);
-  if (wanted && tiers.includes(wanted)) return wanted;
-  if (wanted && tiers.includes('novo')) return 'novo';
-  return tiers[0];
-}
+export { branchBuilding, branchKit };
 
 function lookFor(branch, style) {
   const L = style.look ?? {};
@@ -119,7 +100,7 @@ function createScene(home, branch) {
   };
   const fixed = validatePlacement(state, desk).ok ? [desk] : [];
   const kit = branchKit(branch).map((type) => ({
-    id: state.nextItemId++, type, tier: tierFor(type, style.tier), x: 0, y: 0, rot: 0,
+    id: state.nextItemId++, type, tier: kitTier(type, style.tier), x: 0, y: 0, rot: 0,
     condition: 88 + Math.round(nextRandom(state.rng) * 10), purchasedDay: 0, pricePaid: 0,
   }));
   const { placed, leftovers } = smartLayout(state, kit, fixed);
@@ -149,9 +130,9 @@ function createScene(home, branch) {
 }
 
 /** Membros na tela = membros da filial (com teto), com o perfil que o estilo atrai. */
-function syncMembers(scene, branch) {
+function syncMembers(scene, branch, members = branch.members) {
   const { state } = scene;
-  const want = Math.max(0, Math.min(N.maxViewMembers ?? 240, Math.round(branch.members)));
+  const want = Math.max(0, Math.min(N.maxViewMembers ?? 240, Math.round(members)));
   const entries = Object.entries(STYLES[branch.style].profiles ?? { iniciante: 1 });
   const chatter = STYLE_CHATTER[branch.style] ?? [];
   const rating = branch.manager?.rating ?? 2;
@@ -170,15 +151,121 @@ function syncMembers(scene, branch) {
   return changed;
 }
 
+// ---------------------------------------------------------------- Era 5: andar editável
+function editableKey(home, branch, floor) {
+  return `${home.state.seed}|${branch.style}|${branch.level}|${branch.manager?.id ?? 0}|${branch.district}|f${floor}`;
+}
+
+/** Assinatura do que muda a avaliação do andar: posição, giro, nível e se o aparelho funciona. */
+function itemsSignature(items) {
+  return items.map((i) => `${i.id}:${i.x},${i.y},${i.rot},${i.tier},${i.level ?? 1},${i.condition <= CONFIG.wear.brokenCondition ? 'q' : ''}`).join('|');
+}
+
+function createEditableScene(home, branch, floor) {
+  const style = STYLES[branch.style];
+  const seed = ((home.state.seed ?? 1) * 7919 + branch.id * 104729 + floor * 31) >>> 0;
+  const state = {
+    ...floorState(home.state, branch, floor),
+    editable: true,
+    seed,
+    rng: createRng(seed),
+    look: lookFor(branch, style),
+    city: { theme: districtOf(branch).theme ?? 'residencial', seed: branch.id * 131 + branch.district * 17 + 5 },
+    nextStudentId: 1,
+    staff: [],
+    nextDirtId: branch.nextDirtId ?? 1,
+    closedDay: null,
+    lastPeakOccupancy: 0,
+    managerSpot: null,
+    network: null,
+    pendingModals: [],
+    messages: [],
+    milestones: {},
+    undo: [],
+  };
+  const mgr = branch.manager;
+  if (mgr && floor === 0) {
+    const mrng = createRng(((mgr.id ?? 1) * 2654435761 + branch.id) >>> 0);
+    state.staff = [{
+      id: 1, role: 'gerente', name: mgr.name, rating: mgr.rating, look: createLook(mrng, 'adult'),
+      shifts: CONFIG.time.blocks.map(() => true), color: style.color,
+    }];
+  }
+  return {
+    kind: 'branch',
+    key: editableKey(home, branch, floor),
+    branchId: branch.id,
+    floor,
+    state,
+    rt: { academy: null, blockStats: null },
+    // A interface é a do jogo: seleção, prévia e modo edição valem dentro da filial.
+    ui: home.ui,
+    statsKey: null,
+    itemsKey: null,
+    leftovers: 0,
+  };
+}
+
+/** Recalcula a avaliação do andar (dentro da grade dele) quando os aparelhos mudam. */
+export function refreshEditableScene(home, scene, force = false) {
+  const branch = home.state.network?.branches.find((b) => b.id === scene.branchId);
+  const f = branch?.floors?.[scene.floor];
+  if (!f) return;
+  const { state } = scene;
+  state.items = f.items;
+  state.dirt = f.dirt;
+  state.time = home.state.time;
+  state.reputation = home.state.reputation;
+  state.fee = home.state.fee;
+  state.era = home.state.era;
+  const sig = itemsSignature(f.items);
+  if (force || sig !== scene.itemsKey || !scene.rt.academy) {
+    scene.itemsKey = sig;
+    scene.statsKey = null;
+    withLayout(state, home.state, () => {
+      scene.rt.academy = evaluateAcademy(state);
+      const desk = state.items.find((i) => i.type === 'recepcao');
+      const cells = desk ? scene.rt.academy.access.usageCells.get(desk.id) ?? [] : [];
+      state.managerSpot = cells[Math.floor(cells.length / 2)] ?? null;
+    });
+  }
+}
+
+function editableScene(home, branch, floor) {
+  const id = `${branch.id}:${floor}`;
+  let scene = scenes.get(id);
+  if (!scene || scene.key !== editableKey(home, branch, floor)) {
+    scene = createEditableScene(home, branch, floor);
+    scenes.set(id, scene);
+  }
+  scene.ui = home.ui;
+  refreshEditableScene(home, scene);
+  // Membros do andar: a parte da filial proporcional à capacidade dele.
+  const caps = branch.floorCaps ?? [];
+  const total = caps.reduce((a, b) => a + b, 0);
+  const share = total > 0 ? (caps[floor] ?? 0) / total : floor === 0 ? 1 : 0;
+  const changed = syncMembers(scene, branch, branch.members * share);
+  const t = home.state.time;
+  const key = `${t.day}|${t.block}|${scene.state.students.length}`;
+  if (changed || key !== scene.statsKey) {
+    scene.statsKey = key;
+    withLayout(scene.state, home.state, () => {
+      scene.rt.blockStats = computeBlockStats(scene.state, scene.rt.academy, t.block, t.day);
+    });
+  }
+  return scene;
+}
+
 /**
  * Cena da filial para o desenho (ou null se ela não existe mais). Remonta a
  * planta quando o estilo, o nível ou o gerente mudam; a cada bloco do dia
- * recalcula quem está treinando.
+ * recalcula quem está treinando. Na Era 5, `floor` escolhe o andar.
  */
-export function branchScene(home, branchId) {
+export function branchScene(home, branchId, floor = 0) {
   if (!home?.state || !hasNetwork(home.state)) return null;
   const branch = home.state.network.branches.find((b) => b.id === branchId);
   if (!branch) return null;
+  if (branch.floors) return editableScene(home, branch, Math.min(Math.max(0, floor), branch.floors.length - 1));
   let scene = scenes.get(branch.id);
   if (!scene || scene.key !== sceneKey(home, branch)) {
     try {

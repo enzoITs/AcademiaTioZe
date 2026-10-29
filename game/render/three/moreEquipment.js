@@ -18,7 +18,7 @@ const SCREEN = '#3a4a5c';
 /** Ritmo (rad/s) de cada movimento, compartilhado entre aparelho e aluno. */
 export const RATE = {
   ellip: 4, climb: 3, row: 2.2, extend: 2.6, squat: 2.2, pull: 1.8,
-  punch: 6, ropes: 9, cable: 2.4, press: 1.8, swing: 3,
+  punch: 6, ropes: 9, cable: 2.4, press: 1.8, swing: 3, swim: 3.2, spar: 5,
 };
 
 /** Ida e volta suave entre 0 e 1. */
@@ -52,6 +52,10 @@ export const USE_SPOT = {
   extensora: { pose: 'use-extend', z: 0.0, elev: 0.28, face: 1 },
   smith: { pose: 'use-squat', z: -0.38, elev: 0.05, face: 1 },
   crossover: { pose: 'use-cable', z: 0.05, face: 1 },
+  // Era 5. travel: vai e volta ao longo do aparelho (raias, pista); duel: dois de frente um para o outro.
+  piscina: { pose: 'use-swim', z: 0, elev: 0.06, face: 1, spread: 1.4, travel: 1.25, travelRate: 0.45 },
+  pista_corrida: { pose: 'use-run', z: 0, elev: 0.06, face: 1, travel: 2.3, travelRate: 0.7 },
+  ringue: { pose: 'use-spar', z: 0, elev: 0.33, face: 1, spread: 1.1, duel: true },
 };
 
 function kettle(b, x, y, z, r, color) {
@@ -494,6 +498,162 @@ export const MORE_EQUIP = {
         n.position.set(base.x + Math.sin(k * 6 + i) * 0.08, base.y + k * 0.6, base.z);
         n.scale.setScalar(o.on ? Math.max(0.01, Math.sin(k * PI)) : 0.01);
       });
+    },
+  },
+
+  // ------------------------------------------------------------ Era 5: Centro Esportivo
+  piscina: {
+    build() {
+      const b = new Builder();
+      const DECK = '#ece6da';
+      // borda de azulejo em volta da água
+      b.rbox(6, 0.12, 0.3, DECK, { y: 0.06, z: -1.85 }, 0.03);
+      b.rbox(6, 0.12, 0.3, DECK, { y: 0.06, z: 1.85 }, 0.03);
+      b.rbox(0.3, 0.12, 3.4, DECK, { x: -2.85, y: 0.06 }, 0.03);
+      b.rbox(0.3, 0.12, 3.4, DECK, { x: 2.85, y: 0.06 }, 0.03);
+      b.box(5.4, 0.06, 3.4, '#4fa6d6', { y: 0.05 });
+      b.box(5.4, 0.012, 3.4, '#7fcbec', { y: 0.085 });
+      // raias (corda vermelha e branca) e marcas no fundo
+      for (const x of [-1.4, 0, 1.4]) {
+        for (let k = 0; k < 14; k++) b.box(0.05, 0.05, 0.22, k % 2 ? '#fffdf8' : '#e8646a', { x, y: 0.1, z: -1.55 + k * 0.24 });
+      }
+      for (const x of [-2.1, -0.7, 0.7, 2.1]) {
+        b.box(0.06, 0.004, 2.6, '#2f6f9f', { x, y: 0.083 });
+        // bloco de saída no fundo de cada raia
+        b.rbox(0.36, 0.22, 0.26, '#fffdf8', { x, y: 0.2, z: -1.82 }, 0.03);
+        b.box(0.3, 0.03, 0.1, P.blueDark, { x, y: 0.31, z: -1.8 });
+      }
+      // escadinha na frente
+      for (const s of [-1, 1]) b.torus(0.12, 0.018, P.metal, { x: 2.35 + s * 0.14, y: 0.18, z: 1.62, ry: PI / 2 }, PI);
+      const ripple = new Builder();
+      for (let k = 0; k < 6; k++) {
+        ripple.sphere(0.12, '#d8f1fb', { x: -2.2 + k * 0.9, z: ((k * 37) % 5) * 0.6 - 1.2, sy: 0.08, sx: 1.8 }, 8, 4);
+      }
+      return { base: b, parts: [{ name: 'ripple', b: ripple, pos: [0, 0.09, 0] }] };
+    },
+    animate(p, t, o) {
+      p.ripple.position.x = Math.sin(t * 0.7) * 0.18;
+      p.ripple.position.z = Math.cos(t * 0.5) * 0.12;
+      p.ripple.scale.setScalar(o.active ? 1 + Math.sin(t * 2.2) * 0.12 : 0.9);
+    },
+  },
+
+  pista_corrida: {
+    build() {
+      const b = new Builder();
+      b.rbox(0.98, 0.06, 5.96, '#d9644f', { y: 0.03 }, 0.02);
+      for (const s of [-1, 1]) b.box(0.035, 0.008, 5.9, '#fffdf8', { x: s * 0.42, y: 0.064 });
+      b.box(0.86, 0.008, 0.06, '#fffdf8', { y: 0.064, z: 2.55 });
+      for (let k = 0; k < 6; k++) b.box(0.12, 0.008, 0.12, k % 2 ? '#fffdf8' : INK, { x: -0.3 + k * 0.12, y: 0.065, z: -2.6 });
+      // barreira no meio do caminho
+      for (const s of [-1, 1]) b.box(0.03, 0.34, 0.03, P.metal, { x: s * 0.38, y: 0.2, z: -0.4 });
+      b.box(0.8, 0.07, 0.03, '#fffdf8', { y: 0.36, z: -0.4 });
+      b.box(0.8, 0.03, 0.032, P.pad, { y: 0.36, z: -0.4 });
+      // cronômetro no fim da pista
+      b.cyl(0.025, 0.025, 1.1, P.metalDark, { x: 0.46, y: 0.55, z: -2.92 }, 6);
+      b.rbox(0.36, 0.2, 0.06, INK, { x: 0.46, y: 1.15, z: -2.92 }, 0.02);
+      const clock = new Builder();
+      clock.box(0.28, 0.1, 0.01, '#f2cd5c', {});
+      return { base: b, parts: [{ name: 'clock', b: clock, pos: [0.46, 1.15, -2.885] }] };
+    },
+    animate(p, t, o) {
+      p.clock.scale.x = o.active ? 0.4 + ((t * 0.9) % 1) * 0.6 : 1;
+    },
+  },
+
+  ringue: {
+    build() {
+      const b = new Builder();
+      b.rbox(3.8, 0.3, 3.8, '#3d6ea8', { y: 0.15 }, 0.05);
+      b.rbox(3.6, 0.04, 3.6, '#f1ece2', { y: 0.31 }, 0.02);
+      b.box(1.2, 0.006, 1.2, '#e2d8c8', { y: 0.333 });
+      const corners = [[-1, -1, P.pad], [1, 1, P.blueDark], [1, -1, '#fffdf8'], [-1, 1, '#fffdf8']];
+      for (const [sx, sz, c] of corners) {
+        b.cyl(0.06, 0.06, 0.95, P.metalDark, { x: sx * 1.75, y: 0.78, z: sz * 1.75 }, 8);
+        b.rbox(0.16, 0.5, 0.16, c, { x: sx * 1.7, y: 0.85, z: sz * 1.7 }, 0.05);
+      }
+      // degraus na frente
+      b.rbox(0.7, 0.1, 0.3, P.metalDark, { x: 1.2, y: 0.05, z: 2.05 }, 0.02);
+      b.rbox(0.7, 0.1, 0.3, P.metalDark, { x: 1.2, y: 0.16, z: 1.95 }, 0.02);
+      const ropes = new Builder();
+      for (const [y, c] of [[0.24, P.pad], [0.44, '#fffdf8'], [0.64, P.blueDark]]) {
+        for (const s of [-1, 1]) {
+          ropes.box(3.5, 0.035, 0.035, c, { y, z: s * 1.75 });
+          ropes.box(0.035, 0.035, 3.5, c, { y, x: s * 1.75 });
+        }
+      }
+      return { base: b, parts: [{ name: 'ropes', b: ropes, pos: [0, 0.33, 0] }] };
+    },
+    animate(p, t, o) {
+      // as cordas tremem quando tem luta
+      p.ropes.scale.y = o.active ? 1 + Math.sin(t * 14) * 0.03 : 1;
+    },
+  },
+
+  banheira_gelo: {
+    build() {
+      const b = new Builder();
+      b.rbox(0.9, 0.5, 1.8, '#fffdf8', { y: 0.25 }, 0.12);
+      b.rbox(0.74, 0.02, 1.62, '#bfe6f5', { y: 0.49 }, 0.08);
+      b.cyl(0.03, 0.03, 0.4, P.metal, { y: 0.66, z: -0.86 }, 6);
+      b.box(0.04, 0.04, 0.22, P.metal, { y: 0.85, z: -0.78 });
+      for (const s of [-1, 1]) b.rbox(0.12, 0.08, 0.2, P.metalDark, { x: s * 0.36, y: 0.04, z: s * 0.7 }, 0.02);
+      const ice = new Builder();
+      for (let k = 0; k < 7; k++) {
+        ice.rbox(0.13, 0.1, 0.13, k % 2 ? '#e8f7ff' : '#cdeefb', { x: ((k * 29) % 5) * 0.12 - 0.24, z: k * 0.2 - 0.6, ry: k }, 0.02);
+      }
+      return { base: b, parts: [{ name: 'ice', b: ice, pos: [0, 0.52, 0] }] };
+    },
+    animate(p, t) {
+      p.ice.position.y = p.ice.userData.base.y + Math.sin(t * 1.4) * 0.012;
+      p.ice.rotation.y = Math.sin(t * 0.3) * 0.05;
+    },
+  },
+
+  sauna: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.92, 1.5, 2.9, WOOD, { y: 0.75 }, 0.05);
+      b.rbox(2.04, 0.12, 3.02, WOOD_DARK, { y: 1.56 }, 0.04);
+      for (let k = 0; k < 6; k++) {
+        const y = 0.2 + k * 0.23;
+        for (const s of [-1, 1]) b.box(0.012, 0.02, 2.84, WOOD_DARK, { x: s * 0.965, y });
+        b.box(1.86, 0.02, 0.012, WOOD_DARK, { y, z: -1.455 });
+      }
+      // porta de vidro fosco na frente e plaquinha de temperatura
+      b.rbox(0.62, 1.12, 0.05, '#cfe6ee', { x: -0.4, y: 0.62, z: 1.46 }, 0.03);
+      b.box(0.04, 0.22, 0.05, WOOD_DARK, { x: -0.16, y: 0.62, z: 1.5 });
+      b.rbox(0.42, 0.22, 0.03, INK, { x: 0.45, y: 1.1, z: 1.465 }, 0.02);
+      b.box(0.3, 0.07, 0.01, P.pad, { x: 0.45, y: 1.1, z: 1.483 });
+      b.cyl(0.1, 0.12, 0.28, P.metalDark, { x: 0.6, y: 1.75, z: -1 }, 8);
+      const steam = new Builder();
+      for (let k = 0; k < 3; k++) steam.sphere(0.12 - k * 0.02, '#fffdf8', { y: k * 0.28, x: Math.sin(k) * 0.06 }, 8, 6);
+      return { base: b, parts: [{ name: 'steam', b: steam, pos: [0.6, 2.0, -1] }] };
+    },
+    animate(p, t) {
+      const k = (t * 0.45) % 1;
+      p.steam.position.y = p.steam.userData.base.y + k * 0.35;
+      p.steam.scale.setScalar(0.6 + k * 0.7);
+      p.steam.visible = k < 0.92;
+    },
+  },
+
+  // Escada da filial (Era 5): sobe para o fundo, com corrimão dos dois lados.
+  escada_filial: {
+    build() {
+      const b = new Builder();
+      for (let k = 0; k < 6; k++) {
+        const h = 0.12 + k * 0.17;
+        b.box(1.5, h, 0.3, k % 2 ? '#d8d0c4' : '#e6dfd3', { y: h / 2, z: 0.8 - k * 0.32 });
+        b.box(1.5, 0.025, 0.06, '#b5a99a', { y: h + 0.012, z: 0.92 - k * 0.32 });
+      }
+      for (const s of [-1, 1]) {
+        b.box(0.05, 0.05, 2.05, P.metalDark, { x: s * 0.8, y: 1.1, z: -0.05, rx: -0.43 });
+        for (const z of [0.85, -0.85]) b.box(0.04, z > 0 ? 0.62 : 1.5, 0.04, P.metal, { x: s * 0.8, y: z > 0 ? 0.31 : 0.75, z });
+      }
+      b.rbox(0.5, 0.14, 0.04, P.blueDark, { x: 0.55, y: 1.75, z: -0.98 }, 0.02);
+      b.box(0.3, 0.05, 0.01, '#fffdf8', { x: 0.55, y: 1.75, z: -0.955 });
+      return { base: b, parts: [] };
     },
   },
 

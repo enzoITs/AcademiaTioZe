@@ -527,6 +527,12 @@ function bodyGeo(look, profileId) {
       for (const z of [-0.095, 0.095]) b.rbox(0.1, 0.13, 0.025, sig.accent, { x: 0.085, y: SHOULDER - 0.12, z }, 0.01);
       b.box(0.102, 0.012, 0.027, P.blue, { x: 0.085, y: SHOULDER - 0.1, z: 0.095 });
     }
+    if (sig.accessory === 'medal') {
+      // medalha de ouro pendurada na fita azul
+      for (const s of [-1, 1]) b.box(0.025, 0.13, 0.012, P.blueDark, { x: s * 0.035, y: SHOULDER - 0.05, z: 0.094, rz: s * 0.35 });
+      b.cyl(0.042, 0.042, 0.014, P.yellow, { y: SHOULDER - 0.13, z: 0.1, rx: PI / 2 }, 10);
+      b.cyl(0.022, 0.022, 0.016, '#e5b53a', { y: SHOULDER - 0.13, z: 0.102, rx: PI / 2 }, 8);
+    }
     if (sig.accessory === 'visor') {
       b.torus(HEAD_R + 0.006, 0.02, sig.accent, { y: HEAD_Y + 0.08, rx: PI / 2 });
       b.rbox(0.26, 0.025, 0.12, sig.accent, { y: HEAD_Y + 0.07, z: HEAD_R }, 0.01);
@@ -628,7 +634,7 @@ export function setMood(rig, mood) {
 }
 
 // Objetos de mão usados em alguns aparelhos (kettlebell, luvas de boxe).
-const PROP_OF = { 'use-swing': 'kettlebell', 'use-punch': 'gloves' };
+const PROP_OF = { 'use-swing': 'kettlebell', 'use-punch': 'gloves', 'use-spar': 'gloves' };
 const tripodGeo = () => cached('prop|tripod', () => {
   const b = new Builder();
   for (let k = 0; k < 3; k++) {
@@ -786,6 +792,25 @@ export function posePerson(rig, state, t, seed, profileId) {
     const k = cycle(t, RATE.cable);
     armL = armR = -1.1;
     armZ = 1.25 - k * 1.0;
+  } else if (state === 'use-swim') {
+    // nado crawl: deitado na água, braçada alternada e pernada curtinha
+    const s = Math.sin(t * RATE.swim + seed);
+    lean = 1.45;
+    armL = -1.6 + s * 1.5;
+    armR = -1.6 - s * 1.5;
+    legL = Math.sin(t * RATE.swim * 2.5 + seed) * 0.25;
+    legR = -legL;
+    bob = Math.sin(t * RATE.swim * 2 + seed) * 0.01;
+  } else if (state === 'use-spar') {
+    // luta de treino: guarda alta, jab alternado e ginga
+    const s = Math.sin(t * RATE.spar + seed);
+    armL = -1.35 - Math.max(0, s) * 0.5;
+    armR = -1.35 - Math.max(0, -s) * 0.5;
+    armZ = 0.25;
+    bob = Math.abs(Math.sin(t * RATE.spar * 0.5 + seed)) * 0.03;
+    legL = -0.3;
+    legR = 0.25;
+    lean = 0.08;
   } else if (state === 'wait') {
     bob = Math.sin(phase * 0.5) * 0.008;
     if (profileId === 'influencer' && (t * 0.25 + seed * 0.1) % 1 < 0.35) {

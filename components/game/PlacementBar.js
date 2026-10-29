@@ -2,14 +2,14 @@
 import { useGame } from '../../hooks/useGame.js';
 import { getEquipmentDef, getTierDef, CONFIG } from '../../game/config.js';
 import { formatMoney } from '../../game/utils/format.js';
-import { rotate, cancelMode, placementPreview } from '../../game/engine/store.js';
+import { rotate, cancelMode, placementPreview, site } from '../../game/engine/store.js';
 import Icon from '../ui/Icon.js';
 
 export default function PlacementBar() {
-  const { ui, state } = useGame();
+  const { ui } = useGame();
   if (ui.mode === 'normal') return null;
   const moving = ui.mode === 'move';
-  const item = moving ? state.items.find((i) => i.id === ui.moving.id) : null;
+  const item = moving ? site().state.items.find((i) => i.id === ui.moving.id) : null;
   const type = moving ? item?.type : ui.placing.type;
   if (!type) return null;
   const def = getEquipmentDef(type);

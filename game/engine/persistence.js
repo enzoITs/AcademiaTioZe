@@ -2,13 +2,15 @@
 // Nunca é chamado no servidor: todas as funções verificam `window`.
 import { normalizeDecor } from '../systems/decor.js';
 import { CONFIG, EQUIPMENT, PROFILES, MAX_ERA, eraDef } from '../config.js';
-import { validatePlacement, rectsOverlap, syncLayout, allZones, baseZones } from '../grid/grid.js';
+import { validatePlacement, rectsOverlap, syncLayout, allZones, baseZones, withLayout } from '../grid/grid.js';
 import { createNewGame } from './state.js';
 import { POSTCARDS } from '../systems/characters.js';
 import { feeLimits } from '../economy/economy.js';
 import {
-  STYLES, MAX_BRANCH_LEVEL, createNetwork, initNetwork, ensureLots, refreshCandidates, managerSalary,
+  STYLES, MAX_BRANCH_LEVEL, MAX_FLOORS, createNetwork, initNetwork, ensureLots, refreshCandidates, managerSalary,
+  floorState, stairsSpot, branchKit, refreshBranchCapacity,
 } from '../systems/network.js';
+import { ensureBranchFloors, stairsItem } from '../systems/branchEdit.js';
 
 export const SAVE_KEY = 'academia-tio-ze/save-v1';
 export const SETTINGS_KEY = 'academia-tio-ze/settings';
@@ -107,6 +109,81 @@ function parseManager(m) {
   };
 }
 
+/** Um aparelho salvo, normalizado como os da Matriz (ou null se o tipo não existe). */
+function parseItem(raw) {
+  if (!raw || !EQUIPMENT[raw.type] || !isNum(raw.x) || !isNum(raw.y) || !isNum(raw.id)) return null;
+  const tier = EQUIPMENT[raw.type].tiers.some((t) => t.id === raw.tier) ? raw.tier : EQUIPMENT[raw.type].tiers[0].id;
+  return {
+    ...raw,
+    id: Math.floor(raw.id),
+    x: Math.floor(raw.x),
+    y: Math.floor(raw.y),
+    tier,
+    rot: [0, 1, 2, 3].includes(raw.rot) ? raw.rot : 0,
+    condition: isNum(raw.condition) ? Math.min(Math.max(raw.condition, 0), 100) : 100,
+    pricePaid: isNum(raw.pricePaid) ? Math.max(0, raw.pricePaid) : 0,
+    purchasedDay: isNum(raw.purchasedDay) ? raw.purchasedDay : 0,
+    level: isNum(raw.level) ? Math.min(Math.max(1, Math.floor(raw.level)), CONFIG.levels.max) : 1,
+    upgradeSpent: isNum(raw.upgradeSpent) ? Math.max(0, raw.upgradeSpent) : 0,
+    gift: raw.gift === true,
+  };
+}
+
+/**
+ * Andares de uma filial (Era 5). Cada aparelho é validado na planta do andar;
+ * a escada fica no canto certo em todos os andares e a recepção só no térreo.
+ * Aparelhos "de presente" (vieram com a filial) só valem até o tamanho do kit do estilo.
+ */
+function parseFloors(raw, branch, home) {
+  const list = arr(raw.floors).slice(0, MAX_FLOORS);
+  if (!list.length) return;
+  branch.floors = [];
+  branch.nextItemId = 1;
+  const giftLeft = {};
+  for (const t of branchKit(branch)) giftLeft[t] = (giftLeft[t] ?? 0) + 1;
+  const ids = new Set();
+  const stairs = stairsSpot(branch);
+  list.forEach((rf, i) => {
+    const floor = { items: [], dirt: [], usesSinceDirt: isNum(rf?.usesSinceDirt) ? Math.max(0, rf.usesSinceDirt) : 0 };
+    branch.floors.push(floor);
+    const st = floorState(home, branch, i);
+    withLayout(st, home, () => {
+      for (const rawItem of arr(rf?.items)) {
+        const item = parseItem(rawItem);
+        if (!item || ids.has(item.id)) continue;
+        const def = EQUIPMENT[item.type];
+        if (item.type === 'escada_filial') {
+          if (item.x !== stairs.x || item.y !== stairs.y || floor.items.some((x) => x.type === 'escada_filial')) continue;
+          Object.assign(item, { rot: stairs.rot, fixed: true, gift: false, pricePaid: 0 });
+        } else if (item.type === 'recepcao') {
+          if (i > 0 || floor.items.some((x) => x.type === 'recepcao')) continue;
+          Object.assign(item, { fixed: true, gift: false, pricePaid: 0 });
+        } else if (def.hidden) continue;
+        else if ((def.minEra ?? 1) > home.era) continue;
+        if (item.gift) {
+          if ((giftLeft[item.type] ?? 0) > 0) giftLeft[item.type] -= 1;
+          else item.gift = false; // presente a mais: conta como comprado
+        }
+        if (!validatePlacement({ ...st, items: floor.items }, item).ok) continue;
+        floor.items.push(item);
+        ids.add(item.id);
+      }
+      if (!floor.items.some((x) => x.type === 'escada_filial')) {
+        branch.nextItemId = Math.max(branch.nextItemId, ...[...ids].map((id) => id + 1));
+        const s = stairsItem(branch);
+        if (validatePlacement({ ...st, items: floor.items }, s).ok) {
+          floor.items.push(s);
+          ids.add(s.id);
+        }
+      }
+      floor.dirt = arr(rf?.dirt).filter((d) => d && isNum(d.x) && isNum(d.y)).slice(0, CONFIG.cleaning.maxDirt)
+        .map((d, k) => ({ id: isNum(d.id) ? Math.floor(d.id) : k + 1, x: d.x, y: d.y, kind: d.kind === 'toalha' ? 'toalha' : 'suor' }));
+    });
+  });
+  branch.nextItemId = Math.max(int(raw.nextItemId, 1, 1e9, 1), branch.nextItemId, ...[...ids].map((id) => id + 1));
+  branch.nextDirtId = Math.max(int(raw.nextDirtId, 1, 1e9, 1), ...branch.floors.flatMap((f) => f.dirt.map((d) => d.id + 1)));
+}
+
 /** Rede (Era 4): filiais, lotes à venda e candidatos. Nula antes da Era 4. */
 function parseNetwork(raw, state) {
   if (state.era < 4) return null;
@@ -137,6 +214,7 @@ function parseNetwork(raw, state) {
       invested: isNum(b.invested) ? Math.max(0, b.invested) : 0,
       openedDay: int(b.openedDay, 0, 1e9, 0),
     });
+    if (state.era >= 5) parseFloors(b, net.branches.at(-1), state);
   }
   for (const l of arr(raw.lots)) {
     if (!l || typeof l.id !== 'string' || !/^lote-\d+$/.test(l.id) || !isNum(l.gx) || !isNum(l.gy)) continue;
@@ -153,6 +231,11 @@ function parseNetwork(raw, state) {
   state.network = net;
   ensureLots(state);
   refreshCandidates(state);
+  if (state.era >= 5) {
+    // Saves que chegaram na Era 5 antes dos andares: o kit vira o térreo agora.
+    ensureBranchFloors(state);
+    for (const b of net.branches) refreshBranchCapacity(state, b);
+  }
   return net;
 }
 

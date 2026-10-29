@@ -5,7 +5,10 @@ import { syncLayout, validatePlacement, allZones } from '../../game/grid/grid.js
 import { computeAccess } from '../../game/pathfinding/floodFill.js';
 import { createStudent } from '../../game/simulation/students.js';
 
-const TYPES = Object.keys(EQUIPMENT).filter((t) => EQUIPMENT[t].tiers.some((x) => x.price > 0));
+/** Aparelhos que se compram na era (sem os escondidos, como a recepção da filial). */
+const typesFor = (era) => Object.keys(EQUIPMENT).filter(
+  (t) => !EQUIPMENT[t].hidden && (EQUIPMENT[t].minEra ?? 1) <= era && EQUIPMENT[t].tiers.some((x) => x.price > 0),
+);
 
 /** Partida com aparelhos pagos (pricePaid = preço de catálogo) em todas as áreas desenhadas da era. */
 export function academy({ seed = 5, era = 1, maxItems = 12, students = 0, money = 5000, day = 0, fee = null } = {}) {
@@ -18,6 +21,7 @@ export function academy({ seed = 5, era = 1, maxItems = 12, students = 0, money 
   s.reputation = 4.5;
   s.fee = fee ?? CONFIG.economy.eraBaseFee[String(era)];
   s.time.day = day;
+  const TYPES = typesFor(era);
   let id = 1;
   for (let y = 0; y < 40 && s.items.length < maxItems; y++) {
     for (let x = 0; x < 40 && s.items.length < maxItems; x++) {
@@ -39,3 +43,16 @@ export function academy({ seed = 5, era = 1, maxItems = 12, students = 0, money 
   return s;
 }
 
+/** Rede da Era 4 com filiais abertas (base para os testes da Era 5). */
+export async function era4WithBranches({ branches = 2, money = 400000 } = {}) {
+  const { performEraMove } = await import('../../game/systems/eras.js');
+  const { openBranch } = await import('../../game/systems/network.js');
+  const s = academy({ era: 3, maxItems: 24, money, students: 80 });
+  performEraMove(s);
+  s.pendingModals = [];
+  for (let i = 0; i < branches; i++) {
+    const styles = ['familia', 'premium', 'zen', 'luta'];
+    openBranch(s, s.network.lots[0].id, styles[i % styles.length], s.network.candidates[0].id);
+  }
+  return s;
+}

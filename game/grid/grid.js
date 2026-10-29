@@ -63,6 +63,7 @@ const zoneCatalog = new Map([...CONFIG.grid.zones, ...allEraZones].map((z) => [z
 let layout = eraLayout(1);
 let layoutZones = layout.zones;
 let layoutKey = '';
+let layoutOwner = null; // partida (ou cena de filial) cuja grade está valendo agora
 let cellZone = new Int32Array(0);
 
 /** Planta em uso (a da era da partida carregada). */
@@ -115,6 +116,7 @@ export function syncLayout(state) {
   const shift = layoutShift(state);
   const own = state?.customLayout ? `custom:${state.customLayout.id}` : era;
   const key = `${own}@${shift.x},${shift.y}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
+  layoutOwner = state ?? null;
   if (key === layoutKey) return false;
   layoutKey = key;
   layout = layoutOf(state);
@@ -134,11 +136,13 @@ export function syncLayout(state) {
  */
 export function withLayout(view, home, fn) {
   if (!view || view === home) return fn();
+  // Volta para a grade que estava valendo (pode ser outra cena, em chamadas aninhadas).
+  const prev = layoutOwner ?? home;
   syncLayout(view);
   try {
     return fn();
   } finally {
-    if (home) syncLayout(home);
+    if (prev) syncLayout(prev);
   }
 }
 

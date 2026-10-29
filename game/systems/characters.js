@@ -11,6 +11,7 @@ export const CHARACTERS = {
   vovo: { name: 'Vovó Dalva', color: '#d8a8e0' },
   valeria: { name: 'Valéria Leão', color: '#8ec5e8' },
   armando: { name: 'Seu Armando', color: '#b8b0c8' },
+  duda: { name: 'Duda Raio', color: '#7cc98a' },
 };
 
 export const POSTCARDS = {

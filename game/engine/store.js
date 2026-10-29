@@ -7,7 +7,7 @@ import { CONFIG, EQUIPMENT, getEquipmentDef, getTierDef } from '../config.js';
 import { createNewGame } from './state.js';
 import { createRuntime, refreshDerived, advanceTime, catchUpOffline } from '../simulation/simulation.js';
 import {
-  validatePlacement, footprintSize, buildOccupancy, cellIndex, inBounds, allZones, zoneById, layoutShift,
+  validatePlacement, footprintSize, buildOccupancy, cellIndex, inBounds, allZones, zoneById, layoutShift, withLayout,
 } from '../grid/grid.js';
 import { computeAccess } from '../pathfinding/floodFill.js';
 import { transact, canAfford, feeLimits } from '../economy/economy.js';
@@ -24,8 +24,10 @@ import { ensureFrontier } from '../systems/expansion.js';
 import { decorOption, decorPrice } from '../systems/decor.js';
 import {
   STYLES, openBlocker, openBranch, upgradeBranch, branchUpgradeCost, changeBranchStyle, swapManager,
-  sellBranch, branchSaleValue,
+  sellBranch, branchSaleValue, branchEditable, refreshBranchCapacity, floorCost,
 } from '../systems/network.js';
+import { branchScene, refreshEditableScene } from '../systems/branchScene.js';
+import { buildFloor, floorBlocker, ensureBranchFloors, isFixedItem } from '../systems/branchEdit.js';
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal, setLocalOwner,
 } from './persistence.js';
@@ -133,9 +135,6 @@ export function notify(text, tone = 'info') {
   emit();
 }
 
-function itemById(id) {
-  return game.state.items.find((i) => i.id === id) ?? null;
-}
 
 export function getSuggestions() {
   const { state, rt } = game;
@@ -175,8 +174,16 @@ async function reloadFromCloud(message, notices) {
 
 setCloudHandlers({ onReload: reloadFromCloud, onNotices: (lines, title) => showNotice(lines, title) });
 
-/** Recalcula derivados e premia necessidades recém-atendidas ("Finalmente!"). */
-function afterLayoutChange() {
+/**
+ * Recalcula derivados e premia necessidades recém-atendidas ("Finalmente!").
+ * Numa filial (Era 5), recalcula o andar e a capacidade dela.
+ */
+function afterLayoutChange(s = null) {
+  if (s?.kind === 'branch') {
+    refreshEditableScene(game, s.scene, true);
+    refreshBranchCapacity(game.state, s.branch);
+    return;
+  }
   const { state, rt } = game;
   const before = rt.academy.metTypes;
   refreshDerived(state, rt);
@@ -340,6 +347,13 @@ function handleEvents(events) {
       playSound('notify');
     }
     if (e.type === 'vovo') playSound('notify');
+    if (e.type === 'network' && e.broken?.length) {
+      const first = e.broken[0];
+      toast(e.broken.length === 1
+        ? `Na ${first.branch}, o ${EQUIPMENT_SHORT[first.item.type]} quebrou! Entre na filial para consertar.`
+        : `${e.broken.length} aparelhos quebraram nas filiais. Veja na aba Rede.`, 'error');
+      playSound('error');
+    }
     if (e.type === 'staffClean') for (const d of e.dirt) fx({ kind: 'clean', x: d.x, y: d.y, quiet: true });
     if (e.type === 'staffRepair') {
       for (const f of e.items) fx({ kind: 'repair', itemId: f.itemId });
@@ -369,6 +383,59 @@ export function togglePause() {
   emit();
 }
 
+// ---------------------------------------------------------------- lugar editado
+// As ações de construção valem para a Matriz ou, na Era 5, para o andar da
+// filial que o jogador está visitando. O dinheiro sempre sai da Matriz.
+
+/** Visitando uma filial que dá para editar (Era 5)? */
+export function editingBranch() {
+  const { ui, state } = game;
+  if (ui.view?.kind !== 'branch' || !state || !branchEditable(state)) return false;
+  return !!state.network.branches.find((b) => b.id === ui.view.branchId)?.floors;
+}
+
+/** Visita só para olhar (filial da Era 4): construção travada. */
+export function viewOnly() {
+  return inBranchView() && !editingBranch();
+}
+
+/** Onde a construção acontece agora: a Matriz ou o andar da filial visitada. */
+export function site() {
+  if (editingBranch()) {
+    const { ui, state } = game;
+    const branch = state.network.branches.find((b) => b.id === ui.view.branchId);
+    const scene = branchScene(game, branch.id, ui.view.floor ?? 0);
+    if (scene) {
+      return { kind: 'branch', key: `filial-${branch.id}-${scene.floor}`, branch, floor: scene.floor, scene, state: scene.state, rt: scene.rt };
+    }
+  }
+  return { kind: 'matriz', key: 'matriz', state: game.state, rt: game.rt };
+}
+
+/** Roda `fn(site)` com a grade do lugar editado (a da filial troca COLS/ROWS/porta). */
+export function withSite(fn) {
+  const s = site();
+  if (s.kind === 'matriz') return fn(s);
+  return withLayout(s.state, game.state, () => fn(s));
+}
+
+function setSiteItems(s, items) {
+  s.state.items = items;
+  if (s.kind === 'branch') s.branch.floors[s.floor].items = items;
+}
+
+function newItemId(s) {
+  return s.kind === 'branch' ? s.branch.nextItemId++ : s.state.nextItemId++;
+}
+
+function siteItem(s, id) {
+  return s.state.items.find((i) => i.id === id) ?? null;
+}
+
+function pushUndo(s, action) {
+  game.state.undo.push({ ...action, site: s.key });
+}
+
 // ---------------------------------------------------------------- construção
 export function anchorFor(type, rot, cell) {
   const { w, h } = footprintSize(type, rot);
@@ -377,26 +444,30 @@ export function anchorFor(type, rot, cell) {
 
 /** Prévia do posicionamento atual (para o renderer e a barra de status). */
 export function placementPreview() {
-  const { ui, state } = game;
+  const { ui } = game;
   if (!ui.hover || (ui.mode !== 'place' && ui.mode !== 'move')) return null;
-  const type = ui.mode === 'place' ? ui.placing.type : itemById(ui.moving.id)?.type;
-  if (!type) return null;
-  const rot = ui.mode === 'place' ? ui.placing.rot : ui.moving.rot;
-  const ignoreId = ui.mode === 'move' ? ui.moving.id : null;
-  // Ao arrastar, o aparelho mantém o ponto onde foi "agarrado" sob o cursor.
-  const grab = ui.mode === 'move' ? ui.moving.grab : null;
-  const { x, y } = grab ? { x: ui.hover.x - grab.dx, y: ui.hover.y - grab.dy } : anchorFor(type, rot, ui.hover);
-  const check = validatePlacement(state, { type, x, y, rot }, ignoreId);
-  const warning = check.ok ? accessWarning(state, { type, x, y, rot }, ignoreId) : null;
-  return { type, x, y, rot, ...check, warning };
+  return withSite((s) => {
+    const { state } = s;
+    const type = ui.mode === 'place' ? ui.placing.type : siteItem(s, ui.moving.id)?.type;
+    if (!type) return null;
+    const rot = ui.mode === 'place' ? ui.placing.rot : ui.moving.rot;
+    const ignoreId = ui.mode === 'move' ? ui.moving.id : null;
+    // Ao arrastar, o aparelho mantém o ponto onde foi "agarrado" sob o cursor.
+    const grab = ui.mode === 'move' ? ui.moving.grab : null;
+    const { x, y } = grab ? { x: ui.hover.x - grab.dx, y: ui.hover.y - grab.dy } : anchorFor(type, rot, ui.hover);
+    const check = validatePlacement(state, { type, x, y, rot }, ignoreId);
+    const warning = check.ok ? accessWarning(s, { type, x, y, rot }, ignoreId) : null;
+    return { type, x, y, rot, ...check, warning };
+  });
 }
 
 /** Simula o layout para avisar sobre acesso (o item ou outros ficam sem corredor). */
-function accessWarning(state, { type, x, y, rot }, ignoreId) {
+function accessWarning(s, { type, x, y, rot }, ignoreId) {
+  const { state } = s;
   const temp = state.items.filter((i) => i.id !== ignoreId).concat({ id: -999, type, x, y, rot });
   const access = computeAccess(state.unlockedZones, temp);
   if (!access.reachable.has(-999)) return 'Sem corredor até a frente: ficará inutilizável';
-  const blocked = temp.filter((i) => i.id !== -999 && !access.reachable.has(i.id) && game.rt.academy.access.reachable.has(i.id));
+  const blocked = temp.filter((i) => i.id !== -999 && !access.reachable.has(i.id) && s.rt.academy.access.reachable.has(i.id));
   return blocked.length ? `Bloqueia o acesso a: ${blocked.map((i) => EQUIPMENT_SHORT[i.type]).join(', ')}` : null;
 }
 
@@ -409,7 +480,8 @@ export function setHover(cell) {
 }
 
 export function startPlacement(type, tierId) {
-  leaveView();
+  // Comprando dentro da filial (Era 5) o aparelho vai para o andar visitado.
+  if (!editingBranch()) leaveView();
   const { state, ui } = game;
   const def = getEquipmentDef(type);
   const tier = getTierDef(type, tierId);
@@ -429,13 +501,14 @@ export function startPlacement(type, tierId) {
 
 export function cancelMode() {
   const { ui } = game;
-  if (inBranchView()) return viewMatriz();
+  if (viewOnly()) return viewMatriz();
   if (ui.mode !== 'normal') {
     ui.mode = 'normal';
     ui.placing = null;
     ui.moving = null;
   } else if (ui.selectedId) ui.selectedId = null;
   else if (ui.editMode) ui.editMode = false;
+  else if (inBranchView()) return viewMatriz();
   emit();
 }
 
@@ -446,7 +519,8 @@ export function cancelMode() {
  * (se só couber fechando, gira e avisa). Se 90° não couber em lugar nenhum,
  * tenta 180° e 270°.
  */
-function findRotation(state, item) {
+function findRotation(s, item) {
+  const { state } = s;
   const { w, h } = footprintSize(item.type, item.rot);
   const cx = item.x + w / 2;
   const cy = item.y + h / 2;
@@ -474,7 +548,7 @@ function findRotation(state, item) {
         firstReason ??= check.reason;
         continue;
       }
-      const warning = accessWarning(state, spot, item.id);
+      const warning = accessWarning(s, spot, item.id);
       if (!warning) return { ok: true, x: c.x, y: c.y, rot };
       fallback ??= { ok: true, x: c.x, y: c.y, rot, warning };
     }
@@ -483,72 +557,84 @@ function findRotation(state, item) {
   return { ok: false, reason: firstReason ?? 'Sem espaço' };
 }
 
+/** A recepção e a escada da filial ficam onde estão. */
+function fixedFail(item) {
+  return fail(`${getEquipmentDef(item.type).name} fica sempre no mesmo lugar.`);
+}
+
 export function rotate() {
-  if (inBranchView()) return;
-  const { ui, state } = game;
+  if (viewOnly()) return;
+  const { ui } = game;
   if (ui.mode === 'place') ui.placing.rot = (ui.placing.rot + 1) % 4;
   else if (ui.mode === 'move') {
     ui.moving.rot = (ui.moving.rot + 1) % 4;
     ui.moving.grab = null; // a pega muda de lugar ao girar: recentra no cursor
   } else if (ui.selectedId) {
-    const item = itemById(ui.selectedId);
-    if (!item) return;
-    const spot = findRotation(state, item);
-    if (!spot.ok) return fail(`Não dá para girar aqui: ${spot.reason.toLowerCase()}.`);
-    state.undo.push({ kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
-    Object.assign(item, { x: spot.x, y: spot.y, rot: spot.rot });
-    fx({ kind: 'place', itemId: item.id });
-    afterLayoutChange();
-    if (spot.warning) toast(spot.warning, 'warn');
+    const done = withSite((s) => {
+      const item = siteItem(s, ui.selectedId);
+      if (!item) return false;
+      if (isFixedItem(item)) return fixedFail(item);
+      const spot = findRotation(s, item);
+      if (!spot.ok) return fail(`Não dá para girar aqui: ${spot.reason.toLowerCase()}.`);
+      pushUndo(s, { kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
+      Object.assign(item, { x: spot.x, y: spot.y, rot: spot.rot });
+      fx({ kind: 'place', itemId: item.id });
+      afterLayoutChange(s);
+      if (spot.warning) toast(spot.warning, 'warn');
+      return true;
+    });
+    if (!done) return;
   } else return;
   playSound('rotate');
   emit();
 }
 
-function placeNewItem(preview) {
-  const { state, ui } = game;
+function placeNewItem(s, preview) {
+  const { ui } = game;
+  const home = game.state;
   const tier = getTierDef(preview.type, ui.placing.tier);
-  if (!canAfford(state, tier.price)) return fail('Saldo insuficiente.');
+  if (!canAfford(home, tier.price)) return fail('Saldo insuficiente.');
   const item = {
-    id: state.nextItemId++,
+    id: newItemId(s),
     type: preview.type,
     tier: tier.id,
     x: preview.x,
     y: preview.y,
     rot: preview.rot,
     condition: CONFIG.tiers[tier.id].startCondition,
-    purchasedDay: state.time.day,
+    purchasedDay: home.time.day,
     pricePaid: tier.price,
     usesRecent: 0,
   };
-  state.items.push(item);
-  transact(state, -tier.price, 'equipamentos', `Compra: ${getEquipmentDef(item.type).name} (${CONFIG.tiers[tier.id].label})`);
-  state.undo.push({ kind: 'place', itemId: item.id });
+  s.state.items.push(item);
+  const where = s.kind === 'branch' ? ` (${s.branch.name})` : '';
+  transact(home, -tier.price, 'equipamentos', `Compra: ${getEquipmentDef(item.type).name} (${CONFIG.tiers[tier.id].label})${where}`);
+  pushUndo(s, { kind: 'place', itemId: item.id });
   fx({ kind: 'place', itemId: item.id });
   fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(tier.price)}` });
   playSound('place');
   ui.mode = 'normal';
   ui.placing = null;
   ui.selectedId = item.id;
-  afterLayoutChange();
+  afterLayoutChange(s);
   if (preview.warning) toast(preview.warning, 'warn');
   return true;
 }
 
-function dropMovedItem(preview) {
-  const { state, ui } = game;
-  const item = itemById(ui.moving.id);
+function dropMovedItem(s, preview) {
+  const { ui } = game;
+  const item = siteItem(s, ui.moving.id);
   if (!item) return false;
   ui.mode = 'normal';
   ui.moving = null;
   ui.selectedId = item.id;
   // Soltou no mesmo lugar: nada mudou, nada para desfazer.
   if (item.x === preview.x && item.y === preview.y && item.rot === preview.rot) return true;
-  state.undo.push({ kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
+  pushUndo(s, { kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
   Object.assign(item, { x: preview.x, y: preview.y, rot: preview.rot });
   fx({ kind: 'place', itemId: item.id });
   playSound('place');
-  afterLayoutChange();
+  afterLayoutChange(s);
   if (preview.warning) toast(preview.warning, 'warn');
   return true;
 }
@@ -556,7 +642,7 @@ function dropMovedItem(preview) {
 /** Fim do arrastar: solta se couber; senão o aparelho volta para onde estava. */
 export function dropDrag(cell) {
   const { ui } = game;
-  if (ui.mode !== 'move' || inBranchView()) return;
+  if (ui.mode !== 'move' || viewOnly()) return;
   ui.hover = cell;
   const preview = placementPreview();
   if (!preview || !preview.ok) {
@@ -565,50 +651,54 @@ export function dropDrag(cell) {
     ui.moving = null;
     return fail(preview ? `Não coube aí (${preview.reason.toLowerCase()}). O aparelho voltou para o lugar.` : 'Movimento cancelado.');
   }
-  dropMovedItem(preview);
+  withSite((s) => dropMovedItem(s, preview));
   emit();
   return true;
 }
 
 /** Empurra o aparelho selecionado uma célula (setas do teclado). */
 export function nudgeSelected(dx, dy) {
-  const { state, ui } = game;
-  const item = ui.mode === 'normal' && !inBranchView() ? itemById(ui.selectedId) : null;
-  if (!item) return false;
-  const next = { type: item.type, x: item.x + dx, y: item.y + dy, rot: item.rot };
-  const check = validatePlacement(state, next, item.id);
-  if (!check.ok) return fail(`Não dá para mover para lá: ${check.reason.toLowerCase()}.`);
-  state.undo.push({ kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
-  item.x = next.x;
-  item.y = next.y;
-  playSound('rotate');
-  afterLayoutChange();
-  emit();
-  return true;
+  const { ui } = game;
+  if (ui.mode !== 'normal' || viewOnly()) return false;
+  return withSite((s) => {
+    const item = siteItem(s, ui.selectedId);
+    if (!item) return false;
+    if (isFixedItem(item)) return fixedFail(item);
+    const next = { type: item.type, x: item.x + dx, y: item.y + dy, rot: item.rot };
+    const check = validatePlacement(s.state, next, item.id);
+    if (!check.ok) return fail(`Não dá para mover para lá: ${check.reason.toLowerCase()}.`);
+    pushUndo(s, { kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
+    item.x = next.x;
+    item.y = next.y;
+    playSound('rotate');
+    afterLayoutChange(s);
+    emit();
+    return true;
+  });
 }
 
 export function clickCell(cell) {
-  if (inBranchView()) return;
-  const { ui, state } = game;
+  if (viewOnly()) return;
+  const { ui } = game;
   if (ui.mode === 'place' || ui.mode === 'move') {
     ui.hover = cell;
     const preview = placementPreview();
     if (!preview) return;
     if (!preview.ok) return fail(preview.reason);
-    if (ui.mode === 'place') placeNewItem(preview);
-    else dropMovedItem(preview);
+    withSite((s) => (ui.mode === 'place' ? placeNewItem(s, preview) : dropMovedItem(s, preview)));
     emit();
     return;
   }
-  if (!inBounds(cell.x, cell.y)) {
-    ui.selectedId = null;
-    emit();
-    return;
-  }
-  const occ = buildOccupancy(state.items);
-  const id = occ[cellIndex(cell.x, cell.y)];
-  ui.selectedId = id >= 0 ? id : null;
-  if (id >= 0) playSound('click');
+  withSite((s) => {
+    if (!inBounds(cell.x, cell.y)) {
+      ui.selectedId = null;
+      return;
+    }
+    const occ = buildOccupancy(s.state.items);
+    const id = occ[cellIndex(cell.x, cell.y)];
+    ui.selectedId = id >= 0 ? id : null;
+    if (id >= 0) playSound('click');
+  });
   emit();
 }
 
@@ -620,14 +710,14 @@ export function selectItem(id) {
 
 export function toggleEditMode() {
   const { ui } = game;
-  if (inBranchView()) return;
+  if (viewOnly()) return;
   ui.editMode = !ui.editMode;
   playSound('click');
   emit();
 }
 
 export function toggleMaintenanceView() {
-  if (inBranchView()) return;
+  if (viewOnly()) return;
   game.ui.maintenanceView = !game.ui.maintenanceView;
   playSound('click');
   emit();
@@ -639,8 +729,10 @@ export function toggleMaintenanceView() {
  */
 export function startMove(id, grabCell = null) {
   const { ui } = game;
-  const item = itemById(id);
-  if (!item || inBranchView()) return;
+  if (viewOnly()) return;
+  const item = siteItem(site(), id);
+  if (!item) return;
+  if (isFixedItem(item)) return fixedFail(item);
   ui.mode = 'move';
   ui.placing = null;
   ui.moving = {
@@ -663,9 +755,11 @@ export function startMove(id, grabCell = null) {
  * Reembolso: total no mesmo dia da compra; depois, 50% ajustado pela condição.
  * As melhorias de nível entram no valor (`withLevels`); na troca de categoria
  * (usado → novo) elas ficam no aparelho, então só a base entra como pagamento.
+ * Aparelho que veio de presente com a filial (`gift`) não devolve dinheiro.
  */
 export function refundFor(item, { withLevels = true } = {}) {
   const spent = withLevels ? (item.upgradeSpent ?? 0) : 0;
+  if (item.gift) return Math.round(spent * CONFIG.economy.sellRefundRate);
   if (item.purchasedDay === game.state.time.day) return item.pricePaid + spent;
   const price = getTierDef(item.type, item.tier).price + spent;
   const condFactor = hasWear(item) ? item.condition / 100 : 1;
@@ -673,15 +767,19 @@ export function refundFor(item, { withLevels = true } = {}) {
 }
 
 export function requestSell(id) {
-  const item = itemById(id);
-  if (!item || inBranchView()) return;
+  if (viewOnly()) return;
+  const item = siteItem(site(), id);
+  if (!item) return;
+  if (isFixedItem(item)) return fixedFail(item);
   const refund = refundFor(item);
-  const sameDay = item.purchasedDay === game.state.time.day;
+  const sameDay = !item.gift && item.purchasedDay === game.state.time.day;
   game.ui.confirm = {
     title: `Vender ${getEquipmentDef(item.type).name}?`,
-    text: sameDay
-      ? `Comprado hoje: reembolso total de ${formatMoney(refund)}.`
-      : `Você recebe ${formatMoney(refund)} (50% do preço${item.upgradeSpent ? ' e das melhorias' : ''}, ajustado pela condição). Dá para desfazer até o fim do dia.`,
+    text: item.gift
+      ? `Veio com a filial, então não devolve o preço${refund ? `: você recebe só ${formatMoney(refund)} das melhorias` : ''}. Libera o espaço para outro aparelho.`
+      : sameDay
+        ? `Comprado hoje: reembolso total de ${formatMoney(refund)}.`
+        : `Você recebe ${formatMoney(refund)} (50% do preço${item.upgradeSpent ? ' e das melhorias' : ''}, ajustado pela condição). Dá para desfazer até o fim do dia.`,
     confirmLabel: 'Vender',
     danger: true,
     onConfirm: () => sellItem(id),
@@ -690,99 +788,121 @@ export function requestSell(id) {
 }
 
 function sellItem(id) {
-  const { state, ui } = game;
-  const item = itemById(id);
-  if (!item) return;
-  const refund = refundFor(item);
-  const sameDay = item.purchasedDay === state.time.day;
-  state.items = state.items.filter((i) => i.id !== id);
-  transact(state, refund, sameDay ? 'reembolsos' : 'vendas', `${sameDay ? 'Reembolso' : 'Venda'}: ${getEquipmentDef(item.type).name}`);
-  state.undo.push({ kind: 'sell', item: { ...item }, refund, sameDay });
-  fx({ kind: 'money', x: item.x, y: item.y, text: `+${formatMoney(refund)}` });
-  playSound('sell');
-  ui.selectedId = null;
-  afterLayoutChange();
+  const { ui } = game;
+  const home = game.state;
+  withSite((s) => {
+    const item = siteItem(s, id);
+    if (!item) return;
+    const refund = refundFor(item);
+    const sameDay = !item.gift && item.purchasedDay === home.time.day;
+    setSiteItems(s, s.state.items.filter((i) => i.id !== id));
+    if (refund) transact(home, refund, sameDay ? 'reembolsos' : 'vendas', `${sameDay ? 'Reembolso' : 'Venda'}: ${getEquipmentDef(item.type).name}`);
+    pushUndo(s, { kind: 'sell', item: { ...item }, refund, sameDay });
+    if (refund) fx({ kind: 'money', x: item.x, y: item.y, text: `+${formatMoney(refund)}` });
+    playSound('sell');
+    ui.selectedId = null;
+    afterLayoutChange(s);
+  });
   emit();
 }
 
 export function upgradeItem(id, tierId) {
-  const { state } = game;
-  const item = itemById(id);
-  if (!item) return;
-  const tier = getTierDef(item.type, tierId);
-  if ((tier.minRep ?? 0) > state.reputation) return fail(`Precisa de ${tier.minRep} estrelas para o nível ${CONFIG.tiers[tier.id].label}.`);
-  const tradeIn = refundFor(item, { withLevels: false });
-  const cost = Math.max(0, tier.price - tradeIn);
-  if (!canAfford(state, cost)) return fail(`Saldo insuficiente para o upgrade (${formatMoney(cost)}).`);
-  state.undo.push({ kind: 'upgrade', itemId: id, from: { tier: item.tier, condition: item.condition, pricePaid: item.pricePaid, purchasedDay: item.purchasedDay }, cost });
-  transact(state, -cost, 'equipamentos', `Upgrade: ${getEquipmentDef(item.type).name} → ${CONFIG.tiers[tier.id].label}`);
-  item.tier = tier.id;
-  item.condition = CONFIG.tiers[tier.id].startCondition;
-  item.pricePaid = tier.price;
-  item.purchasedDay = state.time.day;
-  fx({ kind: 'place', itemId: id });
-  fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
-  playSound('buy');
-  afterLayoutChange();
+  const home = game.state;
+  withSite((s) => {
+    const item = siteItem(s, id);
+    if (!item) return;
+    const tier = getTierDef(item.type, tierId);
+    if ((tier.minRep ?? 0) > home.reputation) return fail(`Precisa de ${tier.minRep} estrelas para o nível ${CONFIG.tiers[tier.id].label}.`);
+    const tradeIn = refundFor(item, { withLevels: false });
+    const cost = Math.max(0, tier.price - tradeIn);
+    if (!canAfford(home, cost)) return fail(`Saldo insuficiente para o upgrade (${formatMoney(cost)}).`);
+    pushUndo(s, {
+      kind: 'upgrade', itemId: id, cost,
+      from: { tier: item.tier, condition: item.condition, pricePaid: item.pricePaid, purchasedDay: item.purchasedDay, gift: item.gift ?? false },
+    });
+    transact(home, -cost, 'equipamentos', `Upgrade: ${getEquipmentDef(item.type).name} → ${CONFIG.tiers[tier.id].label}`);
+    item.tier = tier.id;
+    item.condition = CONFIG.tiers[tier.id].startCondition;
+    item.pricePaid = tier.price;
+    item.purchasedDay = home.time.day;
+    item.gift = false; // agora foi pago
+    fx({ kind: 'place', itemId: id });
+    fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
+    playSound('buy');
+    afterLayoutChange(s);
+    return true;
+  });
   emit();
 }
 
 /** Melhoria de nível (1 → 2 → 3): mais capacidade e vibe, menos desgaste; conserto mais caro. */
 export function levelUpItem(id) {
-  const { state } = game;
-  const item = itemById(id);
-  if (!item) return;
-  const cost = levelUpCost(item);
-  if (cost == null) return fail('Este aparelho já está no nível máximo.');
-  if (!canAfford(state, cost)) return fail(`Saldo insuficiente para a melhoria (${formatMoney(cost)}).`);
-  const from = { level: itemLevel(item), upgradeSpent: item.upgradeSpent ?? 0 };
-  const next = from.level + 1;
-  transact(state, -cost, 'equipamentos', `Melhoria: ${getEquipmentDef(item.type).name} → ${levelDef(next).label}`);
-  item.level = next;
-  item.upgradeSpent = from.upgradeSpent + cost;
-  state.undo.push({ kind: 'level', itemId: id, from, cost });
-  fx({ kind: 'place', itemId: id });
-  fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
-  toast(`${getEquipmentDef(item.type).name} agora é ${levelDef(next).label}! Conserto custa ${String(levelDef(next).repairMultiplier).replace('.', ',')}× mais.`, 'success');
-  playSound('buy');
-  afterLayoutChange();
+  const home = game.state;
+  withSite((s) => {
+    const item = siteItem(s, id);
+    if (!item) return;
+    const cost = levelUpCost(item);
+    if (cost == null) return fail('Este aparelho já está no nível máximo.');
+    if (!canAfford(home, cost)) return fail(`Saldo insuficiente para a melhoria (${formatMoney(cost)}).`);
+    const from = { level: itemLevel(item), upgradeSpent: item.upgradeSpent ?? 0 };
+    const next = from.level + 1;
+    transact(home, -cost, 'equipamentos', `Melhoria: ${getEquipmentDef(item.type).name} → ${levelDef(next).label}`);
+    item.level = next;
+    item.upgradeSpent = from.upgradeSpent + cost;
+    pushUndo(s, { kind: 'level', itemId: id, from, cost });
+    fx({ kind: 'place', itemId: id });
+    fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
+    toast(`${getEquipmentDef(item.type).name} agora é ${levelDef(next).label}! Conserto custa ${String(levelDef(next).repairMultiplier).replace('.', ',')}× mais.`, 'success');
+    playSound('buy');
+    afterLayoutChange(s);
+    return true;
+  });
   emit();
 }
 
 export function repair(id, mode = 'repair') {
-  const { state } = game;
-  const item = itemById(id);
-  if (!item) return;
-  const isRepair = mode === 'repair';
-  if (isRepair ? !canRepair(item) : !canService(item)) return fail('Nada a fazer neste aparelho agora.');
-  const cost = isRepair ? repairCost(item) : serviceCost(item);
-  if (!canAfford(state, cost)) return fail(`Saldo insuficiente (${formatMoney(cost)}).`);
-  transact(state, -cost, 'consertos', `${isRepair ? 'Conserto' : 'Revisão'}: ${getEquipmentDef(item.type).name}`);
-  if (isRepair) repairItem(item);
-  else serviceItem(item);
-  state.stats.repairs += 1;
-  fx({ kind: 'repair', itemId: id });
-  fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
-  playSound('repair');
-  afterLayoutChange();
+  const home = game.state;
+  withSite((s) => {
+    const item = siteItem(s, id);
+    if (!item) return;
+    const isRepair = mode === 'repair';
+    if (isRepair ? !canRepair(item) : !canService(item)) return fail('Nada a fazer neste aparelho agora.');
+    const cost = isRepair ? repairCost(item) : serviceCost(item);
+    if (!canAfford(home, cost)) return fail(`Saldo insuficiente (${formatMoney(cost)}).`);
+    const where = s.kind === 'branch' ? ` (${s.branch.name})` : '';
+    transact(home, -cost, 'consertos', `${isRepair ? 'Conserto' : 'Revisão'}: ${getEquipmentDef(item.type).name}${where}`);
+    if (isRepair) repairItem(item);
+    else serviceItem(item);
+    home.stats.repairs += 1;
+    fx({ kind: 'repair', itemId: id });
+    fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
+    playSound('repair');
+    afterLayoutChange(s);
+    return true;
+  });
   emit();
 }
 
 export function repairAllBroken() {
-  const broken = game.state.items.filter((i) => hasWear(i) && conditionState(i.condition) === 'quebrado');
+  const s = site();
+  const broken = s.state.items.filter((i) => hasWear(i) && conditionState(i.condition) === 'quebrado');
   for (const item of broken) repair(item.id, 'repair');
 }
 
 // ---------------------------------------------------------------- limpeza
 export function cleanDirt(id) {
-  const { state, rt } = game;
-  const dirt = state.dirt.find((d) => d.id === id);
-  if (!dirt || inBranchView()) return;
-  state.dirt = state.dirt.filter((d) => d.id !== id);
-  state.stats.cleaned += 1;
+  if (viewOnly()) return;
+  const s = site();
+  const dirt = s.state.dirt.find((d) => d.id === id);
+  if (!dirt) return;
+  const left = s.state.dirt.filter((d) => d.id !== id);
+  s.state.dirt = left;
+  if (s.kind === 'branch') s.branch.floors[s.floor].dirt = left;
+  game.state.stats.cleaned += 1;
   fx({ kind: 'clean', x: dirt.x, y: dirt.y });
   playSound('clean');
-  refreshDerived(state, rt);
+  if (s.kind === 'branch') afterLayoutChange(s);
+  else refreshDerived(game.state, game.rt);
   emit();
 }
 
@@ -924,7 +1044,7 @@ export function viewBranch(branchId) {
   const b = state.network?.branches.find((x) => x.id === branchId);
   if (!b) return fail('Essa filial não existe mais.');
   if (!ui.view) ui.prevTab = ui.tab;
-  ui.view = { kind: 'branch', branchId };
+  ui.view = { kind: 'branch', branchId, floor: 0 };
   ui.modal = null;
   ui.mode = 'normal';
   ui.placing = null;
@@ -934,6 +1054,41 @@ export function viewBranch(branchId) {
   ui.maintenanceView = false;
   ui.tab = 'network';
   playSound('click');
+  emit();
+  return true;
+}
+
+/** Na filial editável (Era 5): troca de andar. */
+export function viewFloor(floor) {
+  const { ui, state } = game;
+  if (ui.view?.kind !== 'branch') return;
+  const b = state.network?.branches.find((x) => x.id === ui.view.branchId);
+  if (!b?.floors?.[floor]) return;
+  ui.view = { ...ui.view, floor };
+  ui.mode = 'normal';
+  ui.placing = null;
+  ui.moving = null;
+  ui.selectedId = null;
+  playSound('click');
+  emit();
+}
+
+/** Constrói o próximo andar da filial e já sobe para ele. */
+export function buildFloorAction(branchId) {
+  const { state, ui } = game;
+  const b = state.network?.branches.find((x) => x.id === branchId);
+  const blocker = floorBlocker(state, b);
+  if (blocker) return fail(blocker);
+  const cost = floorCost(b);
+  const floor = buildFloor(state, branchId);
+  if (floor == null) return fail('Não deu para construir o andar agora.');
+  addMessage(state, 'duda', `${floor}º andar na ${b.name}! Agora é só subir a escada e montar. Espaço novo é treino novo.`);
+  toast(`${floor}º andar construído na ${b.name} por ${formatMoney(cost)}. Suba a escada e monte!`, 'success');
+  playSound('celebrate');
+  if (ui.view?.kind === 'branch' && ui.view.branchId === branchId) ui.view = { ...ui.view, floor };
+  else viewBranch(branchId);
+  if (ui.view) ui.view.floor = floor;
+  ui.modal = null;
   emit();
   return true;
 }
@@ -975,6 +1130,8 @@ export function confirmOpenBranch(lotId, style, candidateId) {
   const blocker = openBlocker(state, lotId, style, candidateId);
   if (blocker) return fail(blocker);
   const branch = openBranch(state, lotId, style, candidateId);
+  // Na Era 5 a filial já nasce editável, com o kit do gerente no térreo.
+  ensureBranchFloors(state);
   const lineIdx = (state.network.opened - 1);
   addMessage(state, 'valeria', BRANCH_LINES.valeria[lineIdx % BRANCH_LINES.valeria.length](branch.name));
   addMessage(state, 'tioze', BRANCH_LINES.tioze[lineIdx % BRANCH_LINES.tioze.length](branch.name));
@@ -1004,6 +1161,8 @@ export function upgradeBranchAction(branchId) {
 export function changeBranchStyleAction(branchId, style) {
   const { state } = game;
   if (!changeBranchStyle(state, branchId, style)) return fail('Não deu para trocar o estilo agora (saldo ou estilo igual).');
+  const changed = state.network.branches.find((x) => x.id === branchId);
+  if (changed?.floors) refreshBranchCapacity(state, changed);
   toast(`Estilo trocado para ${STYLES[style].label}. Parte dos membros estranhou a mudança.`, 'info');
   playSound('click');
   emit();
@@ -1089,42 +1248,44 @@ export function requestFire(id) {
 
 // ---------------------------------------------------------------- desfazer
 export function undo() {
-  const { state } = game;
-  const action = state.undo.pop();
+  const home = game.state;
+  const action = home.undo.at(-1);
   if (!action) return fail('Nada para desfazer hoje.');
-  if (action.kind === 'place') {
-    const item = itemById(action.itemId);
-    if (item) {
-      state.items = state.items.filter((i) => i.id !== item.id);
-      transact(state, item.pricePaid, 'reembolsos', `Desfeito: ${getEquipmentDef(item.type).name}`);
-    }
-  } else if (action.kind === 'move') {
-    const item = itemById(action.itemId);
-    const check = item && validatePlacement(state, { type: item.type, ...action.from }, item.id);
-    if (!check?.ok) return fail('A posição original está ocupada agora.');
-    Object.assign(item, action.from);
-  } else if (action.kind === 'sell') {
-    const check = validatePlacement(state, action.item);
-    if (!check.ok) return fail('O lugar do aparelho vendido está ocupado agora.');
-    if (!canAfford(state, action.refund)) return fail('Saldo insuficiente para desfazer a venda.');
-    transact(state, -action.refund, action.sameDay ? 'reembolsos' : 'vendas', `Desfeito: venda de ${getEquipmentDef(action.item.type).name}`);
-    state.items.push(action.item);
-  } else if (action.kind === 'level') {
-    const item = itemById(action.itemId);
-    if (item) {
+  if (viewOnly()) return fail('Volte para a Matriz para desfazer.');
+  const here = site();
+  if ((action.site ?? 'matriz') !== here.key) return fail('Essa ação foi feita em outro lugar: volte lá para desfazer.');
+  const ok = withSite((s) => {
+    const { state } = s;
+    const item = action.itemId != null ? siteItem(s, action.itemId) : null;
+    if (action.kind === 'place') {
+      if (item) {
+        setSiteItems(s, state.items.filter((i) => i.id !== item.id));
+        transact(home, item.pricePaid, 'reembolsos', `Desfeito: ${getEquipmentDef(item.type).name}`);
+      }
+    } else if (action.kind === 'move') {
+      const check = item && validatePlacement(state, { type: item.type, ...action.from }, item.id);
+      if (!check?.ok) return fail('A posição original está ocupada agora.');
       Object.assign(item, action.from);
-      transact(state, action.cost, 'reembolsos', `Desfeito: melhoria de ${getEquipmentDef(item.type).name}`);
-    }
-  } else if (action.kind === 'upgrade') {
-    const item = itemById(action.itemId);
-    if (item) {
+    } else if (action.kind === 'sell') {
+      const check = validatePlacement(state, action.item);
+      if (!check.ok) return fail('O lugar do aparelho vendido está ocupado agora.');
+      if (!canAfford(home, action.refund)) return fail('Saldo insuficiente para desfazer a venda.');
+      if (action.refund) transact(home, -action.refund, action.sameDay ? 'reembolsos' : 'vendas', `Desfeito: venda de ${getEquipmentDef(action.item.type).name}`);
+      state.items.push(action.item);
+    } else if (action.kind === 'level' && item) {
       Object.assign(item, action.from);
-      transact(state, action.cost, 'reembolsos', `Desfeito: upgrade de ${getEquipmentDef(item.type).name}`);
+      transact(home, action.cost, 'reembolsos', `Desfeito: melhoria de ${getEquipmentDef(item.type).name}`);
+    } else if (action.kind === 'upgrade' && item) {
+      Object.assign(item, action.from);
+      transact(home, action.cost, 'reembolsos', `Desfeito: upgrade de ${getEquipmentDef(item.type).name}`);
     }
-  }
+    home.undo.pop();
+    afterLayoutChange(s);
+    return true;
+  });
+  if (!ok) return false;
   game.ui.selectedId = null;
   playSound('rotate');
-  afterLayoutChange();
   emit();
   return true;
 }
