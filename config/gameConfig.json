@@ -124,6 +124,31 @@
         { "id": "profissional", "price": 2800, "capacity": 8, "minRep": 3.5 }
       ]
     },
+    "eliptico": {
+      "name": "Elíptico", "category": "cardio", "size": [1, 2], "needsAccess": true, "visualSlots": 1, "anim": "run",
+      "description": "Movimento de corrida sem impacto. Iniciantes adoram, joelhos agradecem.",
+      "tiers": [
+        { "id": "usado", "price": 600, "capacity": 6 },
+        { "id": "novo", "price": 1500, "capacity": 7, "minRep": 2 },
+        { "id": "profissional", "price": 3600, "capacity": 8, "minRep": 3.5 }
+      ]
+    },
+    "remo": {
+      "name": "Remo ergométrico", "category": "cardio", "size": [1, 3], "needsAccess": true, "visualSlots": 1, "anim": "run",
+      "description": "Cardio de corpo inteiro. Comprido, mas queima tudo.",
+      "tiers": [
+        { "id": "usado", "price": 500, "capacity": 5 },
+        { "id": "novo", "price": 1300, "capacity": 6, "minRep": 2.5 }
+      ]
+    },
+    "escada": {
+      "name": "Simulador de escada", "category": "cardio", "size": [1, 2], "needsAccess": true, "visualSlots": 1, "anim": "run", "minRep": 3,
+      "description": "Degraus sem fim. Corredor sério sobe aqui.",
+      "tiers": [
+        { "id": "usado", "price": 900, "capacity": 6 },
+        { "id": "profissional", "price": 3000, "capacity": 8, "minRep": 4 }
+      ]
+    },
     "supino": {
       "name": "Banco de supino", "category": "pesoLivre", "size": [2, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true, "noisy": true,
       "description": "Segunda é dia de peito. Essencial para o Marombeiro.",
@@ -143,10 +168,38 @@
       "description": "Grandão e barulhento. Marombeiro chora de alegria.",
       "tiers": [{ "id": "usado", "price": 700, "capacity": 6 }]
     },
+    "kettlebell": {
+      "name": "Rack de kettlebells", "category": "pesoLivre", "size": [2, 1], "needsAccess": true, "visualSlots": 2, "anim": "lift", "noisy": true,
+      "description": "Swing pra lá, swing pra cá. Duas pessoas treinam juntas.",
+      "tiers": [{ "id": "usado", "price": 280, "capacity": 7 }]
+    },
+    "plataforma": {
+      "name": "Plataforma olímpica", "category": "pesoLivre", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true, "minRep": 2.5,
+      "description": "Arremesso com barra acima da cabeça. A anilha cai e o bairro escuta.",
+      "tiers": [
+        { "id": "usado", "price": 650, "capacity": 5 },
+        { "id": "profissional", "price": 2200, "capacity": 7, "minRep": 3.5 }
+      ]
+    },
     "colchonete": {
       "name": "Área de colchonetes", "category": "funcional", "size": [2, 2], "needsAccess": true, "visualSlots": 2, "anim": "stretch",
       "description": "Alongamento, abdominal e funcional. Barata e amada por iniciantes.",
       "tiers": [{ "id": "usado", "price": 120, "capacity": 6 }]
+    },
+    "saco_pancada": {
+      "name": "Saco de pancada", "category": "funcional", "size": [1, 1], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true,
+      "description": "Desestressa depois do expediente. Ocupa só um quadradinho.",
+      "tiers": [{ "id": "usado", "price": 200, "capacity": 5 }]
+    },
+    "barra_fixa": {
+      "name": "Barra fixa", "category": "funcional", "size": [2, 1], "needsAccess": true, "visualSlots": 2, "anim": "lift",
+      "description": "Calistenia raiz: duas pessoas penduradas ao mesmo tempo.",
+      "tiers": [{ "id": "usado", "price": 220, "capacity": 6 }]
+    },
+    "corda_naval": {
+      "name": "Corda naval", "category": "funcional", "size": [1, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minRep": 2,
+      "description": "Ondas de corda até o braço pedir arrego. Funcional puro.",
+      "tiers": [{ "id": "usado", "price": 180, "capacity": 4 }]
     },
     "maquina_peito": {
       "name": "Máquina de peito", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true,
@@ -162,6 +215,24 @@
       "name": "Leg press", "category": "maquinas", "size": [3, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true, "minRep": 3,
       "description": "Dia de perna sem desculpa. Desejado por iniciantes. Capacidade em teste.",
       "tiers": [{ "id": "usado", "price": 800, "capacity": 4 }]
+    },
+    "extensora": {
+      "name": "Cadeira extensora", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift",
+      "description": "Quadríceps guiado e sentadinho. Ótima para quem está começando.",
+      "tiers": [{ "id": "usado", "price": 550, "capacity": 5 }]
+    },
+    "smith": {
+      "name": "Máquina Smith", "category": "maquinas", "size": [2, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minRep": 2.5,
+      "description": "Agachamento com a barra no trilho. Seguro e imponente.",
+      "tiers": [
+        { "id": "usado", "price": 1100, "capacity": 5 },
+        { "id": "novo", "price": 2400, "capacity": 6, "minRep": 3.5 }
+      ]
+    },
+    "crossover": {
+      "name": "Crossover", "category": "maquinas", "size": [3, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true, "minRep": 3,
+      "description": "Duas torres de polia para o crucifixo perfeito. Peito de vitrine.",
+      "tiers": [{ "id": "usado", "price": 1400, "capacity": 6 }]
     },
     "bebedouro": {
       "name": "Bebedouro", "category": "conforto", "size": [1, 1], "needsAccess": true, "vibe": 12,
@@ -183,6 +254,16 @@
       "description": "Banho depois do treino. Corredores agradecem.",
       "tiers": [{ "id": "usado", "price": 600, "capacity": 0 }]
     },
+    "geladeira": {
+      "name": "Geladeira de isotônicos", "category": "conforto", "size": [1, 1], "needsAccess": true, "vibe": 11, "minRep": 2,
+      "description": "Garrafinhas coloridas e geladas. Corredores fazem fila.",
+      "tiers": [{ "id": "usado", "price": 350, "capacity": 0 }]
+    },
+    "caixa_som": {
+      "name": "Caixa de som", "category": "conforto", "size": [1, 1], "needsAccess": false, "vibe": 9,
+      "description": "Playlist de treino no talo. Todo mundo rende mais.",
+      "tiers": [{ "id": "usado", "price": 160, "capacity": 0 }]
+    },
     "planta": {
       "name": "Vaso de costela-de-adão", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 6,
       "description": "Um verdinho deixa tudo mais acolhedor. Item de decoração proposto.",
@@ -192,6 +273,11 @@
       "name": "Pôster Mister Bairro 1987", "category": "decoracao", "size": [1, 1], "needsAccess": false, "wallMounted": true, "vibe": 5,
       "description": "O Tio Zé no auge. Precisa encostar na parede. Item de decoração proposto.",
       "tiers": [{ "id": "usado", "price": 40, "capacity": 0 }]
+    },
+    "trofeus": {
+      "name": "Estante de troféus", "category": "decoracao", "size": [1, 1], "needsAccess": false, "vibe": 6, "minRep": 2,
+      "description": "As medalhas do Tio Zé e do bairro. Brilha que dá gosto.",
+      "tiers": [{ "id": "usado", "price": 90, "capacity": 0 }]
     }
   },
   "profiles": {
@@ -301,6 +387,16 @@
         "extraShiftRate": 0.7,
         "cleanPerBlock": 6,
         "description": "Limpa até 6 sujeiras por turno coberto. Cobrir mais um turno custa +70% do salário base."
+      },
+      "tecnico": {
+        "label": "Técnico(a) de manutenção",
+        "monthlySalary": 1800,
+        "extraShiftRate": 0.8,
+        "hireCost": 1500,
+        "minRep": 2.5,
+        "fixPerBlock": 2,
+        "workCondition": 60,
+        "description": "Conserta até 2 aparelhos por turno coberto, sem cobrar peça: primeiro os quebrados, depois revisa os mais gastos (abaixo de 60%). Profissional disputado: exige 2,5★ de reputação e R$ 1.500 de luvas na contratação. Cobrir mais um turno custa +80% do salário base."
       }
     }
   },

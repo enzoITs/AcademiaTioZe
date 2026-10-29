@@ -27,7 +27,7 @@ npm run build && npm start   # produção
 | Câmera | roda do mouse (zoom), arrastar (mover), botões de zoom/enquadrar |
 | Dica do dia | clique no Whey (o gato) |
 | Ampliar | botão Ampliar (planta com todos os terrenos) ou clique na placa do terreno cercado |
-| Contratar faxineiros | aba Equipe → Contratar; escolha os turnos de cada pessoa |
+| Contratar equipe | aba Equipe → Contratar (faxineiro ou técnico); escolha os turnos de cada pessoa |
 
 ## Arquitetura
 
@@ -43,7 +43,8 @@ game/
   simulation/        tempo por blocos, demanda × capacidade × fila, alunos, satisfação
   economy/           livro-caixa: toda mudança de saldo é uma transação identificável
   systems/           desgaste/limpeza, sugestões, personagens e marcos
-  render/            renderizador Canvas 2D, biblioteca vetorial de aparelhos e pessoas
+  render/            estado visual compartilhado (director.js) e desenhos 2D (miniaturas, modo sem WebGL)
+  render/three/      mundo 3D em Three.js: câmera isométrica, modelos low poly, seleção por raycast
   audio/             efeitos sintetizados (WebAudio)
 tests/               testes de núcleo (fórmulas do documento)
 ```
@@ -54,8 +55,17 @@ tests/               testes de núcleo (fórmulas do documento)
   cada aparelho vem da estatística do bloco; caminhos vêm dos pais do BFS (sem pathfinding por aluno).
 - **Cliente apenas:** o jogo é carregado com `dynamic(..., { ssr: false })`; localStorage e áudio
   só são acessados no navegador.
-- **Arte substituível:** cada aparelho é uma função `draw(ctx, w, h, t, opts)` em
-  `game/render/draw/equipment.js`, que pode ser trocada por sprites sem mexer na lógica.
+- **Mundo em 3D:** o mapa é renderizado com Three.js (`game/render/three/`), numa câmera ortográfica
+  elevada em ângulo, com as mesmas cores do desenho 2D. A cena só lê o estado do jogo: terreno e paredes
+  são refeitos quando os terrenos mudam, aparelhos quando mudam de tipo/nível, e os bonecos só se movem.
+  Paredes da frente e da direita são baixas (corte de maquete) para mostrar o interior. Cliques usam
+  raycast (aparelho atingido ou célula do chão). Textos (balões, valores) ficam numa camada 2D por cima.
+  Sem WebGL2, o jogo volta sozinho para o mapa 2D.
+- **Arte substituível:** cada aparelho 3D é uma receita em `game/render/three/models.js` e
+  `moreEquipment.js` (peças simples juntadas numa malha só, com partes animadas separadas). `USE_SPOT`
+  diz onde o aluno fica em cada aparelho e qual pose usa; aparelho e boneco seguem o mesmo ritmo
+  (`RATE`), então o banco do remo desliza junto com o aluno e a barra do Smith desce com o agachamento. As miniaturas da interface continuam usando
+  `draw(ctx, w, h, t, opts)` em `game/render/draw/equipment.js`.
 
 ## O que está implementado (Era 1)
 
@@ -67,8 +77,13 @@ da porta, sem nunca ocupar a faixa da porta até a rua. Preço = R$ 380 por tile
 gerado (`grid.procedural` no JSON). A grade cresce junto (`syncLayout` em `game/grid/grid.js`). O
 documento previa só as duas primeiras ampliações na Era 1; o resto foi pedido depois. Faxineiros contratáveis (até 3): cada um limpa até 6 sujeiras por turno
 coberto, ao longo do bloco, com salário de R$ 600/mês por turno (+70% por turno extra), regra do Zelador
-do documento antecipada da Era 2. 15 itens (13 do documento +
-2 decorações propostas), com 3 níveis de qualidade para esteira, bicicleta e supino; colisão,
+do documento antecipada da Era 2. Técnico(a) de manutenção (proposto, fora do documento): conserta ou
+revisa até 2 aparelhos por turno sem cobrar peça (quebrados primeiro, depois os abaixo de 60%), mas
+custa R$ 1.800/mês por turno (+80% por turno extra), R$ 1.500 na contratação e exige 2,5★.
+31 itens (13 do documento + 2 decorações propostas + 16 aparelhos propostos depois: elíptico, remo,
+simulador de escada, kettlebells, plataforma olímpica, saco de pancada, barra fixa, corda naval,
+cadeira extensora, Smith, crossover, geladeira de isotônicos, caixa de som e estante de troféus), com
+níveis de qualidade para os principais aparelhos; colisão,
 limites, porta, parede para itens de parede, área de uso e acesso por flood fill; modo edição
 com desfazer e reembolso total no mesmo dia; 3 perfis com necessidades, manias e aparência
 variada; demanda por bloco, "segunda é dia de peito" e efeito Janeiro nas matrículas;
@@ -80,7 +95,7 @@ e progresso offline de até 3 dias sem quebrar aparelhos.
 
 ## Limitações conhecidas / adiado de propósito
 
-- **Eras 2–4, funcionários além do faxineiro (instrutores, recepção, técnico), pool de candidatos,
+- **Eras 2–4, instrutores e recepção, pool de candidatos,
   planos, aulas, suplementos e filiais** não estão implementados. O painel
   "Rumo à Era 2" mostra metas de referência, sem mudança de era.
 - **Efeito Janeiro:** só o multiplicador de matrículas (×2,5). A "Motivação que decai" ainda não existe.

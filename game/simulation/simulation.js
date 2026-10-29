@@ -12,7 +12,7 @@ import { checkMilestones, vovoMessage } from '../systems/characters.js';
 import { nearestWalkable } from '../pathfinding/floodFill.js';
 import { cellIndex, syncLayout } from '../grid/grid.js';
 import { nextRandom } from '../utils/random.js';
-import { runStaffCleaning } from '../systems/staff.js';
+import { runStaffCleaning, runStaffRepairs } from '../systems/staff.js';
 import { emptyExposure, emptyCategoryQueue } from '../engine/state.js';
 
 /** Dados derivados (não salvos): avaliação da academia e estatística do bloco atual. */
@@ -135,6 +135,11 @@ export function advanceTime(state, rt, gameDays, { offline = false } = {}) {
       refreshDerived(state, rt);
       events.push({ type: 'staffClean', dirt: removed });
     }
+    const fixed = runStaffRepairs(state, progress);
+    if (fixed.length) {
+      refreshDerived(state, rt);
+      events.push({ type: 'staffRepair', items: fixed });
+    }
   };
   while (remaining > 1e-9) {
     const need = 1 - state.time.blockProgress;
@@ -147,6 +152,7 @@ export function advanceTime(state, rt, gameDays, { offline = false } = {}) {
     staffCleanTo(1);
     state.time.blockProgress = 0;
     state.time.staffCleaned = 0;
+    state.time.staffFixed = 0;
     runBlockEnd(state, rt, offline);
     state.time.block += 1;
     if (state.time.block >= BLOCKS.length) {

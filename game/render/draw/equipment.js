@@ -224,6 +224,159 @@ const DRAW = {
   },
 };
 
+function kettleTop(ctx, x, y, r, color) {
+  circle(ctx, x, y, r, color, INK, 1.5);
+  ctx.beginPath();
+  ctx.arc(x, y - r * 0.2, r * 0.55, Math.PI, 0);
+  ctx.strokeStyle = P.metalDark;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function cupTop(ctx, x, y, r, color) {
+  circle(ctx, x, y, r, color, INK, 1.5);
+  circle(ctx, x, y, r * 0.5, 'rgba(255,255,255,0.45)', null);
+}
+
+// Segunda leva de aparelhos (mesmo estilo, vista de cima, frente para +y).
+Object.assign(DRAW, {
+  eliptico(ctx, w, h, t, o) {
+    box(ctx, -10, -h / 2 + 6, 20, h - 12, 6, P.metalDark);
+    box(ctx, -w / 2 + 8, -h / 2 + 6, w - 16, 20, 6, TIER_ACCENT[o.tier]);
+    const a = o.active ? t * 4 : 0;
+    box(ctx, -12, 6 + Math.cos(a) * 6, 9, 18, 3, P.rubber);
+    box(ctx, 3, 6 - Math.cos(a) * 6, 9, 18, 3, P.rubber);
+    line(ctx, -w / 2 + 8, -h / 2 + 30, -w / 2 + 8, -h / 2 + 46 + Math.cos(a) * 4, P.metalDark, 4);
+    line(ctx, w / 2 - 8, -h / 2 + 30, w / 2 - 8, -h / 2 + 46 - Math.cos(a) * 4, P.metalDark, 4);
+  },
+  remo(ctx, w, h, t, o) {
+    line(ctx, 0, -h / 2 + 30, 0, h / 2 - 8, P.metal, 7);
+    line(ctx, -14, h / 2 - 8, 14, h / 2 - 8, P.metalDark, 4);
+    circle(ctx, 0, -h / 2 + 18, 14, TIER_ACCENT[o.tier]);
+    circle(ctx, 0, -h / 2 + 18, 5, P.metalDark, INK, 1.5);
+    box(ctx, -12, -h / 2 + 36, 9, 12, 3, P.rubber);
+    box(ctx, 3, -h / 2 + 36, 9, 12, 3, P.rubber);
+    const c = o.active ? Math.sin(t * 2.2) : 0;
+    box(ctx, -9, 0 + c * 15, 18, 15, 5, P.pad);
+    line(ctx, -9, -h / 2 + 52 + (c + 1) * 10, 9, -h / 2 + 52 + (c + 1) * 10, P.rubber, 4);
+  },
+  escada(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 6, P.metalDark);
+    box(ctx, -w / 2 + 8, -h / 2 + 7, w - 16, 22, 6, TIER_ACCENT[o.tier]);
+    roundRect(ctx, -14, -h / 2 + 32, 28, h - 44, 4);
+    fillStroke(ctx, P.rubber);
+    const off = o.active ? (t * 14) % 11 : 0;
+    ctx.save();
+    roundRect(ctx, -14, -h / 2 + 32, 28, h - 44, 4);
+    ctx.clip();
+    for (let y = -h / 2 + 32 + off; y < h / 2; y += 11) line(ctx, -14, y, 14, y, P.yellow, 2);
+    ctx.restore();
+    line(ctx, -w / 2 + 8, -h / 2 + 30, -w / 2 + 8, h / 2 - 14, INK, 3);
+    line(ctx, w / 2 - 8, -h / 2 + 30, w / 2 - 8, h / 2 - 14, INK, 3);
+  },
+  kettlebell(ctx, w, h) {
+    box(ctx, -w / 2 + 4, -h / 2 + 8, w - 8, h - 16, 6, '#d9cfc0');
+    [P.blue, P.green, P.yellow, P.orange, P.pad].forEach((c, i) => kettleTop(ctx, -w / 2 + 16 + i * ((w - 32) / 4), 2, 5 + i * 0.6, c));
+  },
+  plataforma(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, P.rubber);
+    box(ctx, -w / 4, -h / 2 + 5, w / 2, h - 10, 2, '#d9b07a', null);
+    line(ctx, -w / 12, -h / 2 + 6, -w / 12, h / 2 - 6, 'rgba(61,53,80,0.2)', 1);
+    line(ctx, w / 12, -h / 2 + 6, w / 12, h / 2 - 6, 'rgba(61,53,80,0.2)', 1);
+    const lift = o.active ? Math.max(0, Math.sin(t * 1.8)) * 4 : 0;
+    const by = 4 - lift;
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, INK, 5);
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, P.metal, 3);
+    for (const s of [-1, 1]) box(ctx, s * (w / 2 - 22) - 4, by - 14, 8, 28, 3, P.pad);
+  },
+  saco_pancada(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 10, -h / 2 + 4, w - 20, 10, 3, P.metalDark);
+    line(ctx, 0, -h / 2 + 9, 0, -2, P.metalDark, 4);
+    const sw = o.active ? Math.abs(Math.sin(t * 6)) * 3 : 0;
+    circle(ctx, 0, 2 - sw, 12, P.pad);
+    circle(ctx, 0, 2 - sw, 6, P.white, INK, 1.5);
+  },
+  barra_fixa(ctx, w, h) {
+    box(ctx, -w / 2 + 6, -h / 2 + 8, w - 12, h - 16, 6, '#c9bdd8', null);
+    for (const s of [-1, 1]) box(ctx, s * (w / 2 - 10) - 5, -h / 2 + 6, 10, h - 12, 3, P.metalDark);
+    line(ctx, -w / 2 + 10, 0, w / 2 - 10, 0, INK, 5);
+    line(ctx, -w / 2 + 10, 0, w / 2 - 10, 0, P.metal, 3);
+    for (const x of [-w / 4, w / 4]) line(ctx, x - 5, 0, x + 5, 0, P.rubber, 5);
+  },
+  corda_naval(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 6, -h / 2 + 4, w - 12, h - 8, 6, '#c9bdd8', null);
+    box(ctx, -9, -h / 2 + 6, 18, 14, 4, P.metalDark);
+    for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+      ctx.beginPath();
+      for (let y = -h / 2 + 18; y <= h / 2 - 10; y += 4) {
+        const u = (y + h / 2) / h;
+        const x = s * (4 + u * 6) + (o.active ? Math.sin(t * 9 + ph - u * 6) * u * 5 : 0);
+        if (y === -h / 2 + 18) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.strokeStyle = '#e9d7a8';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+  },
+  extensora(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, 18, 5, P.metalDark);
+    for (let i = 0; i < 4; i++) box(ctx, -12, -h / 2 + 8 + i * 3.5, 24, 3, 1, P.plate, null);
+    box(ctx, -14, -h / 2 + 28, 28, 10, 4, P.pad);
+    box(ctx, -14, -6, 28, 22, 7, P.pad);
+    const k = o.active ? (1 - Math.cos(t * 2.6)) / 2 : 0;
+    line(ctx, -16, 18 + k * 8, 16, 18 + k * 8, INK, 8);
+    line(ctx, -16, 18 + k * 8, 16, 18 + k * 8, P.pad, 6);
+  },
+  smith(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, '#d6c7b4');
+    for (const s of [-1, 1]) {
+      box(ctx, s * (w / 2 - 14) - 6, -h / 2 + 10, 12, 12, 3, P.metalDark);
+      box(ctx, s * (w / 2 - 14) - 6, -h / 2 + 40, 12, 12, 3, P.metalDark);
+      line(ctx, s * (w / 2 - 14), -h / 2 + 16, s * (w / 2 - 14), -h / 2 + 46, INK, 3);
+    }
+    const sq = o.active ? Math.sin(t * 2.2) * 2 : 0;
+    const by = -h / 2 + 46 + sq;
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, INK, 6);
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, P.metal, 4);
+    plateStack(ctx, -w / 2 + 24, by, 10);
+    plateStack(ctx, w / 2 - 24, by, 10);
+  },
+  crossover(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 6, w - 8, h - 14, 6, '#d6c7b4');
+    box(ctx, -w / 2 + 4, -h / 2 + 8, w - 8, 10, 4, P.metalDark);
+    for (const s of [-1, 1]) box(ctx, s * (w / 2 - 20) - 10, -h / 2 + 6, 20, 22, 5, P.metalDark);
+    const k = o.active ? (1 - Math.cos(t * 2.4)) / 2 : 0;
+    for (const s of [-1, 1]) {
+      const hx = s * (w / 2 - 30 - k * 26);
+      line(ctx, s * (w / 2 - 20), -h / 2 + 18, hx, 6, INK, 1.5);
+      circle(ctx, hx, 6, 4, P.rubber, INK, 1.5);
+    }
+  },
+  geladeira(ctx, w, h) {
+    box(ctx, -w / 2 + 6, -h / 2 + 5, w - 12, h - 10, 6, P.white);
+    box(ctx, -w / 2 + 6, -h / 2 + 5, w - 12, 10, 4, P.blue);
+    box(ctx, -w / 2 + 9, h / 2 - 12, w - 18, 5, 2, '#cfeaf7', INK, 1);
+    [P.orange, P.blue, P.green, P.pink].forEach((c, i) => circle(ctx, -12 + i * 8, 0, 3.2, c, INK, 1));
+  },
+  caixa_som(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 9, -h / 2 + 8, w - 18, h - 16, 5, P.rubber);
+    const kick = o.on ? Math.max(0, 1 - ((t * 2.2) % 1) * 4) : 0;
+    circle(ctx, 0, 2, 9 + kick * 1.5, '#2e2a3d', P.metal, 2);
+    circle(ctx, 0, 2, 3, P.metalDark, null);
+    circle(ctx, 0, -11, 3, P.metal, null);
+  },
+  trofeus(ctx, w, h) {
+    box(ctx, -w / 2 + 5, -h / 2 + 6, w - 10, 18, 3, '#c9a27a');
+    cupTop(ctx, -10, -h / 2 + 15, 5, '#c9cbd6');
+    cupTop(ctx, 1, -h / 2 + 15, 7, P.yellow);
+    cupTop(ctx, 12, -h / 2 + 15, 4.5, '#d9a066');
+  },
+});
+
 export function drawEquipmentShape(ctx, type, w, h, t, opts) {
   (DRAW[type] ?? DRAW.halteres)(ctx, w, h, t, opts);
 }

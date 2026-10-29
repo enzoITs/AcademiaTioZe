@@ -15,6 +15,10 @@ export const EQUIPMENT_SHORT = {
   rack_agachamento: 'rack', colchonete: 'colchonete', maquina_peito: 'máquina de peito',
   puxador: 'puxador', leg_press: 'leg press', bebedouro: 'bebedouro', ventilador: 'ventilador',
   espelho: 'espelho', vestiario: 'vestiário', planta: 'plantinha', poster: 'pôster',
+  eliptico: 'elíptico', remo: 'remo', escada: 'simulador de escada', kettlebell: 'kettlebell',
+  plataforma: 'plataforma', saco_pancada: 'saco de pancada', barra_fixa: 'barra fixa',
+  corda_naval: 'corda naval', extensora: 'extensora', smith: 'smith', crossover: 'crossover',
+  geladeira: 'geladeira de isotônicos', caixa_som: 'caixa de som', trofeus: 'estante de troféus',
 };
 
 export const CATEGORY_SHORT = { cardio: 'cardio', peso: 'peso', funcional: 'funcional' };

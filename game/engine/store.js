@@ -17,7 +17,7 @@ import {
 import { grantNovelty } from '../simulation/students.js';
 import { checkMilestones, wheyTip, addMessage } from '../systems/characters.js';
 import { buildSuggestions, isTypeLocked } from '../systems/suggestions.js';
-import { canHire, createStaffMember } from '../systems/staff.js';
+import { createStaffMember, hireBlocker, roleDef } from '../systems/staff.js';
 import { ensureFrontier } from '../systems/expansion.js';
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal,
@@ -252,6 +252,11 @@ function handleEvents(events) {
     }
     if (e.type === 'vovo') playSound('notify');
     if (e.type === 'staffClean') for (const d of e.dirt) fx({ kind: 'clean', x: d.x, y: d.y, quiet: true });
+    if (e.type === 'staffRepair') {
+      for (const f of e.items) fx({ kind: 'repair', itemId: f.itemId });
+      const broken = e.items.filter((f) => f.broken);
+      if (broken.length) toast(`A equipe técnica consertou: ${broken.map((f) => EQUIPMENT_SHORT[f.type]).join(', ')}.`, 'success');
+    }
   }
   if (cancels.length === 1) toast(`${cancels[0].entry.name} saiu: "${cancels[0].entry.quote}"`, 'warn');
   if (cancels.length > 1) toast(`${cancels.length} cancelamentos hoje. Veja os motivos na aba Alunos.`, 'warn');
@@ -293,18 +298,17 @@ export function placementPreview() {
   const grab = ui.mode === 'move' ? ui.moving.grab : null;
   const { x, y } = grab ? { x: ui.hover.x - grab.dx, y: ui.hover.y - grab.dy } : anchorFor(type, rot, ui.hover);
   const check = validatePlacement(state, { type, x, y, rot }, ignoreId);
-  let warning = null;
-  if (check.ok) {
-    // Simula o layout para avisar sobre acesso (o item ou outros ficam sem corredor).
-    const temp = state.items.filter((i) => i.id !== ignoreId).concat({ id: -999, type, x, y, rot });
-    const access = computeAccess(state.unlockedZones, temp);
-    if (!access.reachable.has(-999)) warning = 'Sem corredor até a frente: ficará inutilizável';
-    else {
-      const blocked = temp.filter((i) => i.id !== -999 && !access.reachable.has(i.id) && game.rt.academy.access.reachable.has(i.id));
-      if (blocked.length) warning = `Bloqueia o acesso a: ${blocked.map((i) => EQUIPMENT_SHORT[i.type]).join(', ')}`;
-    }
-  }
+  const warning = check.ok ? accessWarning(state, { type, x, y, rot }, ignoreId) : null;
   return { type, x, y, rot, ...check, warning };
+}
+
+/** Simula o layout para avisar sobre acesso (o item ou outros ficam sem corredor). */
+function accessWarning(state, { type, x, y, rot }, ignoreId) {
+  const temp = state.items.filter((i) => i.id !== ignoreId).concat({ id: -999, type, x, y, rot });
+  const access = computeAccess(state.unlockedZones, temp);
+  if (!access.reachable.has(-999)) return 'Sem corredor até a frente: ficará inutilizável';
+  const blocked = temp.filter((i) => i.id !== -999 && !access.reachable.has(i.id) && game.rt.academy.access.reachable.has(i.id));
+  return blocked.length ? `Bloqueia o acesso a: ${blocked.map((i) => EQUIPMENT_SHORT[i.type]).join(', ')}` : null;
 }
 
 export function setHover(cell) {
@@ -343,6 +347,50 @@ export function cancelMode() {
   emit();
 }
 
+/**
+ * Giro no lugar de um aparelho já colocado. Gira em torno do centro (não do
+ * canto), e se a nova forma não couber ali procura o encaixe livre mais
+ * próximo (até 2 células), preferindo um que não feche o corredor de ninguém
+ * (se só couber fechando, gira e avisa). Se 90° não couber em lugar nenhum,
+ * tenta 180° e 270°.
+ */
+function findRotation(state, item) {
+  const { w, h } = footprintSize(item.type, item.rot);
+  const cx = item.x + w / 2;
+  const cy = item.y + h / 2;
+  let firstReason = null;
+  let fallback = null;
+  for (let turn = 1; turn < 4; turn++) {
+    const rot = (item.rot + turn) % 4;
+    const size = footprintSize(item.type, rot);
+    const ix = cx - size.w / 2;
+    const iy = cy - size.h / 2;
+    const candidates = [];
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const x = Math.round(ix) + dx;
+        const y = Math.round(iy) + dy;
+        // Empate: fica o mais perto do canto atual (girar 4× volta ao início).
+        candidates.push({ x, y, d: Math.hypot(x - ix, y - iy) + Math.hypot(x - item.x, y - item.y) * 0.01 });
+      }
+    }
+    candidates.sort((a, b) => a.d - b.d);
+    for (const c of candidates) {
+      const spot = { type: item.type, x: c.x, y: c.y, rot };
+      const check = validatePlacement(state, spot, item.id);
+      if (!check.ok) {
+        firstReason ??= check.reason;
+        continue;
+      }
+      const warning = accessWarning(state, spot, item.id);
+      if (!warning) return { ok: true, x: c.x, y: c.y, rot };
+      fallback ??= { ok: true, x: c.x, y: c.y, rot, warning };
+    }
+    if (fallback) return fallback;
+  }
+  return { ok: false, reason: firstReason ?? 'Sem espaço' };
+}
+
 export function rotate() {
   const { ui, state } = game;
   if (ui.mode === 'place') ui.placing.rot = (ui.placing.rot + 1) % 4;
@@ -352,12 +400,13 @@ export function rotate() {
   } else if (ui.selectedId) {
     const item = itemById(ui.selectedId);
     if (!item) return;
-    const rot = (item.rot + 1) % 4;
-    const check = validatePlacement(state, { type: item.type, x: item.x, y: item.y, rot }, item.id);
-    if (!check.ok) return fail(`Não dá para girar aqui: ${check.reason.toLowerCase()}.`);
+    const spot = findRotation(state, item);
+    if (!spot.ok) return fail(`Não dá para girar aqui: ${spot.reason.toLowerCase()}.`);
     state.undo.push({ kind: 'move', itemId: item.id, from: { x: item.x, y: item.y, rot: item.rot } });
-    item.rot = rot;
+    Object.assign(item, { x: spot.x, y: spot.y, rot: spot.rot });
+    fx({ kind: 'place', itemId: item.id });
     afterLayoutChange();
+    if (spot.warning) toast(spot.warning, 'warn');
   } else return;
   playSound('rotate');
   emit();
@@ -680,11 +729,16 @@ function unlockZone(zoneId) {
 // ---------------------------------------------------------------- equipe
 export function hireStaff(role = 'zelador') {
   const { state } = game;
-  if (!canHire(state)) return fail(`A garagem comporta no máximo ${CONFIG.staff.maxStaff} pessoas na equipe.`);
+  const blocker = hireBlocker(state, role);
+  if (blocker) return fail(blocker);
+  const def = roleDef(role);
   const member = createStaffMember(state, state.rng, role);
+  if (def.hireCost) transact(state, -def.hireCost, 'salarios', `Contratação: ${member.name}`);
   state.staff.push(member);
-  addMessage(state, 'tioze', `Contratou ${member.name}? Gente boa! Dizem que ${member.trait}.`);
-  toast(`${member.name} contratado(a) para o turno da noite. Ajuste os turnos na aba Equipe.`, 'success');
+  addMessage(state, 'tioze', role === 'tecnico'
+    ? `Um(a) técnico(a) de verdade? ${member.name} não é barato(a), mas aparelho parado custa mais caro. Dizem que ${member.trait}.`
+    : `Contratou ${member.name}? Gente boa! Dizem que ${member.trait}.`);
+  toast(`${member.name} (${def.label.toLowerCase()}) contratado(a) para o turno da noite. Ajuste os turnos na aba Equipe.`, 'success');
   playSound('buy');
   emit();
   return true;

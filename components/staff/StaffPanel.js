@@ -5,13 +5,19 @@ import { CONFIG, BLOCKS } from '../../game/config.js';
 import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import { computeBlockStats } from '../../game/simulation/demand.js';
 import {
-  roleDef, staffSalary, totalMonthlySalaries, cleaningCapacityByBlock, canHire, PEAK_BLOCK,
+  roleDef, staffSalary, totalMonthlySalaries, cleaningCapacityByBlock, repairCapacityByBlock, repairQueue,
+  hireBlocker, PEAK_BLOCK,
 } from '../../game/systems/staff.js';
 import { hireStaff, toggleStaffShift, requestFire } from '../../game/engine/store.js';
 import { drawCleaner } from '../../game/render/draw/people.js';
 import Icon from '../ui/Icon.js';
 
-function StaffThumb({ look, size = 44 }) {
+const ROLES = [
+  { id: 'zelador', icon: 'broom' },
+  { id: 'tecnico', icon: 'wrench' },
+];
+
+function StaffThumb({ look, role, size = 44 }) {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -21,8 +27,8 @@ function StaffThumb({ look, size = 44 }) {
     canvas.height = size * dpr;
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr * 1.25, 0, 0, dpr * 1.25, (size * dpr) / 2 - 4 * dpr, size * dpr - 5 * dpr);
-    drawCleaner(ctx, look, 'idle', 0.4, 1);
-  }, [look, size]);
+    drawCleaner(ctx, look, 'idle', 0.4, 1, role);
+  }, [look, role, size]);
   return <canvas ref={ref} className="staff-thumb" style={{ width: size, height: size }} aria-hidden="true" />;
 }
 
@@ -37,34 +43,48 @@ function dirtForecast(state, academy) {
 
 export default function StaffPanel() {
   const { state, rt } = useGame();
-  const role = roleDef('zelador');
   const capacity = cleaningCapacityByBlock(state);
+  const fixCapacity = repairCapacityByBlock(state);
+  const hasTech = state.staff.some((m) => m.role === 'tecnico');
+  const queue = hasTech ? repairQueue(state).length : 0;
   const forecast = dirtForecast(state, rt.academy);
   const salaries = totalMonthlySalaries(state);
-  const hireable = canHire(state);
 
   return (
     <section className="panel-section" aria-label="Equipe">
       <h2 className="section-title">Contratar</h2>
-      <div className="staff-role">
-        <div className="staff-role-head">
-          <div>
-            <strong>{role.label}</strong>
-            <div className="small subtle">{formatMoney(role.monthlySalary)}/mês por 1 turno · +70% por turno extra</div>
+      {ROLES.map(({ id, icon }) => {
+        const role = roleDef(id);
+        const blocker = hireBlocker(state, id);
+        return (
+          <div key={id} className="staff-role">
+            <div className="staff-role-head">
+              <div>
+                <strong>{role.label}</strong>
+                <div className="small subtle">
+                  {formatMoney(role.monthlySalary)}/mês por 1 turno · +{Math.round(role.extraShiftRate * 100)}% por turno extra
+                </div>
+                {role.hireCost ? (
+                  <div className="small subtle">
+                    Contratação: {formatMoney(role.hireCost)} · exige {String(role.minRep).replace('.', ',')}★
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={() => hireStaff(id)}
+                disabled={!!blocker}
+                title={blocker ?? 'Contratar e colocar no turno da noite'}
+              >
+                <Icon name={blocker && role.minRep && blocker.includes('★') ? 'lock' : icon} size={15} /> Contratar
+              </button>
+            </div>
+            <p className="small">{role.description}</p>
           </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-primary"
-            onClick={() => hireStaff('zelador')}
-            disabled={!hireable}
-            title={hireable ? 'Contratar e colocar no turno da noite' : `Máximo de ${CONFIG.staff.maxStaff} na equipe`}
-          >
-            <Icon name="broom" size={15} /> Contratar
-          </button>
-        </div>
-        <p className="small">{role.description}</p>
-        <p className="small subtle">Equipe: {state.staff.length}/{CONFIG.staff.maxStaff}. Sem taxa de contratação; o salário é cobrado por dia.</p>
-      </div>
+        );
+      })}
+      <p className="small subtle">Equipe: {state.staff.length}/{CONFIG.staff.maxStaff}. Faxineiro(a) não tem taxa de contratação; os salários são cobrados por dia.</p>
 
       <h2 className="section-title">Cobertura de limpeza por turno</h2>
       <div className="coverage">
@@ -81,6 +101,24 @@ export default function StaffPanel() {
         A sujeira que sobra para o próximo turno ainda pode ser limpa por você com um clique.
       </p>
 
+      {hasTech ? (
+        <>
+          <h2 className="section-title">Cobertura de manutenção por turno</h2>
+          <div className="coverage">
+            {BLOCKS.map((b, i) => (
+              <div key={b.id} className={fixCapacity[i] ? 'on' : ''}>
+                {b.label}{i === PEAK_BLOCK ? ' ★' : ''}
+                <strong>{fixCapacity[i] ? `conserta ${fixCapacity[i]}` : 'ninguém'}</strong>
+              </div>
+            ))}
+          </div>
+          <p className="hint">
+            Na fila agora: {queue} aparelho{queue === 1 ? '' : 's'} (quebrados ou abaixo de {roleDef('tecnico').workCondition}%).
+            A equipe técnica não cobra peça: quebrado volta novinho, gasto ganha uma revisão.
+          </p>
+        </>
+      ) : null}
+
       <h2 className="section-title">Sua equipe</h2>
       {state.staff.length === 0 ? (
         <p className="empty small">Ninguém contratado. Por enquanto você limpa tudo sozinho(a) clicando nas sujeiras.</p>
@@ -89,7 +127,7 @@ export default function StaffPanel() {
           {state.staff.map((m) => (
             <li key={m.id} className="staff-card">
               <div className="staff-card-head">
-                <StaffThumb look={m.look} />
+                <StaffThumb look={m.look} role={m.role} />
                 <div>
                   <strong>{m.name}</strong>
                   <span className="small subtle">{roleDef(m.role).label} · {m.trait}</span>
@@ -116,7 +154,7 @@ export default function StaffPanel() {
       )}
 
       <p className="hint">
-        Folha mensal: <strong>{formatMoney(salaries)}</strong> · sujeiras limpas pela equipe: {state.stats.cleanedByStaff ?? 0} · por você: {state.stats.cleaned}.
+        Folha mensal: <strong>{formatMoney(salaries)}</strong> · sujeiras limpas pela equipe: {state.stats.cleanedByStaff ?? 0} · por você: {state.stats.cleaned} · aparelhos consertados pela equipe: {state.stats.repairedByStaff ?? 0}.
         Os salários aparecem em Finanças como “Salários da equipe”.
       </p>
     </section>

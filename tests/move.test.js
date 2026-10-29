@@ -65,9 +65,24 @@ test('setas empurram o selecionado e respeitam colisão; girar funciona sem modo
   assert.equal(nudgeSelected(1, 0), false, 'bateria no supino');
   assert.equal(s.items[0].x, 4);
   rotate();
-  assert.equal(s.items[0].rot, 0, 'girada encostaria no supino: bloqueado');
-  nudgeSelected(-1, 0);
+  assert.equal(s.items[0].rot, 1, 'gira pelo centro e escorrega para longe do supino');
+  assert.deepEqual([s.items[0].x, s.items[0].y], [3, 1], 'encaixe livre mais próximo');
   rotate();
-  assert.equal(s.items[0].rot, 1);
+  assert.equal(s.items[0].rot, 2);
+  assert.deepEqual([s.items[0].x, s.items[0].y], [3, 1], 'empate fica no canto atual');
+  cancelMode();
+});
+
+test('girar no lugar não deixa o aparelho fugir para longe', () => {
+  const s = setup();
+  // Esteira encurralada entre paredes e outros aparelhos: nenhum giro cabe.
+  s.items.push(
+    { id: 3, type: 'supino', tier: 'usado', x: 0, y: 3, rot: 0, condition: 70, purchasedDay: 0, pricePaid: 300 },
+  );
+  game.ui.selectedId = 1;
+  const before = { ...s.items[0] };
+  rotate();
+  const after = s.items[0];
+  assert.ok(Math.abs(after.x - before.x) <= 2 && Math.abs(after.y - before.y) <= 2);
   cancelMode();
 });

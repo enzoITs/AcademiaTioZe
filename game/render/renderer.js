@@ -1,61 +1,38 @@
-// Renderizador Canvas 2D. Lê o mesmo estado que o React (store) e nunca o
-// altera: só mantém estado visual próprio (câmera, sprites, partículas).
+// Renderizador Canvas 2D (reserva sem WebGL). Lê o mesmo estado que o React
+// (store) e nunca o altera; o estado visual vem do SceneDirector.
 import { CONFIG, getEquipmentDef } from '../config.js';
 import {
-  COLS, ROWS, DOOR, cellIndex, inBounds, footprintSize, frontCells, footprintCells, zoneAtCell, allZones, zoneById,
+  COLS, ROWS, DOOR, inBounds, footprintSize, frontCells, zoneAtCell, allZones, zoneById,
 } from '../grid/grid.js';
-import { nearestWalkable, pathFromDoor } from '../pathfinding/floodFill.js';
 import { conditionState, hasWear, CONDITION_STATES } from '../systems/maintenance.js';
-import { wheyMood } from '../systems/characters.js';
 import { placementPreview } from '../engine/store.js';
-import { buildTargets, walkPath } from './scene.js';
+import { SceneDirector } from './director.js';
 import { drawEquipmentShape } from './draw/equipment.js';
 import { drawPerson, drawWhey, drawCleaner } from './draw/people.js';
 import {
   PALETTE as P, INK, FONT_UI, FONT_TITLE, box, circle, ellipse, line, roundRect, dropShadow, speechBubble,
 } from './draw/primitives.js';
 import { formatMoney } from '../utils/format.js';
+import { floorOf, BLOCK_TINT } from './look.js';
 
 const T = CONFIG.grid.tileSize;
-const ZONE_FLOOR = {
-  garagem: ['#ece4d6', '#e4dac9'],
-  quintal: ['#e3ecd9', '#d9e4cd'],
-  puxadinho: ['#e9e3f1', '#dfd7ea'],
-  varanda: ['#f3e3d3', '#ebd6c2'],
-  galpao: ['#e1e3ea', '#d6d9e2'],
-  terraco: ['#dcebef', '#cfe2e7'],
-};
-// Pisos dos terrenos gerados: alternam numa paleta pastel.
-const PROC_FLOORS = [
-  ['#efe6dc', '#e6dbcd'], ['#e2ecf3', '#d6e3ec'], ['#ece6f2', '#e1d9ea'],
-  ['#e6efe0', '#dbe7d3'], ['#f3e8d8', '#ebdcc6'], ['#e4e8ec', '#d9dee4'],
-];
-const floorOf = (zone) => ZONE_FLOOR[zone.id] ?? PROC_FLOORS[(Number(zone.id.split('-')[1]) || 0) % PROC_FLOORS.length];
-const BLOCK_TINT = ['rgba(255,214,150,0.07)', 'rgba(255,255,255,0)', 'rgba(70,80,160,0.12)'];
 const MIN_ZOOM = 0.18;
 
 /** Limites do mundo desenhado: a grade atual (que cresce) mais rua e margem. */
 const world = () => ({ x: -T * 0.6, y: -T * 0.6, w: COLS * T + T * 1.2, h: ROWS * T + T * 2.2 });
 
-export class GameRenderer {
+/** Renderizador Canvas 2D de reserva, usado só quando o navegador não tem WebGL. */
+export class GameRenderer extends SceneDirector {
   constructor(canvas, game) {
+    super(game);
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.game = game;
     this.camera = { zoom: 1, x: 0, y: 0 };
     this.viewport = { w: 1, h: 1, dpr: 1 };
-    this.sprites = new Map();
-    this.lastStats = null;
-    this.bubbles = [];
-    this.particles = [];
-    this.floaters = [];
-    this.itemAnims = new Map();
-    this.nextBubbleAt = 0;
-    this.whey = { x: (DOOR.x + 1.5) * T, y: (DOOR.y + 0.6) * T };
-    this.staffSprites = new Map();
-    this.time = 0;
     this.userMovedCamera = false;
   }
+
+  dispose() {}
 
   // ------------------------------------------------------------ câmera
   resize(w, h, dpr) {
@@ -146,249 +123,14 @@ export class GameRenderer {
     return this.game.state.dirt.find((d) => Math.hypot(d.x * T - w.x, d.y * T - w.y) < T * 0.42) ?? null;
   }
 
-  // ------------------------------------------------------------ cena
-  syncScene() {
-    const { state, rt } = this.game;
-    if (rt.blockStats === this.lastStats) return;
-    this.lastStats = rt.blockStats;
-    const flood = rt.academy.access.flood;
-    const targets = buildTargets(state, rt);
-    const students = new Map(state.students.map((s) => [s.id, s]));
-    const alive = new Set();
-    for (const tg of targets) {
-      const student = students.get(tg.studentId);
-      if (!student) continue;
-      alive.add(tg.key);
-      const existing = this.sprites.get(tg.key);
-      if (existing && !existing.leaving) {
-        existing.student = student;
-        existing.target = tg;
-        if (Math.hypot(existing.goal.x - tg.x, existing.goal.y - tg.y) > 2) {
-          existing.path = [{ x: tg.x, y: tg.y }];
-          existing.goal = { x: tg.x, y: tg.y };
-        }
-        continue;
-      }
-      const path = walkPath(flood, tg.cell, { x: tg.x, y: tg.y });
-      this.sprites.set(tg.key, {
-        key: tg.key, student, target: tg, x: path[0].x, y: path[0].y, path: path.slice(1), goal: { x: tg.x, y: tg.y },
-        alpha: 0, leaving: false, seed: (tg.studentId * 13) % 17,
-      });
-    }
-    for (const [key, sp] of this.sprites) {
-      if (alive.has(key) || sp.leaving) continue;
-      sp.leaving = true;
-      const cell = { x: Math.floor(sp.x / T), y: Math.floor(sp.y / T) };
-      const back = (pathFromDoor(flood, cell.x, cell.y) ?? []).reverse().map((c) => ({ x: (c.x + 0.5) * T, y: (c.y + 0.5) * T }));
-      sp.path = [...back, { x: (DOOR.x + 0.5) * T, y: (DOOR.y + 1.4) * T }];
-    }
-    this.updateWheyTarget();
-  }
-
-  updateWheyTarget() {
-    const { state, rt } = this.game;
-    const mood = wheyMood(state, rt.academy, rt.blockStats);
-    const flood = rt.academy.access.flood;
-    let cell = null;
-    if (mood.target) {
-      const fp = footprintCells(mood.target.type, mood.target.x, mood.target.y, mood.target.rot);
-      cell = nearestWalkable(flood, fp, 1)[0] ?? null;
-    } else if (mood.mood === 'sleep') {
-      let best = -1;
-      for (let i = 0; i < flood.dist.length; i++) if (flood.dist[i] > best) { best = flood.dist[i]; cell = { x: i % COLS, y: Math.floor(i / COLS) }; }
-    }
-    if (!cell) cell = { x: DOOR.x + 1, y: DOOR.y - 1 };
-    this.wheyMood = mood.mood;
-    this.wheyGoal = { x: (cell.x + 0.5) * T, y: (cell.y + 0.75) * T };
-  }
-
-  consumeFx(now) {
-    const { ui, state } = this.game;
-    if (!ui.fx.length) return;
-    for (const e of ui.fx) {
-      if (e.kind === 'place' || e.kind === 'repair') this.itemAnims.set(e.itemId, { kind: e.kind, t0: now });
-      if (e.kind === 'place') {
-        const item = state.items.find((i) => i.id === e.itemId);
-        if (item) this.burst(item, 10, ['#d9cfc0', '#efe8dc'], 'dust');
-      }
-      if (e.kind === 'repair') {
-        const item = state.items.find((i) => i.id === e.itemId);
-        if (item) this.burst(item, 12, [P.yellow, '#ffffff', P.mint], 'spark');
-      }
-      if (e.kind === 'money') this.floaters.push({ x: (e.x + 0.5) * T, y: e.y * T, text: e.text, t0: now, color: e.text.startsWith('+') ? P.greenDark : '#c94f55' });
-      if (e.kind === 'clean') {
-        for (let i = 0; i < 9; i++) {
-          const a = (i / 9) * Math.PI * 2;
-          this.particles.push({ x: e.x * T, y: e.y * T, vx: Math.cos(a) * 50, vy: Math.sin(a) * 50 - 20, t0: now, life: 0.6, color: i % 2 ? '#bfe3f5' : '#ffffff', kind: 'spark' });
-        }
-        if (!e.quiet) this.floaters.push({ x: e.x * T, y: e.y * T - 6, text: 'Limpinho!', t0: now, color: P.blueDark });
-      }
-      if (e.kind === 'zone') {
-        const z = zoneById(e.zoneId);
-        if (!z) continue;
-        for (let i = 0; i < 40; i++) {
-          this.particles.push({
-            x: (z.x + Math.random() * z.w) * T, y: (z.y + Math.random() * z.h) * T, vx: (Math.random() - 0.5) * 60, vy: -40 - Math.random() * 80,
-            t0: now, life: 1.4, color: [P.yellow, P.pink, P.blue, P.mint, P.orange][i % 5], kind: 'confetti',
-          });
-        }
-      }
-      if (e.kind === 'finally') this.celebrate(e, now);
-      if (e.kind === 'newZone') {
-        const z = zoneById(e.zoneId);
-        if (z) {
-          this.newZoneGlow = { zoneId: z.id, t0: now };
-          this.floaters.push({ x: (z.x + z.w / 2) * T, y: (z.y + z.h / 2) * T - 40, text: 'Novo terreno à venda!', t0: now + 400, color: P.greenDark });
-        }
-      }
-    }
-    ui.fx.length = 0;
-  }
-
-  burst(item, n, colors, kind) {
-    const { w, h } = footprintSize(item.type, item.rot);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
-      this.particles.push({
-        x: (item.x + w / 2) * T + Math.cos(a) * w * T * 0.45, y: (item.y + h / 2) * T + Math.sin(a) * h * T * 0.45,
-        vx: Math.cos(a) * 40, vy: Math.sin(a) * 40 - 10, t0: this.time * 1000, life: 0.7, color: colors[i % colors.length], kind,
-      });
-    }
-  }
-
-  celebrate(e, now) {
-    let shown = 0;
-    for (const sp of this.sprites.values()) {
-      if (sp.leaving || shown >= 6) continue;
-      this.bubbles = this.bubbles.filter((b) => b.key !== sp.key);
-      this.bubbles.push({ key: sp.key, text: e.text, tone: 'happy', t0: now + shown * 120, dur: 2600 });
-      shown += 1;
-    }
-    if (!shown) this.floaters.push({ x: (DOOR.x + 0.5) * T, y: DOOR.y * T, text: e.text, t0: now, color: P.greenDark });
-  }
-
-  /** Equipe de limpeza: cada pessoa do turno vai até uma sujeira (a mais antiga primeiro). */
-  updateStaff(dt) {
-    const { state, rt } = this.game;
-    const flood = rt.academy.access.flood;
-    const onShift = state.staff.filter((m) => m.shifts[state.time.block]);
-    const present = new Set(onShift.map((m) => m.id));
-    const rest = nearestWalkable(flood, [DOOR], onShift.length + 3).slice(2);
-    const outside = { x: (DOOR.x + 0.5) * T, y: (DOOR.y + 1.4) * T };
-    onShift.forEach((member, i) => {
-      let sp = this.staffSprites.get(member.id);
-      if (!sp || sp.leaving) {
-        sp = { x: outside.x, y: outside.y, path: [], goal: null, alpha: 0, leaving: false, seed: (member.id * 7) % 13 };
-        this.staffSprites.set(member.id, sp);
-      }
-      sp.member = member;
-      const dirt = state.dirt[i] ?? null;
-      const restCell = rest[i % Math.max(1, rest.length)] ?? { x: DOOR.x + 1, y: DOOR.y };
-      const goalCell = dirt ? { x: Math.floor(dirt.x), y: Math.floor(dirt.y) } : restCell;
-      const goal = dirt ? { x: dirt.x * T - 6, y: dirt.y * T + 6 } : { x: (restCell.x + 0.5) * T, y: (restCell.y + 0.7) * T };
-      if (!sp.goal || Math.hypot(goal.x - sp.goal.x, goal.y - sp.goal.y) > 2) {
-        sp.goal = goal;
-        sp.path = this.treePath(flood, sp, goalCell, goal);
-      }
-      sp.mode = sp.path.length ? 'walk' : dirt ? 'clean' : 'idle';
-    });
-    for (const [id, sp] of this.staffSprites) {
-      if (present.has(id) || sp.leaving) continue;
-      sp.leaving = true;
-      sp.path = [...this.treePath(flood, sp, DOOR, { x: (DOOR.x + 0.5) * T, y: (DOOR.y + 0.5) * T }), outside];
-      sp.mode = 'walk';
-    }
-    for (const [id, sp] of this.staffSprites) {
-      sp.alpha = Math.min(1, sp.alpha + dt * 3);
-      this.stepAlongPath(sp, 2.6 * T * dt);
-      if (sp.leaving && !sp.path.length) {
-        sp.alpha -= dt * 4;
-        if (sp.alpha <= 0) this.staffSprites.delete(id);
-      }
-    }
-  }
-
-  /** Caminho entre duas células pela árvore do flood fill (sobe até o ancestral comum e desce). */
-  treePath(flood, from, toCell, finalPos) {
-    const center = (c) => ({ x: (c.x + 0.5) * T, y: (c.y + 0.5) * T });
-    const fromCell = { x: Math.floor(from.x / T), y: Math.floor(from.y / T) };
-    const pa = pathFromDoor(flood, fromCell.x, fromCell.y);
-    const pb = pathFromDoor(flood, toCell.x, toCell.y);
-    if (!pb) return [finalPos];
-    if (!pa) return [...pb.map(center), finalPos];
-    let k = 0;
-    while (k < pa.length && k < pb.length && pa[k].x === pb[k].x && pa[k].y === pb[k].y) k++;
-    return [...pa.slice(k).reverse(), pa[k - 1], ...pb.slice(k)].map(center).concat(finalPos);
-  }
-
-  stepAlongPath(sp, distance) {
-    let move = distance;
-    while (move > 0 && sp.path.length) {
-      const p = sp.path[0];
-      const d = Math.hypot(p.x - sp.x, p.y - sp.y);
-      if (d <= move) {
-        sp.x = p.x;
-        sp.y = p.y;
-        sp.path.shift();
-        move -= d;
-      } else {
-        sp.x += ((p.x - sp.x) / d) * move;
-        sp.y += ((p.y - sp.y) / d) * move;
-        move = 0;
-      }
-    }
-  }
-
-  updateSprites(dt, now) {
-    const speed = 3.4 * T;
-    this.updateStaff(dt);
-    for (const [key, sp] of this.sprites) {
-      sp.alpha = Math.min(1, sp.alpha + dt * 3);
-      this.stepAlongPath(sp, speed * dt);
-      if (sp.leaving && !sp.path.length) {
-        sp.alpha -= dt * 4;
-        if (sp.alpha <= 0) this.sprites.delete(key);
-      }
-    }
-
-    // Balões: no máximo 3 de cada vez, só com reclamações reais.
-    this.bubbles = this.bubbles.filter((b) => now - b.t0 < b.dur && this.sprites.has(b.key));
-    if (now > this.nextBubbleAt && this.bubbles.length < 3) {
-      this.nextBubbleAt = now + 1300 + Math.random() * 900;
-      const candidates = [...this.sprites.values()].filter((sp) => !sp.leaving && !sp.path.length && sp.student.complaint && !this.bubbles.some((b) => b.key === sp.key));
-      if (candidates.length) {
-        const sp = candidates[Math.floor(Math.random() * candidates.length)];
-        const c = sp.student.complaint;
-        const tone = c.kind === 'happy' ? 'happy' : c.kind === 'missingDesired' || c.kind === 'vibe' ? 'neutral' : 'complaint';
-        if (c.kind !== 'happy' || Math.random() < 0.5) this.bubbles.push({ key: sp.key, text: c.text, tone, t0: now, dur: 3200 });
-      }
-    }
-
-    if (this.wheyGoal) {
-      const d = Math.hypot(this.wheyGoal.x - this.whey.x, this.wheyGoal.y - this.whey.y);
-      const step = 70 * dt;
-      if (d > step) {
-        this.whey.x += ((this.wheyGoal.x - this.whey.x) / d) * step;
-        this.whey.y += ((this.wheyGoal.y - this.whey.y) / d) * step;
-        this.wheyWalking = true;
-      } else this.wheyWalking = false;
-    }
-
-    this.particles = this.particles.filter((p) => (now - p.t0) / 1000 < p.life);
-    this.floaters = this.floaters.filter((f) => now - f.t0 < 1400);
-  }
 
   // ------------------------------------------------------------ desenho
   render(now) {
     const { state, rt, ui } = this.game;
     if (!state || !rt) return;
-    const dt = Math.min(0.1, Math.max(0, now / 1000 - this.time));
-    this.time = now / 1000;
-    const t = this.time;
     this.followWorldGrowth();
-    this.consumeFx(now);
-    this.syncScene();
-    this.updateSprites(dt, now);
+    this.step(now);
+    const t = this.time;
 
     const ctx = this.ctx;
     const { dpr, w, h } = this.viewport;
@@ -419,7 +161,7 @@ export class GameRenderer {
           ctx.save();
           ctx.globalAlpha = Math.max(0, sp.alpha);
           ctx.translate(sp.x, sp.y);
-          drawCleaner(ctx, sp.member.look, sp.mode, t, sp.seed);
+          drawCleaner(ctx, sp.member.look, sp.mode, t, sp.seed, sp.member.role);
           ctx.restore();
         },
       });

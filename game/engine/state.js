@@ -20,7 +20,7 @@ export function createNewGame(seed = Date.now() % 2147483647) {
     money,
     fee: CONFIG.economy.startingFee,
     reputation: CONFIG.reputation.start,
-    time: { day: 0, block: 0, blockProgress: 0, speedIndex: 1, paused: false, staffCleaned: 0 },
+    time: { day: 0, block: 0, blockProgress: 0, speedIndex: 1, paused: false, staffCleaned: 0, staffFixed: 0 },
     unlockedZones: CONFIG.grid.zones.filter((z) => z.startsUnlocked).map((z) => z.id),
     extraZones: [], // terrenos gerados (áreas infinitas)
     nextZoneNum: 1,
@@ -45,7 +45,7 @@ export function createNewGame(seed = Date.now() % 2147483647) {
     pendingModals: [{ kind: 'postcard', id: 'welcome' }],
     milestones: { welcome: true },
     vovoCount: 0,
-    stats: { enrolled: 0, cancelled: 0, cleaned: 0, cleanedByStaff: 0, repairs: 0 },
+    stats: { enrolled: 0, cancelled: 0, cleaned: 0, cleanedByStaff: 0, repairedByStaff: 0, repairs: 0 },
     wheyTipDay: -1,
     undo: [],
     savedAt: Date.now(),

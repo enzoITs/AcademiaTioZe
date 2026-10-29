@@ -1,15 +1,46 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { GameRenderer } from '../../game/render/renderer.js';
+import { Renderer3D } from '../../game/render/three/renderer3d.js';
 import {
   game, tick, setHover, clickCell, clickWhey, requestUnlockZone, cleanDirt, startMove, dropDrag, cancelMode,
 } from '../../game/engine/store.js';
 import { inBounds, cellIndex } from '../../game/grid/grid.js';
 
 /**
- * Canvas da academia. Um único requestAnimationFrame avança a simulação
- * (por tempo real, não por quadro) e desenha. Tudo é limpo ao desmontar.
+ * Mundo 3D da academia (Three.js) num canvas WebGL criado aqui dentro, atrás do
+ * canvas da página. O canvas da página recebe o mouse e desenha os textos por
+ * cima (balões, valores). Sem WebGL, o mesmo canvas volta a desenhar tudo em 2D.
+ * Um único requestAnimationFrame avança a simulação (por tempo real, não por
+ * quadro) e desenha. Tudo é limpo ao desmontar.
  */
+function hasWebGL2() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch {
+    return false;
+  }
+}
+
+function createRenderer(canvas, wrap) {
+  if (!hasWebGL2()) return { renderer: new GameRenderer(canvas, game), glCanvas: null };
+  const glCanvas = document.createElement('canvas');
+  glCanvas.setAttribute('aria-hidden', 'true');
+  Object.assign(glCanvas.style, {
+    position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none',
+  });
+  wrap.insertBefore(glCanvas, canvas);
+  try {
+    return { renderer: new Renderer3D(glCanvas, canvas, game), glCanvas };
+  } catch (err) {
+    console.warn('WebGL indisponível; usando o mapa 2D.', err);
+    glCanvas.remove();
+    return { renderer: new GameRenderer(canvas, game), glCanvas: null };
+  }
+}
+
 export default function GameCanvas({ rendererRef }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
@@ -17,7 +48,7 @@ export default function GameCanvas({ rendererRef }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
-    const renderer = new GameRenderer(canvas, game);
+    const { renderer, glCanvas } = createRenderer(canvas, wrap);
     rendererRef.current = renderer;
 
     const resize = () => {
@@ -161,6 +192,8 @@ export default function GameCanvas({ rendererRef }) {
       canvas.removeEventListener('pointerleave', onLeave);
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('contextmenu', onContext);
+      renderer.dispose();
+      glCanvas?.remove();
       rendererRef.current = null;
     };
   }, [rendererRef]);
@@ -170,7 +203,8 @@ export default function GameCanvas({ rendererRef }) {
       <canvas
         ref={canvasRef}
         className="game-canvas"
-        aria-label="Academia vista de cima. Use a loja para comprar aparelhos e clique na grade para posicioná-los."
+        style={{ position: 'relative' }}
+        aria-label="Academia em 3D, vista do alto. Use a loja para comprar aparelhos e clique na grade para posicioná-los."
         role="img"
       />
     </div>

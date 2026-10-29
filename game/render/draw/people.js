@@ -186,8 +186,11 @@ export function drawPerson(ctx, look, profileId, state, t, seed = 0, mood = 'neu
  * Faxineiro(a): macacão azul, boné amarelo e esfregão. Pés em (0, 0).
  * mode: walk | clean | idle
  */
-export function drawCleaner(ctx, look, mode, t, seed = 0) {
-  const overall = '#5d9cc9';
+export function drawCleaner(ctx, look, mode, t, seed = 0, role = 'zelador') {
+  const tech = role === 'tecnico';
+  const overall = tech ? '#e07b3c' : '#5d9cc9';
+  const capColor = tech ? P.pad : P.yellow;
+  const brimColor = tech ? P.padDark : '#e5b53a';
   const k = look.height;
   const bodyW = 13 * look.body;
   const bodyH = 12 * k;
@@ -195,12 +198,23 @@ export function drawCleaner(ctx, look, mode, t, seed = 0) {
   const phase = t * 6 + seed;
   const bob = mode === 'walk' ? -Math.abs(Math.sin(phase * 1.2)) * 3 : 0;
   const sweep = mode === 'clean' ? Math.sin(phase * 1.4) * 7 : 0;
+  const tap = mode === 'fix' ? Math.sin(phase * 2.4) * 4 : 0;
 
   ellipse(ctx, 0, 0, 9 * look.body, 3.5, P.shadow);
-  // esfregão (atrás do corpo, no lado direito)
-  const mopX = bodyW / 2 + 7 + sweep;
-  line(ctx, bodyW / 2 + 2, -18 + bob, mopX, 2, '#a07f5c', 2.5);
-  ellipse(ctx, mopX, 2, 7, 3, '#e9e2f0', INK, 1.3);
+  if (tech) {
+    // caixa de ferramentas no chão e chave inglesa na mão
+    if (mode !== 'walk') {
+      box(ctx, -bodyW / 2 - 15, -7, 12, 7, 2, P.pad, INK, 1.2);
+      line(ctx, -bodyW / 2 - 12, -8, -bodyW / 2 - 6, -8, P.metalDark, 2);
+    }
+    line(ctx, bodyW / 2 + 2, -14 + bob + tap, bodyW / 2 + 9, -20 + bob + tap, P.metalDark, 3);
+    line(ctx, bodyW / 2 + 2, -14 + bob + tap, bodyW / 2 + 9, -20 + bob + tap, P.metal, 1.5);
+  } else {
+    // esfregão (atrás do corpo, no lado direito)
+    const mopX = bodyW / 2 + 7 + sweep;
+    line(ctx, bodyW / 2 + 2, -18 + bob, mopX, 2, '#a07f5c', 2.5);
+    ellipse(ctx, mopX, 2, 7, 3, '#e9e2f0', INK, 1.3);
+  }
 
   ctx.save();
   ctx.translate(0, bob);
@@ -217,7 +231,7 @@ export function drawCleaner(ctx, look, mode, t, seed = 0) {
   box(ctx, -bodyW / 2 + 1.5, bodyTop + 4, bodyW - 3, bodyH - 4, 3, overall, null);
   line(ctx, -bodyW / 2 + 3, bodyTop + 1, -bodyW / 2 + 3, bodyTop + 5, overall, 2);
   line(ctx, bodyW / 2 - 3, bodyTop + 1, bodyW / 2 - 3, bodyTop + 5, overall, 2);
-  box(ctx, -3, bodyTop + 6, 6, 4, 1, P.yellow, INK, 1);
+  box(ctx, -3, bodyTop + 6, 6, 4, 1, tech ? P.white : P.yellow, INK, 1);
 
   const headY = bodyTop - r + 1;
   ctx.save();
@@ -229,12 +243,12 @@ export function drawCleaner(ctx, look, mode, t, seed = 0) {
   ctx.beginPath();
   ctx.arc(0, -r * 0.15, r * 1.02, Math.PI * 1.05, Math.PI * 1.95);
   ctx.closePath();
-  ctx.fillStyle = P.yellow;
+  ctx.fillStyle = capColor;
   ctx.fill();
   ctx.strokeStyle = INK;
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  box(ctx, -r * 0.2, -r * 0.62, r * 1.3, r * 0.28, 2, '#e5b53a', INK, 1.2);
+  box(ctx, -r * 0.2, -r * 0.62, r * 1.3, r * 0.28, 2, brimColor, INK, 1.2);
   ctx.restore();
   ctx.restore();
 }
