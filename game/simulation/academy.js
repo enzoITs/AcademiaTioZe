@@ -6,7 +6,7 @@ import {
 } from '../config.js';
 import { computeAccess } from '../pathfinding/floodFill.js';
 import { footprintCells } from '../grid/grid.js';
-import { conditionState, effectiveCapacity, hasWear, cleanliness } from '../systems/maintenance.js';
+import { conditionState, effectiveCapacity, hasWear, cleanliness, itemVibe } from '../systems/maintenance.js';
 import { clamp } from '../utils/format.js';
 
 const SAT = CONFIG.satisfaction;
@@ -50,7 +50,7 @@ function vibeFor(profileId, comfortItems, adjacency) {
   let vibe = VIBE.base;
   for (const item of comfortItems) {
     const n = (seen[item.type] = (seen[item.type] ?? 0) + 1);
-    vibe += getEquipmentDef(item.type).vibe * (mult[item.type] ?? 1) * VIBE.duplicateFalloff ** (n - 1);
+    vibe += itemVibe(item) * (mult[item.type] ?? 1) * VIBE.duplicateFalloff ** (n - 1);
   }
   return vibe + adjacency;
 }

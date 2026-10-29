@@ -25,6 +25,11 @@ export const ERA_LOOK = {
     wall: '#cfe3ef', mullion: '#fffdf8', door: 'glass',
     sign: { fill: '#3d3550', ink: '#ff7eb6', sub: '#7ef0e0', lines: ['ACADEMIA DO TIO ZÉ', 'academia completa · desde 1987'], w: 124, neon: true },
   },
+  // Rede: o mesmo prédio, agora Matriz, com bandeirinhas na fachada
+  4: {
+    wall: '#cfe3ef', mullion: '#fffdf8', door: 'glass', bunting: true,
+    sign: { fill: '#3d3550', ink: '#f2cd5c', sub: '#7ef0e0', lines: ['ACADEMIA DO TIO ZÉ', 'matriz da rede · desde 1987'], w: 124, neon: true },
+  },
 };
 export const eraLook = (era) => ERA_LOOK[era] ?? ERA_LOOK[1];
 // Pisos dos terrenos gerados: alternam numa paleta pastel.

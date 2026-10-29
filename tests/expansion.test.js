@@ -3,13 +3,11 @@ import assert from 'node:assert/strict';
 
 import { CONFIG } from '../game/config.js';
 import { createNewGame } from '../game/engine/state.js';
-import { allZones, rectsOverlap, syncLayout, COLS, ROWS, validatePlacement } from '../game/grid/grid.js';
-import { availableZones, ensureFrontier } from '../game/systems/expansion.js';
+import { allZones, rectsOverlap, syncLayout, COLS, ROWS, DOOR, validatePlacement, currentLayout } from '../game/grid/grid.js';
+import { availableZones, ensureFrontier, zoneSide } from '../game/systems/expansion.js';
 import { createRuntime } from '../game/simulation/simulation.js';
 import { parseSave, serialize } from '../game/engine/persistence.js';
 
-const DOOR = CONFIG.grid.door;
-const R = CONFIG.grid.procedural.reserved;
 
 /** Compra sempre o terreno disponível mais barato, como um jogador faria. */
 function buyCheapest(state) {
@@ -40,6 +38,7 @@ test('terrenos gerados: sem sobreposição, fora da entrada e encostados numa á
   syncLayout(s);
   for (let i = 0; i < 40; i++) buyCheapest(s);
   const zones = allZones(s);
+  const R = currentLayout().reserved;
   for (let i = 0; i < zones.length; i++) {
     for (let j = i + 1; j < zones.length; j++) assert.ok(!rectsOverlap(zones[i], zones[j]), `${zones[i].id} × ${zones[j].id}`);
   }
@@ -90,4 +89,42 @@ test('save guarda os terrenos gerados e recusa terrenos inválidos', () => {
   assert.deepEqual(loaded.unlockedZones, s.unlockedZones);
   assert.equal(loaded.items.length, 1, 'aparelho no terreno gerado sobrevive ao carregar');
   assert.equal(loaded.nextZoneNum, s.nextZoneNum);
+});
+
+test('dois lados: sempre há terreno à venda à esquerda e à direita', () => {
+  const s = createNewGame(9);
+  syncLayout(s);
+  ensureFrontier(s);
+  const sides = () => new Set(availableZones(s).map((z) => zoneSide(s, z)));
+  assert.deepEqual([...sides()].sort(), ['left', 'right']);
+  let leftBuys = 0;
+  for (let i = 0; i < 30; i++) {
+    buyCheapest(s);
+    assert.deepEqual([...sides()].sort(), ['left', 'right'], `compra ${i + 1}`);
+  }
+  for (const z of allZones(s)) if (s.unlockedZones.includes(z.id) && zoneSide(s, z) === 'left') leftBuys += 1;
+  assert.ok(leftBuys >= 3, `só ${leftBuys} terrenos comprados à esquerda`);
+  assert.ok(s.shift.x > 0, 'a planta andou para a direita');
+});
+
+test('terreno à esquerda empurra aparelhos, sujeira e porta juntos', () => {
+  const s = createNewGame(4);
+  syncLayout(s);
+  const doorBefore = { ...DOOR };
+  s.items.push({ id: 1, type: 'colchonete', tier: 'usado', x: 3, y: 2, rot: 0, condition: 80, purchasedDay: 0, pricePaid: 0 });
+  s.dirt.push({ id: 1, x: 2.5, y: 5.5, kind: 'suor' });
+  ensureFrontier(s);
+  const dx = s.shift.x;
+  assert.ok(dx > 0, 'nasceu um terreno à esquerda');
+  assert.equal(DOOR.x, doorBefore.x + dx);
+  assert.equal(s.items[0].x, 3 + dx);
+  assert.equal(s.dirt[0].x, 2.5 + dx);
+  assert.ok(validatePlacement({ ...s, items: [] }, s.items[0]).ok, 'aparelho continua dentro da garagem');
+  assert.ok(allZones(s).every((z) => z.x >= 0));
+  // o save guarda o deslocamento
+  const loaded = parseSave(serialize(s));
+  assert.deepEqual(loaded.shift, s.shift);
+  assert.equal(loaded.items.length, 1);
+  syncLayout(loaded);
+  assert.equal(DOOR.x, doorBefore.x + dx);
 });

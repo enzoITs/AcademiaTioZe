@@ -7,12 +7,13 @@ import { CONFIG, EQUIPMENT, getEquipmentDef, getTierDef } from '../config.js';
 import { createNewGame } from './state.js';
 import { createRuntime, refreshDerived, advanceTime, catchUpOffline } from '../simulation/simulation.js';
 import {
-  validatePlacement, footprintSize, buildOccupancy, cellIndex, inBounds, allZones, zoneById,
+  validatePlacement, footprintSize, buildOccupancy, cellIndex, inBounds, allZones, zoneById, layoutShift,
 } from '../grid/grid.js';
 import { computeAccess } from '../pathfinding/floodFill.js';
-import { transact, canAfford } from '../economy/economy.js';
+import { transact, canAfford, feeLimits } from '../economy/economy.js';
 import {
   repairCost, serviceCost, repairItem, serviceItem, canRepair, canService, conditionState, hasWear,
+  levelUpCost, itemLevel, levelDef,
 } from '../systems/maintenance.js';
 import { grantNovelty } from '../simulation/students.js';
 import { checkMilestones, wheyTip, addMessage } from '../systems/characters.js';
@@ -21,11 +22,15 @@ import { createStaffMember, hireBlocker, roleDef } from '../systems/staff.js';
 import { canMoveEra, performEraMove } from '../systems/eras.js';
 import { ensureFrontier } from '../systems/expansion.js';
 import {
+  STYLES, openBlocker, openBranch, upgradeBranch, branchUpgradeCost, changeBranchStyle, swapManager,
+  sellBranch, branchSaleValue,
+} from '../systems/network.js';
+import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal,
 } from './persistence.js';
 import { playSound, setSoundEnabled } from '../audio/sfx.js';
 import { formatMoney } from '../utils/format.js';
-import { EQUIPMENT_SHORT, FINALLY_LINES } from '../content/lines.js';
+import { EQUIPMENT_SHORT, FINALLY_LINES, BRANCH_LINES } from '../content/lines.js';
 
 const AUTOSAVE_SECONDS = 15;
 
@@ -564,10 +569,15 @@ export function startMove(id, grabCell = null) {
   emit();
 }
 
-/** Reembolso: total no mesmo dia da compra; depois, 50% ajustado pela condição. */
-export function refundFor(item) {
-  if (item.purchasedDay === game.state.time.day) return item.pricePaid;
-  const price = getTierDef(item.type, item.tier).price;
+/**
+ * Reembolso: total no mesmo dia da compra; depois, 50% ajustado pela condição.
+ * As melhorias de nível entram no valor (`withLevels`); na troca de categoria
+ * (usado → novo) elas ficam no aparelho, então só a base entra como pagamento.
+ */
+export function refundFor(item, { withLevels = true } = {}) {
+  const spent = withLevels ? (item.upgradeSpent ?? 0) : 0;
+  if (item.purchasedDay === game.state.time.day) return item.pricePaid + spent;
+  const price = getTierDef(item.type, item.tier).price + spent;
   const condFactor = hasWear(item) ? item.condition / 100 : 1;
   return Math.round(price * CONFIG.economy.sellRefundRate * condFactor);
 }
@@ -581,7 +591,7 @@ export function requestSell(id) {
     title: `Vender ${getEquipmentDef(item.type).name}?`,
     text: sameDay
       ? `Comprado hoje: reembolso total de ${formatMoney(refund)}.`
-      : `Você recebe ${formatMoney(refund)} (50% do preço, ajustado pela condição).`,
+      : `Você recebe ${formatMoney(refund)} (50% do preço${item.upgradeSpent ? ' e das melhorias' : ''}, ajustado pela condição). Dá para desfazer até o fim do dia.`,
     confirmLabel: 'Vender',
     danger: true,
     onConfirm: () => sellItem(id),
@@ -611,7 +621,7 @@ export function upgradeItem(id, tierId) {
   if (!item) return;
   const tier = getTierDef(item.type, tierId);
   if ((tier.minRep ?? 0) > state.reputation) return fail(`Precisa de ${tier.minRep} estrelas para o nível ${CONFIG.tiers[tier.id].label}.`);
-  const tradeIn = refundFor(item);
+  const tradeIn = refundFor(item, { withLevels: false });
   const cost = Math.max(0, tier.price - tradeIn);
   if (!canAfford(state, cost)) return fail(`Saldo insuficiente para o upgrade (${formatMoney(cost)}).`);
   state.undo.push({ kind: 'upgrade', itemId: id, from: { tier: item.tier, condition: item.condition, pricePaid: item.pricePaid, purchasedDay: item.purchasedDay }, cost });
@@ -622,6 +632,28 @@ export function upgradeItem(id, tierId) {
   item.purchasedDay = state.time.day;
   fx({ kind: 'place', itemId: id });
   fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
+  playSound('buy');
+  afterLayoutChange();
+  emit();
+}
+
+/** Melhoria de nível (1 → 2 → 3): mais capacidade e vibe, menos desgaste; conserto mais caro. */
+export function levelUpItem(id) {
+  const { state } = game;
+  const item = itemById(id);
+  if (!item) return;
+  const cost = levelUpCost(item);
+  if (cost == null) return fail('Este aparelho já está no nível máximo.');
+  if (!canAfford(state, cost)) return fail(`Saldo insuficiente para a melhoria (${formatMoney(cost)}).`);
+  const from = { level: itemLevel(item), upgradeSpent: item.upgradeSpent ?? 0 };
+  const next = from.level + 1;
+  transact(state, -cost, 'equipamentos', `Melhoria: ${getEquipmentDef(item.type).name} → ${levelDef(next).label}`);
+  item.level = next;
+  item.upgradeSpent = from.upgradeSpent + cost;
+  state.undo.push({ kind: 'level', itemId: id, from, cost });
+  fx({ kind: 'place', itemId: id });
+  fx({ kind: 'money', x: item.x, y: item.y, text: `-${formatMoney(cost)}` });
+  toast(`${getEquipmentDef(item.type).name} agora é ${levelDef(next).label}! Conserto custa ${String(levelDef(next).repairMultiplier).replace('.', ',')}× mais.`, 'success');
   playSound('buy');
   afterLayoutChange();
   emit();
@@ -717,7 +749,18 @@ function unlockZone(zoneId) {
   if (zone.reaction) addMessage(state, zone.reaction.from, zone.reaction.text);
   toast(`Nova área: ${zone.label} (+${zone.w * zone.h} tiles)!`, 'success');
   // Áreas infinitas: cada compra faz surgir outro terreno à venda ao lado.
-  for (const fresh of ensureFrontier(state, zoneId)) {
+  const shiftBefore = { ...layoutShift(state) };
+  const created = ensureFrontier(state, zoneId);
+  const shiftAfter = layoutShift(state);
+  if (shiftAfter.x !== shiftBefore.x || shiftAfter.y !== shiftBefore.y) {
+    // Nasceu terreno à esquerda: a academia andou para a direita no mapa. O
+    // desenho desloca bonecos e câmera primeiro; efeitos já na fila vão junto.
+    const dx = shiftAfter.x - shiftBefore.x;
+    const dy = shiftAfter.y - shiftBefore.y;
+    for (const e of game.ui.fx) if (e.kind === 'money' || e.kind === 'clean') { e.x += dx; e.y += dy; }
+    game.ui.fx.unshift({ kind: 'shift', dx, dy, t0: typeof performance !== 'undefined' ? performance.now() : 0 });
+  }
+  for (const fresh of created) {
     fx({ kind: 'newZone', zoneId: fresh.id });
     toast(`Novo terreno à venda: ${fresh.label} (${fresh.w}×${fresh.h}) por ${formatMoney(fresh.cost)}.`, 'info');
   }
@@ -756,6 +799,93 @@ export function confirmEraMove() {
   }
   emit();
   return true;
+}
+
+// ---------------------------------------------------------------- rede (Era 4)
+export function openCityMap() {
+  game.ui.selectedId = null;
+  openModal({ kind: 'city' });
+}
+
+/** Abre a ficha de um lote (para abrir filial) ou de uma filial existente. */
+export function openNetworkSpot(spot) {
+  if (spot.kind === 'lot') openModal({ kind: 'openBranch', lotId: spot.id });
+  else if (spot.kind === 'branch') openModal({ kind: 'branch', branchId: spot.id });
+  else if (spot.kind === 'matriz') closeModal(); // volta para a grade da Matriz
+  else if (spot.kind === 'historica') {
+    toast('Matriz Histórica: a garagem onde tudo começou. Dá +5% de membros em todas as filiais.', 'info');
+    emit();
+  }
+}
+
+export function confirmOpenBranch(lotId, style, candidateId) {
+  const { state } = game;
+  const blocker = openBlocker(state, lotId, style, candidateId);
+  if (blocker) return fail(blocker);
+  const branch = openBranch(state, lotId, style, candidateId);
+  const lineIdx = (state.network.opened - 1);
+  addMessage(state, 'valeria', BRANCH_LINES.valeria[lineIdx % BRANCH_LINES.valeria.length](branch.name));
+  addMessage(state, 'tioze', BRANCH_LINES.tioze[lineIdx % BRANCH_LINES.tioze.length](branch.name));
+  if (state.network.opened === 1) {
+    state.milestones.first_branch = true;
+    state.pendingModals.push({ kind: 'postcard', id: 'first_branch' });
+  }
+  toast(`${branch.name} inaugurada! A Valéria mandou uma cesta de presente.`, 'success');
+  playSound('celebrate');
+  game.ui.modal = { kind: 'branch', branchId: branch.id };
+  emit();
+  return true;
+}
+
+export function upgradeBranchAction(branchId) {
+  const { state } = game;
+  const b = state.network?.branches.find((x) => x.id === branchId);
+  const cost = b && branchUpgradeCost(b);
+  if (cost == null) return fail('Essa filial já está no nível máximo.');
+  if (!upgradeBranch(state, branchId)) return fail(`Saldo insuficiente para a reforma (${formatMoney(cost)}).`);
+  toast(`${b.name} reformada: cabe mais gente!`, 'success');
+  playSound('buy');
+  emit();
+  return true;
+}
+
+export function changeBranchStyleAction(branchId, style) {
+  const { state } = game;
+  if (!changeBranchStyle(state, branchId, style)) return fail('Não deu para trocar o estilo agora (saldo ou estilo igual).');
+  toast(`Estilo trocado para ${STYLES[style].label}. Parte dos membros estranhou a mudança.`, 'info');
+  playSound('click');
+  emit();
+  return true;
+}
+
+export function swapManagerAction(branchId, candidateId) {
+  const { state } = game;
+  const b = state.network?.branches.find((x) => x.id === branchId);
+  const old = b?.manager?.name;
+  if (!swapManager(state, branchId, candidateId)) return fail('Esse candidato não está mais disponível.');
+  toast(`${b.manager.name} assumiu a ${b.name}.${old ? ` ${old} foi cuidar da vida (sem multa e sem drama).` : ''}`, 'success');
+  playSound('click');
+  emit();
+  return true;
+}
+
+export function requestSellBranch(branchId) {
+  const b = game.state.network?.branches.find((x) => x.id === branchId);
+  if (!b) return;
+  game.ui.confirm = {
+    title: `Vender a ${b.name}?`,
+    text: `Você recebe ${formatMoney(branchSaleValue(b))} (metade do que investiu). O lote volta a ficar à venda no mapa.`,
+    confirmLabel: 'Vender filial',
+    danger: true,
+    onConfirm: () => {
+      const value = sellBranch(game.state, branchId);
+      toast(`${b.name} vendida por ${formatMoney(value)}.`, 'info');
+      game.ui.modal = { kind: 'city' };
+      playSound('sell');
+      emit();
+    },
+  };
+  emit();
 }
 
 // ---------------------------------------------------------------- equipe
@@ -826,6 +956,12 @@ export function undo() {
     if (!canAfford(state, action.refund)) return fail('Saldo insuficiente para desfazer a venda.');
     transact(state, -action.refund, action.sameDay ? 'reembolsos' : 'vendas', `Desfeito: venda de ${getEquipmentDef(action.item.type).name}`);
     state.items.push(action.item);
+  } else if (action.kind === 'level') {
+    const item = itemById(action.itemId);
+    if (item) {
+      Object.assign(item, action.from);
+      transact(state, action.cost, 'reembolsos', `Desfeito: melhoria de ${getEquipmentDef(item.type).name}`);
+    }
   } else if (action.kind === 'upgrade') {
     const item = itemById(action.itemId);
     if (item) {
@@ -842,7 +978,7 @@ export function undo() {
 
 // ---------------------------------------------------------------- economia e UI
 export function setFee(value) {
-  const { min, max } = CONFIG.economy.feeSlider;
+  const { min, max } = feeLimits(game.state.era);
   game.state.fee = Math.min(max, Math.max(min, Math.round(value)));
   emit();
 }

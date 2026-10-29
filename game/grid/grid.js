@@ -20,9 +20,42 @@ export const inBounds = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
  */
 export function eraLayout(era = 1) {
   const e = CONFIG.eras?.[String(era)];
+  // Era sem mudança de endereço (a Rede) reaproveita a planta da era anterior.
+  if (e?.layoutFrom) return { ...eraLayout(e.layoutFrom), era };
   if (e?.zones) return { era, zones: e.zones, door: e.door, cols: e.cols, rows: e.rows, reserved: e.reserved };
   const g = CONFIG.grid;
   return { era: 1, zones: g.zones, door: g.door, cols: g.cols, rows: g.rows, reserved: g.procedural.reserved };
+}
+
+/**
+ * Deslocamento da planta. Terrenos podem nascer à esquerda da academia: em vez
+ * de usar coordenadas negativas, tudo anda para a direita e a planta da era
+ * (terrenos desenhados, porta e faixa da entrada) é lida com esse deslocamento.
+ */
+export function layoutShift(state) {
+  return state?.shift ?? { x: 0, y: 0 };
+}
+
+const shiftedCache = new Map();
+export function shiftedLayout(era = 1, shift = { x: 0, y: 0 }) {
+  const key = `${era}|${shift.x},${shift.y}`;
+  let out = shiftedCache.get(key);
+  if (!out) {
+    const L = eraLayout(era);
+    const { x: dx, y: dy } = shift;
+    out = dx || dy
+      ? {
+        ...L,
+        zones: L.zones.map((z) => ({ ...z, x: z.x + dx, y: z.y + dy })),
+        door: { x: L.door.x + dx, y: L.door.y + dy },
+        reserved: { ...L.reserved, x: L.reserved.x + dx, y: L.reserved.y + dy },
+        cols: L.cols + dx,
+        rows: L.rows + dy,
+      }
+      : L;
+    shiftedCache.set(key, out);
+  }
+  return out;
 }
 
 const allEraZones = Object.keys(CONFIG.eras ?? {}).flatMap((k) => eraLayout(Number(k)).zones);
@@ -39,7 +72,7 @@ export function currentLayout() {
 
 /** Terrenos desenhados da era da partida. */
 export function baseZones(state) {
-  return eraLayout(state?.era ?? 1).zones;
+  return shiftedLayout(state?.era ?? 1, layoutShift(state)).zones;
 }
 
 /** Terrenos da partida: os desenhados da era + os gerados (infinitos). */
@@ -71,10 +104,11 @@ rebuildCellZone();
 export function syncLayout(state) {
   const zones = allZones(state);
   const era = state?.era ?? 1;
-  const key = `${era}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
+  const shift = layoutShift(state);
+  const key = `${era}@${shift.x},${shift.y}#${zones.map((z) => `${z.id}@${z.x},${z.y},${z.w},${z.h}`).join('|')}`;
   if (key === layoutKey) return false;
   layoutKey = key;
-  layout = eraLayout(era);
+  layout = shiftedLayout(era, shift);
   DOOR = layout.door;
   for (const z of zones) zoneCatalog.set(z.id, z);
   layoutZones = zones;

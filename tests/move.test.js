@@ -5,10 +5,15 @@ import {
   game, newGame, startMove, setHover, dropDrag, clickCell, nudgeSelected, undo, rotate, cancelMode, placementPreview,
 } from '../game/engine/store.js';
 import { refreshDerived } from '../game/simulation/simulation.js';
+import { syncLayout } from '../game/grid/grid.js';
 
 function setup() {
   newGame();
   const s = game.state;
+  // Só a garagem, sem os terrenos à venda (o da esquerda deslocaria as coordenadas).
+  s.extraZones = [];
+  s.shift = { x: 0, y: 0 };
+  syncLayout(s);
   s.items.push(
     { id: 1, type: 'esteira', tier: 'usado', x: 2, y: 1, rot: 0, condition: 70, purchasedDay: 0, pricePaid: 400 },
     { id: 2, type: 'supino', tier: 'usado', x: 5, y: 1, rot: 0, condition: 70, purchasedDay: 0, pricePaid: 300 },

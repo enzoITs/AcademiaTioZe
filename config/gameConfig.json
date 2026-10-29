@@ -25,7 +25,7 @@
     "startingMoney": 1500,
     "eraBaseFee": { "1": 35, "2": 55, "3": 80, "4": 110 },
     "startingFee": 35,
-    "feeSlider": { "min": 15, "max": 90, "step": 1 },
+    "feeSlider": { "min": 15, "max": 90, "step": 1, "maxByEra": { "1": 90, "2": 140, "3": 200, "4": 280 } },
     "fixedMonthlyCosts": [
       { "id": "energia", "label": "Energia", "amount": 150 },
       { "id": "agua", "label": "Água e limpeza", "amount": 80 }
@@ -140,7 +140,67 @@
           "description": "O andar de cima ao ar livre, com vista para o bairro inteiro.",
           "reaction": { "from": "valeria", "text": "Terraço com vista?! Tá, essa doeu. A MegaFit vai abrir um rooftop... um dia." } }
       ]
+    },
+    "4": {
+      "label": "Rede",
+      "layoutFrom": 3,
+      "relocate": false,
+      "rent": 800,
+      "rentLabel": "IPTU e manutenção do prédio",
+      "maxStaff": 14,
+      "moveCost": 30000,
+      "moveCostLabel": "Registro da marca e festa da rede",
+      "noveltyBonus": 6,
+      "noveltyDays": 5,
+      "goals": { "students": 200, "reputation": 4.2, "equipmentTypes": 18, "expansions": 3, "staff": 6, "influencer": 12 },
+      "description": "Sem mudança de endereço: o prédio vira a Matriz e a visão se abre para o mapa da cidade. As filiais rendem sozinhas, até com a aba fechada.",
+      "leaving": "A garagem volta à cena como Matriz Histórica: um pequeno bônus de Comunidade para todas as filiais."
     }
+  },
+  "network": {
+    "lotsForSale": 2,
+    "branchCost": 20000,
+    "branchCostGrowth": 1.45,
+    "costRoundTo": 500,
+    "dailyApproach": 0.08,
+    "startMembersShare": 0.15,
+    "sellRefundRate": 0.5,
+    "historicBonus": 0.05,
+    "styleChangeCost": 2500,
+    "styleChangeMemberLoss": 0.25,
+    "feeSensitivity": 1.2,
+    "districtMatchBonus": 0.2,
+    "manager": { "candidates": 3, "baseSalary": 700, "salaryPerStar": 350, "factorBase": 0.5, "factorPerStar": 0.1 },
+    "reputation": { "base": 0.4, "perStar": 0.12 },
+    "levels": [
+      { "level": 1, "label": "Nível 1", "capacityMultiplier": 1, "costMultiplier": 1 },
+      { "level": 2, "label": "Nível 2", "upgradeRate": 0.6, "capacityMultiplier": 1.5, "costMultiplier": 1.35 },
+      { "level": 3, "label": "Nível 3", "upgradeRate": 1.0, "capacityMultiplier": 2, "costMultiplier": 1.7 }
+    ],
+    "styles": {
+      "acolhedora": { "label": "Acolhedora", "color": "#f2cd5c", "capacity": 90, "feeMultiplier": 0.9, "monthlyCost": 2200,
+        "description": "Sofá na recepção e café passado na hora. Quem está começando se sente em casa." },
+      "hardcore": { "label": "Hardcore", "color": "#e8646a", "capacity": 80, "feeMultiplier": 1.0, "monthlyCost": 2300,
+        "description": "Ferro, giz e música alta. Marombeiro atravessa a cidade para treinar lá." },
+      "familia": { "label": "Família", "color": "#7cc98a", "capacity": 120, "feeMultiplier": 0.8, "monthlyCost": 2600,
+        "description": "Recreação para as crianças enquanto os pais treinam. Lota rápido e cobra menos." },
+      "premium": { "label": "Premium", "color": "#b9a3e3", "capacity": 55, "feeMultiplier": 1.7, "monthlyCost": 3300,
+        "description": "Toalha gelada, espelho iluminado e vista bonita. Pouca gente, mensalidade alta." }
+    },
+    "districts": [
+      { "name": "Vila Esperança", "likes": "familia", "demand": 1.0 },
+      { "name": "Jardim das Flores", "likes": "acolhedora", "demand": 1.05 },
+      { "name": "Centro", "likes": "premium", "demand": 1.15 },
+      { "name": "Morro do Ferro", "likes": "hardcore", "demand": 0.95 },
+      { "name": "Beira-Rio", "likes": "acolhedora", "demand": 1.0 },
+      { "name": "Parque Industrial", "likes": "hardcore", "demand": 1.05 },
+      { "name": "Alto da Colina", "likes": "premium", "demand": 0.95 },
+      { "name": "Conjunto Novo", "likes": "familia", "demand": 1.1 },
+      { "name": "Vila Operária", "likes": "hardcore", "demand": 1.0 },
+      { "name": "Bela Vista", "likes": "premium", "demand": 1.05 },
+      { "name": "Recanto Verde", "likes": "acolhedora", "demand": 0.95 },
+      { "name": "Cidade Nova", "likes": "familia", "demand": 1.05 }
+    ]
   },
   "categories": {
     "cardio": { "label": "Cardio", "demand": "cardio" },
@@ -154,6 +214,16 @@
     "cardio": "Cardio",
     "peso": "Peso",
     "funcional": "Funcional"
+  },
+  "levels": {
+    "max": 3,
+    "list": [
+      { "level": 1, "label": "Nível 1", "capacityBonus": 0, "vibeBonus": 0, "wearMultiplier": 1, "repairMultiplier": 1 },
+      { "level": 2, "label": "Nível 2", "costRate": 0.5, "minCost": 60, "capacityBonus": 0.25, "vibeBonus": 0.3, "wearMultiplier": 0.9, "repairMultiplier": 1.6,
+        "description": "Peças reforçadas: mais gente por bloco e desgaste 10% menor. Conserto e revisão custam 1,6× mais." },
+      { "level": 3, "label": "Nível 3", "costRate": 1.0, "minCost": 120, "capacityBonus": 0.5, "vibeBonus": 0.6, "wearMultiplier": 0.8, "repairMultiplier": 2.4,
+        "description": "Topo de linha: capacidade bem maior e desgaste 20% menor. Conserto e revisão custam 2,4× mais." }
+    ]
   },
   "tiers": {
     "usado": { "label": "Usado", "startCondition": 70, "ceiling": 85, "wearPerUse": 0.3 },
@@ -455,7 +525,7 @@
   "enrollment": {
     "base": 0.5,
     "perStarAboveOne": 0.8,
-    "eraFactor": { "1": 1.0, "2": 1.4, "3": 1.9 },
+    "eraFactor": { "1": 1.0, "2": 1.4, "3": 1.9, "4": 2.2 },
     "maxMembersPerPeakCapacity": 2
   },
   "wear": {

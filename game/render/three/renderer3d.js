@@ -8,7 +8,7 @@ import { CONFIG, getEquipmentDef } from '../../config.js';
 import {
   COLS, ROWS, DOOR, footprintSize, footprintCells, frontCells, zoneAtCell, allZones, zoneById, buildUnlockedMask, isUnlocked,
 } from '../../grid/grid.js';
-import { conditionState, hasWear, CONDITION_STATES } from '../../systems/maintenance.js';
+import { conditionState, hasWear, CONDITION_STATES, itemLevel } from '../../systems/maintenance.js';
 import { placementPreview } from '../../engine/store.js';
 import { SceneDirector } from '../director.js';
 import { floorOf, BLOCK_TINT, eraLook } from '../look.js';
@@ -292,6 +292,13 @@ export class Renderer3D extends SceneDirector {
   }
 
   followWorldGrowth() {
+    if (this.cameraShift) {
+      // Terreno novo à esquerda: a câmera acompanha a academia, sem pulo.
+      this.cam.target.x += this.cameraShift.x;
+      this.cam.target.z += this.cameraShift.y;
+      this.cameraShift = null;
+      this.updateCamera();
+    }
     if (this.refitCamera) {
       this.refitCamera = false;
       this.userMovedCamera = false;
@@ -476,7 +483,7 @@ export class Renderer3D extends SceneDirector {
   // ------------------------------------------------------------ terreno e paredes
   syncTerrain(state, t) {
     const zones = allZones(state);
-    const key = `${state.era}|${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => z.id).join(',')}`;
+    const key = `${state.era}|${COLS}x${ROWS}|${state.unlockedZones.join(',')}|${zones.map((z) => `${z.id}@${z.x},${z.y}`).join(',')}`;
     if (key !== this.terrainKey) {
       this.terrainKey = key;
       this.buildTerrain(state, zones);
@@ -582,6 +589,19 @@ export class Renderer3D extends SceneDirector {
       // garagem: portão de enrolar aberto sobre a porta
       wb.rbox(1.25, 0.18, 0.24, '#9aa0b5', { x: DOOR.x + 0.5, y: WALL_H - 0.1, z: dz }, 0.05);
       for (let i = 1; i < 4; i++) wb.box(1.2, 0.012, 0.245, '#7f8499', { x: DOOR.x + 0.5, y: WALL_H - 0.1 + i * 0.045, z: dz });
+    }
+    if (look.bunting) {
+      // Rede: varal de bandeirinhas coloridas ao longo da fachada da Matriz
+      const main = zones.find((z) => z.startsUnlocked) ?? zones[0];
+      const colors = [P.yellow, P.pink, P.blue, P.mint, '#b9a3e3'];
+      const fz = main.y + main.h + 0.04;
+      const n = Math.floor(main.w / 0.42);
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const x = main.x + t * main.w;
+        const sag = Math.sin(t * PI * Math.max(1, Math.round(main.w / 5))) ** 2 * 0.12;
+        wb.box(0.2, 0.2, 0.015, colors[i % colors.length], { x, y: WALL_H + 0.06 - sag, z: fz, rz: PI / 4, sx: 0.8 });
+      }
     }
     const walls = own(solid(wb.build()));
     walls.receiveShadow = true;
@@ -774,10 +794,22 @@ export class Renderer3D extends SceneDirector {
     return best;
   }
 
-  createItemView(item, side) {
+  createItemView(item, side, level = 1) {
     const model = makeEquipment(item.type, item.tier, side);
     const group = model.group;
     group.userData.itemId = item.id;
+    // Melhorias: uma estrelinha dourada por nível acima do 1, num cantinho do aparelho.
+    if (level > 1) {
+      const { w, h } = footprintSize(item.type, 0);
+      this.levelGeo ??= new THREE.OctahedronGeometry(0.075, 0);
+      this.levelMat ??= basic(P.yellow);
+      for (let i = 0; i < level - 1; i++) {
+        const pip = new THREE.Mesh(this.levelGeo, this.levelMat);
+        pip.position.set(-w / 2 + 0.16 + i * 0.19, Math.min(model.height, 1.4) + 0.14, -h / 2 + 0.16);
+        pip.raycast = () => {};
+        group.add(pip);
+      }
+    }
     const smoke = new THREE.Group();
     for (let i = 0; i < 3; i++) smoke.add(new THREE.Mesh(this.smokeGeo, this.smokeMat));
     setNoRaycast(smoke);
@@ -804,11 +836,12 @@ export class Renderer3D extends SceneDirector {
       seen.add(item.id);
       const def = getEquipmentDef(item.type);
       const side = def.wallMounted ? this.wallSideOf(item.type, item.x, item.y, item.rot) : -1;
-      const key = `${item.type}|${item.tier}|${side}`;
+      const level = itemLevel(item);
+      const key = `${item.type}|${item.tier}|${side}|${level}`;
       let v = this.itemViews.get(item.id);
       if (!v || v.key !== key) {
         if (v) this.removeItemView(item.id, v);
-        v = this.createItemView(item, side);
+        v = this.createItemView(item, side, level);
         v.key = key;
         this.itemViews.set(item.id, v);
       }

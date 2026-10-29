@@ -24,12 +24,14 @@ export function createNewGame(seed = Date.now() % 2147483647) {
     time: { day: 0, block: 0, blockProgress: 0, speedIndex: 1, paused: false, staffCleaned: 0, staffFixed: 0 },
     unlockedZones: CONFIG.grid.zones.filter((z) => z.startsUnlocked).map((z) => z.id),
     extraZones: [], // terrenos gerados (áreas infinitas)
+    shift: { x: 0, y: 0 }, // quanto a planta andou para a direita (terrenos à esquerda)
     nextZoneNum: 1,
     items: [],
     nextItemId: 1,
     students: [],
     nextStudentId: 1,
     staff: [],
+    network: null, // Era 4: filiais, lotes à venda e candidatos a gerente
     nextStaffId: 1,
     enrollAcc: 0,
     dirt: [],

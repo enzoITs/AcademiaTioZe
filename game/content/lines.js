@@ -33,7 +33,39 @@ export const ERA_MESSAGES = {
     ['armando', 'Letreiro neon?! Vai piscar na minha janela a noite toda! ...Minha neta tirou foto na frente. Ficou bonito, tá.'],
     ['valeria', 'Prédio próprio e terraço no projeto? Ok, vizinho(a), agora a MegaFit está oficialmente preocupada. Parabéns. De verdade.'],
   ],
+  4: [
+    ['tioze', 'VOLTEI, sobrinho(a)! Larguei a vara de pescar no meio do robalo para ver a inauguração da rede. A garagem virou Matriz Histórica: o caderno está lá, aberto na primeira página.'],
+    ['armando', 'Rede?! Vai ter Tio Zé em cada esquina agora? ...Abre uma perto da casa da minha neta, então.'],
+    ['valeria', 'Uma rede de verdade, vizinho(a)! Agora é MegaFit contra Tio Zé no mapa da cidade. Que vença a melhor recepção.'],
+  ],
 };
+
+// Falas da Era 4: cesta da Valéria a cada filial aberta e reações do Tio Zé.
+export const BRANCH_LINES = {
+  valeria: [
+    (name) => `Cesta de presente para a ${name}! Tem toalhinha, garrafinha e um bilhete: "boa sorte, mas não muita".`,
+    (name) => `Mandei uma cesta para a ${name}. O smoothie é de couve: se ninguém tomar, eu entendo.`,
+    (name) => `${name}, é? Lindo letreiro. A cesta chega amanhã, com um vale-aula na MegaFit, claro.`,
+    (name) => `Mais uma filial! A ${name} ganhou cesta, laço e um cartão assinado "sua rival preferida".`,
+  ],
+  tioze: [
+    (name) => `${name} aberta! Pendura uma foto minha na recepção, que dá sorte.`,
+    (name) => `Sobrinho(a), a ${name} tem que ter café passado para o gerente. Gerente feliz, aluno feliz.`,
+    (name) => `Mais uma bandeirinha no mapa: ${name}! Quando eu era Mister Bairro, o bairro era um só.`,
+  ],
+};
+
+// Gerentes de filial: qualidade + defeito engraçado (seção 14 do documento).
+export const MANAGER_TRAITS = [
+  'ótimo(a) com planilha, mas atende o celular no meio da reunião',
+  'lembra o nome de todo aluno, mas esquece a chave todo dia',
+  'monta escala perfeita, mas só fala em caixa alta no grupo',
+  'organiza tudo por cor, inclusive as reclamações',
+  'faz a melhor recepção da cidade, mas conta a mesma piada há 12 anos',
+  'nunca falta, mas leva o cachorro para o trabalho',
+  'negocia com fornecedor como ninguém, mas chora no fim de todo mês',
+  'motiva a equipe com discurso, mas o discurso dura 40 minutos',
+];
 
 export const ERA_CEREMONY = {
   2: {
@@ -49,6 +81,13 @@ export const ERA_CEREMONY = {
     tioze: 'Sobrinho(a), um prédio! O Mister Bairro 1987 nunca sonhou tão alto. A placa pintada à mão foi para o museu, do lado do meu caderno. Agora chega uma turma que vive de foto: capricha no espelho e na luz.',
     whey: 'Miau! (O Whey subiu na recepção nova, se viu refletido no vidro e passou dez minutos encarando o outro gato.)',
     armando: '“Neon, vidro, terraço... Isso aqui virou shopping? ...Pelo menos o barulho ficou lá dentro. Parabéns, vizinho(a).”',
+  },
+  4: {
+    city: 'Sem caminhão desta vez: o prédio fica onde está e vira a Matriz. A visão se abre para o mapa da cidade, com bandeirinhas onde a rede chegar.',
+    ribbon: 'Fita cortada na porta da Matriz, com o bairro inteiro de camiseta amarela.',
+    tioze: 'SURPRESA! O Tio Zé voltou da praia para a inauguração da rede, de regata amarela nova e tudo. “Sobrinho(a), a garagem virou Matriz Histórica e dá uma força para todas as filiais. Agora é cada bairro com a sua academia: escolhe bem o gerente!”',
+    whey: 'Miau. (O Whey subiu no mapa da cidade, deitou bem em cima da Matriz e se recusa a sair.)',
+    valeria: '“Uma rede, vizinho(a)?! Mandei a primeira cesta de presente. Agora é MegaFit contra Tio Zé no mapa inteiro. Que vença a melhor recepção!”',
   },
 };
 

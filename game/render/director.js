@@ -96,6 +96,7 @@ export class SceneDirector {
     const { ui, state } = this.game;
     if (!ui.fx.length) return;
     for (const e of ui.fx) {
+      if (e.kind === 'shift') this.shiftScene(e.dx * T, e.dy * T);
       if (e.kind === 'place' || e.kind === 'repair') this.itemAnims.set(e.itemId, { kind: e.kind, t0: now });
       if (e.kind === 'place') {
         const item = state.items.find((i) => i.id === e.itemId);
@@ -152,6 +153,25 @@ export class SceneDirector {
       }
     }
     ui.fx.length = 0;
+  }
+
+  /**
+   * A planta andou (terreno novo à esquerda): tudo que está na tela anda junto,
+   * para ninguém "teleportar". O renderizador lê `cameraShift` e move a câmera.
+   */
+  shiftScene(px, py) {
+    const move = (p) => { if (p) { p.x += px; p.y += py; } };
+    for (const sp of [...this.sprites.values(), ...this.staffSprites.values()]) {
+      move(sp);
+      move(sp.goal);
+      sp.path?.forEach(move);
+    }
+    move(this.whey);
+    move(this.wheyGoal);
+    this.particles.forEach(move);
+    this.floaters.forEach(move);
+    const prev = this.cameraShift ?? { x: 0, y: 0 };
+    this.cameraShift = { x: prev.x + px / T, y: prev.y + py / T };
   }
 
   burst(item, n, colors, kind) {

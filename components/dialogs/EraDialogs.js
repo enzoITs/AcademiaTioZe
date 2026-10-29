@@ -63,11 +63,78 @@ function NewPlan({ preview }) {
   );
 }
 
+/** Prévia do mapa da cidade antes de virar Rede: Matriz, Matriz Histórica, MegaFit e os primeiros lotes. */
+function CityTeaser() {
+  const spots = [
+    { x: 0, y: 0, label: 'Matriz', fill: '#cfe3ef' },
+    { x: -2, y: 1, label: 'Matriz Histórica', fill: '#c8b6dc' },
+    { x: 2, y: -1, label: 'MegaFit', fill: '#dfe2ea' },
+    { x: 1, y: 0, label: 'À venda', lot: true },
+    { x: -1, y: 0, label: 'À venda', lot: true },
+  ];
+  return (
+    <svg className="site-plan" viewBox="-32 -20 64 40" role="img" aria-label="Prévia do mapa da cidade">
+      <rect x="-32" y="-20" width="64" height="40" fill="#cfe6c0" />
+      {[-18, -6, 6, 18].map((x) => <rect key={`v${x}`} x={x - 1} y="-20" width="2" height="40" fill="#b9b4c4" />)}
+      {[-18, -6, 6, 18].map((y) => <rect key={`h${y}`} x="-32" y={y - 1} width="64" height="2" fill="#b9b4c4" />)}
+      {spots.map((s) => (
+        <g key={s.label + s.x}>
+          <rect x={s.x * 12 - 5} y={s.y * 12 - 5} width="10" height="10" rx="1.2" fill={s.lot ? '#e6efd9' : '#efe6d6'} stroke={s.lot ? '#9a92ad' : '#3d3550'} strokeWidth="0.35" strokeDasharray={s.lot ? '1 0.7' : undefined} />
+          {s.lot ? null : <rect x={s.x * 12 - 3} y={s.y * 12 - 3} width="6" height="4.5" rx="0.4" fill={s.fill} stroke="#3d3550" strokeWidth="0.3" />}
+          <text x={s.x * 12} y={s.y * 12 + 4.2} textAnchor="middle" fontSize="1.7" fontWeight="800" fill="#3d3550">{s.label}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** Era 3 → 4: não há mudança de lugar; a tela mostra o mapa da cidade. */
+function NetworkMoveDialog({ preview }) {
+  const { state } = useGame();
+  const def = eraDef(preview.era);
+  const check = canMoveEra(state);
+  const fee = CONFIG.economy.eraBaseFee;
+  const N = CONFIG.network;
+  const maxFee = CONFIG.economy.feeSlider.maxByEra?.[String(preview.era)];
+  return (
+    <Modal title={`Era ${preview.era}: ${def.label}`} onClose={closeModal} className="modal-wide">
+      <div className="exp-head">
+        <h2 className="modal-title">Era {preview.era}: {def.label}</h2>
+        <span className="small subtle">saldo {formatMoney(state.money)}</span>
+      </div>
+      <p className="small subtle exp-infinite">{def.description}</p>
+      <div className="exp-layout">
+        <CityTeaser />
+        <ul className="era-move-list">
+          <li><strong>Sem mudança:</strong> os {state.items.length} aparelhos, as áreas e a equipe ficam onde estão. O prédio vira a Matriz.</li>
+          <li><strong>{def.moveCostLabel}:</strong> {formatMoney(def.moveCost ?? 0)} agora.</li>
+          <li><strong>Mensalidade base:</strong> sobe de {formatMoney(fee[String(state.era)])} para {formatMoney(fee[String(preview.era)])}{maxFee ? ` (teto do slider: ${formatMoney(maxFee)})` : ''}.</li>
+          <li>
+            <strong>Filiais:</strong> a primeira custa a partir de {formatMoney(N.branchCost)}. Cada uma tem estilo (Acolhedora, Hardcore, Família ou Premium),
+            gerente com nota de 1 a 5 estrelas e rende sozinha: membros × mensalidade − custos.
+          </li>
+          <li><strong>Matriz Histórica:</strong> a garagem do Tio Zé dá +{Math.round(N.historicBonus * 100)}% de membros em todas as filiais.</li>
+          <li><strong>Equipe da Matriz:</strong> até {def.maxStaff} pessoas.</li>
+          <li><strong>Festa:</strong> sem dia de portas fechadas. Todos os alunos ganham +{def.noveltyBonus} de satisfação por {def.noveltyDays} dias.</li>
+        </ul>
+      </div>
+      {check.ok ? null : <p className="neg small">{check.reason}</p>}
+      <div className="modal-actions">
+        <button type="button" className="btn" onClick={closeModal} data-autofocus>Ainda não</button>
+        <button type="button" className="btn btn-primary" onClick={confirmEraMove} disabled={!check.ok}>
+          <Icon name="flag" size={15} /> Virar Rede ({formatMoney(def.moveCost ?? 0)})
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /** Passo 1: a planta do espaço novo antes de pagar. */
 export function EraMoveDialog() {
   const { state } = useGame();
   const preview = useMemo(() => previewEraMove(state), [state, state.items.length, state.era]);
   if (!preview) return null;
+  if (preview.stays) return <NetworkMoveDialog preview={preview} />;
   const def = eraDef(preview.era);
   const base = preview.layout.zones.find((z) => z.startsUnlocked);
   const extras = preview.layout.zones.filter((z) => !z.startsUnlocked);
@@ -167,7 +234,17 @@ export function EraCeremony({ era }) {
   const def = eraDef(era);
   const text = ERA_CEREMONY[era] ?? ERA_CEREMONY[2];
   const [step, setStep] = useState(0);
-  const steps = [
+  const steps = def.relocate === false ? [
+    { title: 'A cidade no mapa', art: <CityTeaser />, text: text.city },
+    {
+      title: 'Corte de fita da Rede',
+      art: <RibbonArt era={era} />,
+      text: `${text.ribbon} Todo mundo treina com +${def.noveltyBonus} de satisfação por ${def.noveltyDays} dias.`,
+    },
+    { who: 'tioze', title: 'O Tio Zé voltou!', text: text.tioze },
+    { who: 'whey', title: 'O Whey inspeciona', text: text.whey },
+    { who: 'valeria', title: 'Cesta da Valéria', text: text.valeria },
+  ] : [
     { title: 'O caminhão chegou!', art: <TruckArt />, text: text.truck },
     {
       title: 'Corte de fita',

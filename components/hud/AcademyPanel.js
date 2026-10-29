@@ -4,7 +4,7 @@ import { CONFIG, PROFILES, EQUIPMENT, DEMAND_CATEGORIES, eraDef } from '../../ga
 import { nextEra, eraGoals, canMoveEra } from '../../game/systems/eras.js';
 import { formatMoney, formatNumber, formatPercent } from '../../game/utils/format.js';
 import {
-  getSuggestions, selectItem, startPlacement, repair, setTab, setShopFilter, openEraMove,
+  getSuggestions, selectItem, startPlacement, repair, setTab, setShopFilter, openEraMove, openCityMap,
 } from '../../game/engine/store.js';
 import { repairCost } from '../../game/systems/maintenance.js';
 import Icon from '../ui/Icon.js';
@@ -137,9 +137,14 @@ function EraCard({ state }) {
     return (
       <div className="era-card">
         <p className="small">
-          Você está na <strong>Era {state.era} · {def.label}</strong>. A Era {state.era + 1} (Rede de filiais) ainda não existe neste protótipo:
-          por enquanto, amplie o prédio, monte a equipe e conquiste o bairro inteiro.
+          Você chegou na <strong>Era {state.era} · {def.label}</strong>! Daqui em diante o jogo é aberto: cuide da Matriz aqui na grade e
+          abra filiais pela cidade. Cada filial aberta faz surgir outro lote à venda.
         </p>
+        {state.network ? (
+          <button type="button" className="btn btn-sm btn-primary" onClick={openCityMap}>
+            <Icon name="map" size={15} /> Abrir o mapa da cidade
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -148,10 +153,17 @@ function EraCard({ state }) {
   const check = canMoveEra(state);
   return (
     <div className="era-card">
-      <p className="small">
-        Metas para a <strong>Era {era} ({def.label})</strong>. Ao bater todas, a mudança libera: espaço maior, mensalidade base maior,
-        {(def.rentLabel ?? 'aluguel').toLowerCase()} de {formatMoney(def.rent)}/mês e gente nova no bairro.
-      </p>
+      {def.relocate === false ? (
+        <p className="small">
+          Metas para a <strong>Era {era} ({def.label})</strong>. Sem mudança de endereço: o prédio vira a Matriz, a mensalidade base sobe
+          para {formatMoney(CONFIG.economy.eraBaseFee[String(era)])} e o mapa da cidade abre para as filiais.
+        </p>
+      ) : (
+        <p className="small">
+          Metas para a <strong>Era {era} ({def.label})</strong>. Ao bater todas, a mudança libera: espaço maior, mensalidade base maior,
+          {(def.rentLabel ?? 'aluguel').toLowerCase()} de {formatMoney(def.rent)}/mês e gente nova no bairro.
+        </p>
+      )}
       <ul className="era-goals">
         {goals.map((g) => (
           <li key={g.key} className={g.done ? 'done' : ''}>

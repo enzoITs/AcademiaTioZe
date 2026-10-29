@@ -13,6 +13,7 @@ import { nearestWalkable } from '../pathfinding/floodFill.js';
 import { cellIndex, syncLayout } from '../grid/grid.js';
 import { nextRandom } from '../utils/random.js';
 import { runStaffCleaning, runStaffRepairs } from '../systems/staff.js';
+import { runNetworkDay, refreshCandidates, hasNetwork } from '../systems/network.js';
 import { emptyExposure, emptyCategoryQueue } from '../engine/state.js';
 
 /** Dados derivados (não salvos): avaliação da academia e estatística do bloco atual. */
@@ -98,6 +99,8 @@ function runDayEnd(state, rt, offline) {
   if (joined.length) events.push({ type: 'joined', count: joined.length });
 
   applyDailyEconomy(state);
+  const network = runNetworkDay(state);
+  if (network) events.push({ type: 'network', ...network });
   const vovo = checkVovo(state);
   if (vovo) {
     vovoMessage(state, vovo.debt);
@@ -117,6 +120,8 @@ function runDayEnd(state, rt, offline) {
   const daysPerMonth = CONFIG.time.daysPerMonth;
   if ((state.time.day + 1) % daysPerMonth === 0) {
     events.push({ type: 'month', report: closeMonth(state) });
+    // Todo mês chega um novo pool de candidatos a gerente.
+    if (hasNetwork(state)) refreshCandidates(state, true);
   }
   state.time.day += 1;
   state.undo = []; // desfazer e reembolso total valem só no mesmo dia

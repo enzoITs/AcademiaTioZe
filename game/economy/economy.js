@@ -13,6 +13,8 @@ export const LEDGER_CATEGORIES = {
   vendas: { label: 'Venda de aparelhos', kind: 'revenue' },
   reembolsos: { label: 'Reembolsos', kind: 'revenue' },
   vovo: { label: 'Ajuda da Vovó Dalva', kind: 'revenue' },
+  filiais: { label: 'Mensalidades das filiais', kind: 'revenue' },
+  filiaisVenda: { label: 'Venda de filiais', kind: 'revenue' },
   equipamentos: { label: 'Compra de aparelhos', kind: 'expense' },
   ampliacoes: { label: 'Ampliações', kind: 'expense' },
   mudanca: { label: 'Mudança de era', kind: 'expense' },
@@ -22,6 +24,8 @@ export const LEDGER_CATEGORIES = {
   consertos: { label: 'Consertos e revisões', kind: 'expense' },
   salarios: { label: 'Salários da equipe', kind: 'expense' },
   juros: { label: 'Juros do saldo negativo', kind: 'expense' },
+  filiaisCustos: { label: 'Custos das filiais', kind: 'expense' },
+  filiaisAbertura: { label: 'Abertura e reforma de filiais', kind: 'expense' },
 };
 
 export function createLedger(day, money) {
@@ -43,6 +47,12 @@ export function transact(state, amount, category, label) {
     L.log.unshift({ day: state.time.day, category, label, amount: value });
     if (L.log.length > LOG_LIMIT) L.log.length = LOG_LIMIT;
   }
+}
+
+/** Faixa do slider da mensalidade: o teto sobe a cada era (R$ 90 na garagem). */
+export function feeLimits(era = 1) {
+  const F = ECON.feeSlider;
+  return { min: F.min, max: F.maxByEra?.[String(era)] ?? F.max, step: F.step };
 }
 
 export function canAfford(state, price) {

@@ -9,6 +9,7 @@ import { transact } from '../economy/economy.js';
 import { grantNovelty } from '../simulation/students.js';
 import { addMessage } from './characters.js';
 import { ERA_MESSAGES } from '../content/lines.js';
+import { initNetwork } from './network.js';
 
 // Como medir cada meta de passagem (as metas de cada era ficam no JSON).
 const GOAL_METRICS = {
@@ -18,6 +19,7 @@ const GOAL_METRICS = {
   expansions: { label: 'Ampliações', value: (s) => s.unlockedZones.length - 1 },
   staff: { label: 'Pessoas na equipe', value: (s) => s.staff.length },
   idoso: { label: 'Turma da manhã (idosos)', value: (s) => s.students.filter((st) => st.profile === 'idoso').length },
+  influencer: { label: 'Influencers treinando', value: (s) => s.students.filter((st) => st.profile === 'influencer').length },
 };
 
 /** Próxima era (ou null quando não há outra implementada). */
@@ -102,11 +104,24 @@ export function performEraMove(state) {
   const cost = def.moveCost ?? 0;
   if (cost) transact(state, -cost, 'mudanca', `${def.moveCostLabel ?? 'Mudança'}: ${def.label}`);
 
+  // Era 3 → 4: não há mudança de lugar. O prédio vira a Matriz e a rede começa.
+  if (def.relocate === false) {
+    state.era = era;
+    syncLayout(state);
+    initNetwork(state);
+    grantNovelty(state, '*', def.noveltyBonus ?? CONFIG.satisfaction.noveltyBonus, def.noveltyDays ?? CONFIG.satisfaction.noveltyDays);
+    state.milestones[`era${era}`] = true;
+    state.pendingModals.push({ kind: 'era', era });
+    for (const [from, text] of ERA_MESSAGES[era] ?? []) addMessage(state, from, text);
+    return { era, moved: state.items.length, leftovers: 0, refund: 0, cost };
+  }
+
   // Novo endereço: os terrenos da era anterior ficam para trás.
   const oldItems = state.items;
   state.era = era;
   state.unlockedZones = eraLayout(era).zones.filter((z) => z.startsUnlocked).map((z) => z.id);
   state.extraZones = [];
+  state.shift = { x: 0, y: 0 };
   state.items = [];
   syncLayout(state);
 
@@ -141,11 +156,16 @@ export function previewEraMove(state) {
   const era = nextEra(state);
   if (!era) return null;
   const layout = eraLayout(era);
+  // Sem mudança de lugar: nada a reencaixar.
+  if (eraDef(era).relocate === false) {
+    return { era, layout, placed: state.items, leftovers: [], cols: COLS, rows: ROWS, stays: true };
+  }
   const temp = {
     ...state,
     era,
     unlockedZones: layout.zones.filter((z) => z.startsUnlocked).map((z) => z.id),
     extraZones: [],
+    shift: { x: 0, y: 0 },
     items: [],
   };
   try {

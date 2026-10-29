@@ -1,7 +1,7 @@
-# Academia do Tio Zé — protótipo das Eras 1, 2 e 3
+# Academia do Tio Zé — protótipo das Eras 1 a 4
 
 Tycoon casual de navegador: transforme a garagem herdada do Tio Zé em uma academia de sucesso.
-Implementa a Era 1 (Garagem) descrita no documento de design e as passagens para a Era 2 (Ponto de bairro) e a Era 3 (Academia completa).
+Implementa a Era 1 (Garagem) descrita no documento de design e as passagens para a Era 2 (Ponto de bairro), a Era 3 (Academia completa) e a Era 4 (Rede).
 
 ## Como rodar
 
@@ -130,11 +130,43 @@ alunos, 4★, 14 tipos de aparelho, as 2 ampliações do ponto, 3 pessoas na equ
 Os textos da cerimônia e do mural de cada era ficam em `ERA_CEREMONY` e `ERA_MESSAGES` (`game/content/lines.js`);
 as metas, em `eras[n].goals` no JSON.
 
+## Era 4: Rede
+
+Sem mudança de lugar (seção 15 do documento): o prédio vira a **Matriz** e a visão se abre para o **mapa da
+cidade** (botão "Mapa da cidade" e aba Rede). Metas: 200 alunos, 4,2★, 18 tipos de aparelho, 3 ampliações,
+6 pessoas na equipe e 12 influencers. Custa R$ 30.000; mensalidade base R$ 110; equipe até 14; sem dia fechado.
+
+- **Filiais semiautomáticas** (`game/systems/network.js`): o jogador só mexe nos aparelhos da Matriz. Cada filial
+  rende membros × mensalidade − custos, todo dia, inclusive offline. Os membros caminham (8%/dia) até a meta:
+  capacidade do estilo × nota do gerente × reputação da Matriz × preço (mensalidade da Matriz contra a base de
+  R$ 110) × procura do bairro (+20% se o bairro gosta do estilo) × Matriz Histórica.
+- **Estilos** (pacotes do documento): Acolhedora, Hardcore, Família e Premium, com capacidade, multiplicador de
+  mensalidade e custo de operação próprios. Trocar de estilo custa R$ 2.500 e assusta 25% dos membros.
+- **Gerentes:** pool de 3 candidatos por mês, nota de 1 a 5★, salário pela nota e um defeito engraçado.
+- **Lotes infinitos:** sempre 2 lotes à venda no mapa; cada filial aberta faz surgir outro (R$ 20.000 × 1,45 por
+  filial aberta, ajustado pelo bairro). Reforma da filial em 3 níveis (capacidade ×1,5 e ×2). Vender devolve 50%.
+- **Matriz Histórica:** a garagem volta no mapa e dá +5% de membros em todas as filiais.
+- **Personagens:** o Tio Zé volta de surpresa na cerimônia; a Valéria manda uma cesta a cada filial aberta.
+- **Visual:** bandeirinhas na fachada da Matriz, letreiro "matriz da rede" e mapa com bandeirinhas nas filiais.
+
+## Pedidos depois do documento
+
+- **Níveis 1 a 3 em todos os aparelhos** (`levels` no JSON): melhorar custa 50% e depois 100% do preço do
+  aparelho; dá +25%/+50% de capacidade (ou de Vibe na decoração) e desgaste 10%/20% menor. Em troca, conserto e
+  revisão custam 1,6× e 2,4×. Estrelinhas douradas no aparelho mostram o nível. Separado de usado/novo/profissional.
+- **Vender** sempre visível no painel do aparelho (e tecla Delete), com desfazer no mesmo dia; as melhorias entram no valor.
+- **Teto da mensalidade por era** (`feeSlider.maxByEra`): R$ 90, R$ 140, R$ 200 e R$ 280.
+- **Expansão para os dois lados:** sempre há um terreno à venda à esquerda e outro à direita do prédio principal.
+  Quando nasce um terreno à esquerda da coluna 0, a planta inteira anda para a direita (`state.shift`), junto com
+  aparelhos, sujeira, porta e câmera.
+
 ## Limitações conhecidas / adiado de propósito
 
-- **Era 4 (rede de filiais), aulas coletivas na Ala de aulas, afinidade de estilo, andar de cima de verdade,
-  instrutores e recepção, pool de candidatos, planos e suplementos** não estão implementados. Na Era 2, "instrutor no turno"
-  ainda não é necessidade do Iniciante (não há instrutores).
+- **Aulas coletivas na Ala de aulas, afinidade de estilo na Matriz, andar de cima de verdade, instrutores e
+  recepção, planos e suplementos** não estão implementados. Na Era 2, "instrutor no turno"
+  ainda não é necessidade do Iniciante (não há instrutores). Eventos entre unidades da rede (o documento diz que ainda
+  precisam ser especificados) também não existem.
+- **Progresso offline** continua limitado a 3 dias, também para as filiais.
 - **Efeito Janeiro:** só o multiplicador de matrículas (×2,5). A "Motivação que decai" ainda não existe.
 - **Verão, apagão e outros eventos sazonais:** ainda não implementados.
 - **Afinidade de estilo** (Acolhedora/Hardcore/Família/Premium) e **energia** (opcional no documento)
@@ -142,4 +174,4 @@ as metas, em `eras[n].goals` no JSON.
 - **Capacidades** de máquina de peito, puxador, leg press e vestiário são propostas do documento
   (marcadas "em teste"). Os preços dos níveis novo/profissional de esteira e bike seguem a proporção do supino.
 - Toque funciona para clicar e arrastar; não há gesto de pinça (use os botões de zoom).
-- O pacote `three` está instalado (pedido anterior), mas o jogo não o usa: a vista é 2D.
+- Sem WebGL 2 o jogo cai para a vista 2D de reserva (`game/render/renderer.js`).

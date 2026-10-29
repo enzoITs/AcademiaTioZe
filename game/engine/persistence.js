@@ -4,6 +4,10 @@ import { CONFIG, EQUIPMENT, PROFILES, MAX_ERA, eraDef } from '../config.js';
 import { validatePlacement, rectsOverlap, syncLayout, allZones, baseZones } from '../grid/grid.js';
 import { createNewGame } from './state.js';
 import { POSTCARDS } from '../systems/characters.js';
+import { feeLimits } from '../economy/economy.js';
+import {
+  STYLES, MAX_BRANCH_LEVEL, createNetwork, initNetwork, ensureLots, refreshCandidates, managerSalary,
+} from '../systems/network.js';
 
 export const SAVE_KEY = 'academia-tio-ze/save-v1';
 export const SETTINGS_KEY = 'academia-tio-ze/settings';
@@ -66,6 +70,68 @@ export function saveSettings(settings) {
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const arr = (v) => (Array.isArray(v) ? v : []);
+const int = (v, min, max, fallback) => (isNum(v) ? Math.min(Math.max(Math.floor(v), min), max) : fallback);
+
+function parseManager(m) {
+  if (!m || typeof m !== 'object') return null;
+  const rating = int(m.rating, 1, 5, 3);
+  return {
+    id: int(m.id, 0, 1e9, 0),
+    name: String(m.name ?? 'Gerente').slice(0, 30),
+    rating,
+    trait: String(m.trait ?? '').slice(0, 120),
+    salary: isNum(m.salary) ? Math.max(0, m.salary) : managerSalary(rating),
+  };
+}
+
+/** Rede (Era 4): filiais, lotes à venda e candidatos. Nula antes da Era 4. */
+function parseNetwork(raw, state) {
+  if (state.era < 4) return null;
+  if (!raw || typeof raw !== 'object') return initNetwork(state);
+  const net = createNetwork();
+  const spots = new Set();
+  const freeSpot = (gx, gy) => {
+    const key = `${gx},${gy}`;
+    if (spots.has(key)) return false;
+    spots.add(key);
+    return true;
+  };
+  for (const b of arr(raw.branches)) {
+    if (!b || !isNum(b.id) || !STYLES[b.style] || !isNum(b.gx) || !isNum(b.gy)) continue;
+    const gx = Math.floor(b.gx);
+    const gy = Math.floor(b.gy);
+    if (!freeSpot(gx, gy)) continue;
+    net.branches.push({
+      id: Math.floor(b.id),
+      name: String(b.name ?? 'Filial').slice(0, 40),
+      gx,
+      gy,
+      district: int(b.district, 0, 1e6, 0),
+      style: b.style,
+      level: int(b.level, 1, MAX_BRANCH_LEVEL, 1),
+      manager: parseManager(b.manager),
+      members: isNum(b.members) ? Math.max(0, b.members) : 0,
+      invested: isNum(b.invested) ? Math.max(0, b.invested) : 0,
+      openedDay: int(b.openedDay, 0, 1e9, 0),
+    });
+  }
+  for (const l of arr(raw.lots)) {
+    if (!l || typeof l.id !== 'string' || !/^lote-\d+$/.test(l.id) || !isNum(l.gx) || !isNum(l.gy)) continue;
+    const gx = Math.floor(l.gx);
+    const gy = Math.floor(l.gy);
+    if (!freeSpot(gx, gy)) continue;
+    net.lots.push({ id: l.id, gx, gy, district: int(l.district, 0, 1e6, 0) });
+  }
+  net.candidates = arr(raw.candidates).map(parseManager).filter(Boolean).slice(0, 6);
+  net.opened = int(raw.opened, net.branches.length, 1e6, net.branches.length);
+  net.nextBranchId = Math.max(int(raw.nextBranchId, 1, 1e9, 1), ...net.branches.map((b) => b.id + 1));
+  net.nextLotNum = Math.max(int(raw.nextLotNum, 1, 1e9, 1), ...net.lots.map((l) => Number(l.id.slice(5)) + 1));
+  net.nextCandidateId = Math.max(int(raw.nextCandidateId, 1, 1e9, 1), ...net.candidates.map((c) => c.id + 1));
+  state.network = net;
+  ensureLots(state);
+  refreshCandidates(state);
+  return net;
+}
 
 /**
  * Valida e normaliza um save. Lança Error com mensagem amigável se for inválido.
@@ -94,6 +160,8 @@ export function parseSave(text) {
   state.closedDay = isNum(data.closedDay) ? Math.floor(data.closedDay) : null;
   // Terrenos gerados: retângulos válidos, sem sobreposição e dentro do limite.
   const P = CONFIG.grid.procedural;
+  const shiftOf = (v) => (isNum(v) ? Math.min(Math.max(0, Math.floor(v)), P.maxCoordinate) : 0);
+  state.shift = { x: shiftOf(data.shift?.x), y: shiftOf(data.shift?.y) };
   const extraZones = [];
   for (const z of arr(data.extraZones)) {
     if (!z || typeof z.id !== 'string' || !/^area-\d+$/.test(z.id)) continue;
@@ -121,7 +189,8 @@ export function parseSave(text) {
   const knownZones = new Set(allZones(state).map((z) => z.id));
   state.unlockedZones = [...new Set(arr(data.unlockedZones).filter((z) => knownZones.has(z)))];
   for (const z of baseZones(state)) if (z.startsUnlocked && !state.unlockedZones.includes(z.id)) state.unlockedZones.unshift(z.id);
-  state.fee = isNum(data.fee) ? Math.min(Math.max(data.fee, CONFIG.economy.feeSlider.min), CONFIG.economy.feeSlider.max) : base.fee;
+  const fee = feeLimits(state.era);
+  state.fee = isNum(data.fee) ? Math.min(Math.max(data.fee, fee.min), fee.max) : base.fee;
   state.reputation = isNum(data.reputation) ? Math.min(Math.max(data.reputation, 0), 5) : base.reputation;
 
   // Equipamentos: tipo conhecido, posição válida e sem colisão.
@@ -136,6 +205,8 @@ export function parseSave(text) {
       condition: isNum(raw.condition) ? Math.min(Math.max(raw.condition, 0), 100) : 100,
       pricePaid: isNum(raw.pricePaid) ? raw.pricePaid : 0,
       purchasedDay: isNum(raw.purchasedDay) ? raw.purchasedDay : 0,
+      level: isNum(raw.level) ? Math.min(Math.max(1, Math.floor(raw.level)), CONFIG.levels.max) : 1,
+      upgradeSpent: isNum(raw.upgradeSpent) ? Math.max(0, raw.upgradeSpent) : 0,
     };
     const check = validatePlacement({ ...state, items }, item);
     if (check.ok) items.push(item);
@@ -151,6 +222,7 @@ export function parseSave(text) {
     .slice(0, eraDef(state.era).maxStaff ?? CONFIG.staff.maxStaff)
     .map((m) => ({ ...m, shifts: CONFIG.time.blocks.map((_, i) => m.shifts[i] === true) }));
   state.nextStaffId = Math.max(base.nextStaffId, ...state.staff.map((m) => m.id + 1));
+  state.network = parseNetwork(data.network, state);
   state.time.staffCleaned = isNum(state.time.staffCleaned) ? Math.max(0, Math.floor(state.time.staffCleaned)) : 0;
   state.time.staffFixed = isNum(state.time.staffFixed) ? Math.max(0, Math.floor(state.time.staffFixed)) : 0;
   state.dirt = arr(data.dirt).filter((d) => d && isNum(d.x) && isNum(d.y)).slice(0, CONFIG.cleaning.maxDirt);

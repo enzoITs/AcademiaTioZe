@@ -2,8 +2,9 @@
 import { useGame } from '../../hooks/useGame.js';
 import { CONFIG } from '../../game/config.js';
 import { formatMoney, calendarOf } from '../../game/utils/format.js';
-import { LEDGER_CATEGORIES, monthSummary, projectedMonthly, monthlyRent } from '../../game/economy/economy.js';
+import { LEDGER_CATEGORIES, monthSummary, projectedMonthly, monthlyRent, feeLimits } from '../../game/economy/economy.js';
 import { setFee, openModal } from '../../game/engine/store.js';
+import { networkMonthly } from '../../game/systems/network.js';
 
 function LedgerTable({ totals, opening, closing }) {
   const rows = Object.entries(LEDGER_CATEGORIES)
@@ -32,10 +33,12 @@ function LedgerTable({ totals, opening, closing }) {
 
 export default function FinancePanel() {
   const { state, rt } = useGame();
-  const { min, max, step } = CONFIG.economy.feeSlider;
+  const { min, max, step } = feeLimits(state.era);
+  const nextMax = CONFIG.economy.feeSlider.maxByEra?.[String(state.era + 1)];
   const [fairLow, fairHigh] = rt.academy.fairRange;
   const pct = (v) => ((v - min) / (max - min)) * 100;
   const proj = projectedMonthly(state);
+  const net = networkMonthly(state);
   const over = Math.max(0, state.fee / rt.academy.perceivedValue - 1) * 100;
   const cal = calendarOf(state.time.day);
 
@@ -65,12 +68,22 @@ export default function FinancePanel() {
           base da Era {state.era} {formatMoney(CONFIG.economy.eraBaseFee[String(state.era)])}). Cada 5% acima do valor percebido tira 5 pontos da nota de Preço justo
           (Iniciante sente ×1,5). Qualidade sobe o valor percebido.
         </p>
+        <p className="small subtle">
+          Teto da mensalidade na Era {state.era}: {formatMoney(max)}.{nextMax ? ` Na Era ${state.era + 1} o teto sobe para ${formatMoney(nextMax)}.` : ''}
+        </p>
         {over > 0 ? <p className="small neg">Você está {over.toFixed(0)}% acima do valor percebido.</p> : null}
         <p className="small">
           Projeção mensal com {state.students.length} alunos: {formatMoney(proj.revenue)} de mensalidades − {formatMoney(proj.fixed)} de custos fixos
           {proj.salaries ? ` − ${formatMoney(proj.salaries)} de salários` : ''} ={' '}
           <strong className={proj.result >= 0 ? 'pos' : 'neg'}>{formatMoney(proj.result)}</strong> (sem consertos e compras).
         </p>
+        {state.network ? (
+          <p className="small">
+            Filiais ({state.network.branches.length}): {formatMoney(net.revenue)} − {formatMoney(net.cost)} ={' '}
+            <strong className={net.result >= 0 ? 'pos' : 'neg'}>{formatMoney(net.result)}/mês</strong>. A mensalidade da Matriz também vale nas filiais
+            (ajustada pelo estilo de cada uma).
+          </p>
+        ) : null}
       </div>
 
       <h2 className="section-title">Relatório de {cal.monthName} (em andamento)</h2>

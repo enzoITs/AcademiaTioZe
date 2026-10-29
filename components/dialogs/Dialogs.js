@@ -12,6 +12,7 @@ import Stars from '../hud/Stars.js';
 import Modal from './Modal.js';
 import ExpansionsDialog from './ExpansionsDialog.js';
 import { EraMoveDialog, EraCeremony } from './EraDialogs.js';
+import { CityDialog, OpenBranchDialog, BranchDialog } from '../network/NetworkDialogs.js';
 import Icon from '../ui/Icon.js';
 
 function ConfirmDialog({ confirm }) {
@@ -166,6 +167,9 @@ export default function Dialogs() {
   if (ui.modal?.kind === 'report') return <ReportDialog report={ui.modal.report} />;
   if (ui.modal?.kind === 'expansions') return <ExpansionsDialog />;
   if (ui.modal?.kind === 'eraMove') return <EraMoveDialog />;
+  if (ui.modal?.kind === 'city') return <CityDialog />;
+  if (ui.modal?.kind === 'openBranch') return <OpenBranchDialog key={ui.modal.lotId} lotId={ui.modal.lotId} />;
+  if (ui.modal?.kind === 'branch') return <BranchDialog key={ui.modal.branchId} branchId={ui.modal.branchId} />;
   const pending = state?.pendingModals[0];
   if (pending?.kind === 'postcard') return <Postcard id={pending.id} />;
   if (pending?.kind === 'vovo') return <VovoDialog debt={pending.debt} />;

@@ -1,8 +1,9 @@
 'use client';
 import { useGame } from '../../hooks/useGame.js';
 import {
-  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses,
+  toggleEditMode, toggleMaintenanceView, undo, repairAllBroken, openExpansions, zoneStatuses, openCityMap,
 } from '../../game/engine/store.js';
+import { lotCost } from '../../game/systems/network.js';
 import { repairCost } from '../../game/systems/maintenance.js';
 import { formatMoney } from '../../game/utils/format.js';
 import Icon from '../ui/Icon.js';
@@ -28,6 +29,12 @@ export default function CanvasToolbar({ rendererRef }) {
         <button type="button" className={`tool ${ui.maintenanceView ? 'active' : ''}`} onClick={toggleMaintenanceView} aria-pressed={ui.maintenanceView} title="Visão de manutenção (M)">
           <Icon name="wrench" /><span>Manutenção</span>
         </button>
+        {state.network ? (
+          <button type="button" className="tool tool-map" onClick={openCityMap} title="Mapa da cidade: filiais da rede">
+            <Icon name="map" /><span>Mapa da cidade</span>
+            {state.network.lots.some((l) => state.money >= lotCost(state, l)) ? <span className="tool-badge">!</span> : null}
+          </button>
+        ) : null}
         {forSale > 0 ? (
           <button type="button" className="tool" onClick={openExpansions} title="Comprar mais espaço para a academia">
             <Icon name="expand" /><span>Ampliar</span>

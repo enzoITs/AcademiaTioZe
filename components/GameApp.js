@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame.js';
 import {
-  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, isModalOpen, nudgeSelected,
+  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, isModalOpen, nudgeSelected, requestSell,
 } from '../game/engine/store.js';
 import TopBar from './hud/TopBar.js';
 import SidePanel from './hud/SidePanel.js';
@@ -39,7 +39,10 @@ function useKeyboard() {
       else if (key === 'e') toggleEditMode();
       else if (key === 'escape') cancelMode();
       else if (key === '1' || key === '2' || key === '3') setSpeed(Number(key));
-      else if (ARROWS[e.key] && game.ui.selectedId && game.ui.mode === 'normal') {
+      else if ((key === 'delete' || key === 'backspace') && game.ui.selectedId && game.ui.mode === 'normal') {
+        e.preventDefault();
+        requestSell(game.ui.selectedId);
+      } else if (ARROWS[e.key] && game.ui.selectedId && game.ui.mode === 'normal') {
         e.preventDefault();
         nudgeSelected(...ARROWS[e.key]);
       }

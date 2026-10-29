@@ -71,6 +71,11 @@ export class GameRenderer extends SceneDirector {
 
   /** O mundo cresceu (terreno novo): reenquadra se o jogador não mexeu na câmera. */
   followWorldGrowth() {
+    if (this.cameraShift) {
+      this.camera.x += this.cameraShift.x * T;
+      this.camera.y += this.cameraShift.y * T;
+      this.cameraShift = null;
+    }
     if (this.refitCamera) {
       this.refitCamera = false;
       this.userMovedCamera = false;

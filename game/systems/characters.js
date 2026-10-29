@@ -44,6 +44,11 @@ export const POSTCARDS = {
     caption: 'Foto: troféu do Mister Bairro 1987, polido.',
     text: 'Cinco estrelas na garagem! Nem eu consegui. O bairro inteiro já sabe seu nome. Estou orgulhoso.',
   },
+  first_branch: {
+    title: 'A primeira bandeirinha!',
+    caption: 'Foto: eu cortando a fita (a tesoura era de unha).',
+    text: 'Primeira filial da rede, sobrinho(a)! Lá você não mexe em aparelho: quem manda é o gerente. Nota boa do gerente, estilo certo para o bairro e mensalidade justa enchem a casa. A Matriz Histórica dá uma forcinha para todas.',
+  },
   first_broken: {
     title: 'Ferro velho reclama',
     caption: 'Foto: minha vara de pescar consertada com fita.',
