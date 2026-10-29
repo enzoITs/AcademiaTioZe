@@ -50,7 +50,8 @@ function minLevelCost(item) {
  * O que veio de presente com a filial (Era 5) não vale o preço, só as melhorias pagas.
  */
 export function itemValue(item) {
-  if (item.fixed) return 0;
+  // "Fixo" vem do catálogo (escada e recepção da filial), nunca de um campo do save.
+  if (CONFIG.equipment[item.type]?.fixed) return 0;
   const levels = Math.max(item.upgradeSpent ?? 0, minLevelCost(item));
   if (item.gift) return item.upgradeSpent ?? 0;
   const catalog = getTierDef(item.type, item.tier).price;

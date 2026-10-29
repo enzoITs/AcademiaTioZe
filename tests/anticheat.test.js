@@ -177,3 +177,25 @@ test('análise "do zero" aponta o perfil que já foi editado antes', () => {
   const edited = roundTrip(academy({ students: 20, day: 40, money: 50_000_000 }));
   assert.ok(auditFromScratch(edited).length > 0);
 });
+
+test('marcar aparelhos como "fixo" ou "presente" no save não burla a checagem', () => {
+  const base = roundTrip(academy({ maxItems: 3, money: 4000, students: 5 }));
+  const prev = progressMetrics(base);
+  for (const flag of ['fixed', 'gift']) {
+    const cheat = roundTrip(base);
+    const tier = EQUIPMENT.esteira.tiers.at(-1);
+    let n = 0;
+    for (let x = 0; x < 30 && n < 4; x++) {
+      for (let y = 0; y < 30 && n < 4; y++) {
+        const it = { id: 900 + n, type: 'esteira', tier: tier.id, x, y, rot: 0, condition: 100, purchasedDay: 0, pricePaid: tier.price, [flag]: true };
+        if (validatePlacement(cheat, it).ok) {
+          cheat.items.push(it);
+          n += 1;
+        }
+      }
+    }
+    const parsed = roundTrip(cheat);
+    assert.ok(parsed.items.every((i) => !i.fixed && !i.gift), `${flag} removido pelo parseSave`);
+    assert.equal(auditProgress(prev, parsed, { realSeconds: 10 }).verdict, 'reject', flag);
+  }
+});

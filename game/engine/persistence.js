@@ -126,6 +126,8 @@ function parseItem(raw) {
     level: isNum(raw.level) ? Math.min(Math.max(1, Math.floor(raw.level)), CONFIG.levels.max) : 1,
     upgradeSpent: isNum(raw.upgradeSpent) ? Math.max(0, raw.upgradeSpent) : 0,
     gift: raw.gift === true,
+    // "Fixo" nunca vem do save: só a escada e a recepção da filial, marcadas por parseFloors.
+    fixed: false,
   };
 }
 
@@ -303,16 +305,21 @@ export function parseSave(text) {
   const items = [];
   for (const raw of arr(data.items)) {
     if (!raw || !EQUIPMENT[raw.type] || !isNum(raw.x) || !isNum(raw.y) || !isNum(raw.id)) continue;
+    // Itens escondidos (recepção e escada) só existem nas filiais.
+    if (EQUIPMENT[raw.type].hidden) continue;
     const tier = EQUIPMENT[raw.type].tiers.some((t) => t.id === raw.tier) ? raw.tier : EQUIPMENT[raw.type].tiers[0].id;
     const item = {
       ...raw,
       tier,
       rot: [0, 1, 2, 3].includes(raw.rot) ? raw.rot : 0,
       condition: isNum(raw.condition) ? Math.min(Math.max(raw.condition, 0), 100) : 100,
-      pricePaid: isNum(raw.pricePaid) ? raw.pricePaid : 0,
+      pricePaid: isNum(raw.pricePaid) ? Math.max(0, raw.pricePaid) : 0,
       purchasedDay: isNum(raw.purchasedDay) ? raw.purchasedDay : 0,
       level: isNum(raw.level) ? Math.min(Math.max(1, Math.floor(raw.level)), CONFIG.levels.max) : 1,
       upgradeSpent: isNum(raw.upgradeSpent) ? Math.max(0, raw.upgradeSpent) : 0,
+      // Na Matriz nada é "de presente" nem "fixo": esses campos não podem vir do navegador.
+      gift: false,
+      fixed: false,
     };
     const check = validatePlacement({ ...state, items }, item);
     if (check.ok) items.push(item);
