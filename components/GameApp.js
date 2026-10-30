@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame.js';
 import {
-  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, cancelMode, undo, setSpeed, saveNow, flushCloud, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView, viewOnly,
+  game, togglePause, rotate, toggleMaintenanceView, toggleEditMode, toggleSidePanel, cancelMode, undo, setSpeed, saveNow, flushCloud, isModalOpen, nudgeSelected, requestSell, inBranchView, cycleBranchView, viewOnly,
 } from '../game/engine/store.js';
 import TopBar from './hud/TopBar.js';
 import SidePanel from './hud/SidePanel.js';
@@ -38,6 +38,7 @@ function useKeyboard() {
       } else if (key === 'r') rotate();
       else if (key === 'm') toggleMaintenanceView();
       else if (key === 'e') toggleEditMode();
+      else if (key === 'h') toggleSidePanel();
       else if (key === 'escape') cancelMode();
       else if (inBranchView() && (viewOnly() || !game.ui.selectedId) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         e.preventDefault();
@@ -116,7 +117,7 @@ export default function GameApp() {
   return (
     <div className="game-layout">
       <TopBar />
-      <main className="game-main">
+      <main className={`game-main ${ui.panelHidden ? 'panel-hidden' : ''}`}>
         <section className="stage" aria-label="Academia">
           <GameCanvas rendererRef={rendererRef} />
           <CanvasToolbar rendererRef={rendererRef} />
@@ -124,7 +125,7 @@ export default function GameApp() {
           <ItemInspector />
           <BranchViewBar />
         </section>
-        <SidePanel />
+        {ui.panelHidden ? null : <SidePanel />}
       </main>
       <Dialogs />
       <Toasts />

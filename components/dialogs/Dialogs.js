@@ -5,6 +5,7 @@ import { POSTCARDS } from '../../game/systems/characters.js';
 import { formatMoney, formatNumber } from '../../game/utils/format.js';
 import {
   resolveConfirm, dismissNotice, closeModal, dismissPending, saveNow, exportSave, importSave, askConfirm, newGame, backToTitle, notifyError, openModal,
+  toggleSidePanel, setNotifications, setGraphics,
 } from '../../game/engine/store.js';
 import { LedgerTable } from '../reports/FinancePanel.js';
 import { Avatar } from '../hud/MessagesPanel.js';
@@ -123,6 +124,54 @@ function ReportDialog({ report }) {
   );
 }
 
+const GRAPHICS = [
+  ['alta', 'Alta', 'Tudo no capricho: sombras e imagem nítida.'],
+  ['media', 'Média', 'Sombras mais simples e menos pixels em telas de alta resolução.'],
+  ['baixa', 'Baixa', 'Sem sombras, imagem mais leve e até 30 quadros por segundo. Para computador ou celular mais fraco.'],
+];
+
+/** Preferências deste navegador: menu lateral, avisos e gráficos. */
+function SettingsSection() {
+  const { ui } = useGame();
+  const current = GRAPHICS.find(([id]) => id === ui.graphics) ?? GRAPHICS[0];
+  return (
+    <>
+      <h3 className="section-title">Configurações</h3>
+      <div className="settings">
+        <div className="setting-row">
+          <span><strong>Menu lateral</strong><span className="small subtle">Esconda para ver a academia na tela toda (atalho <kbd>H</kbd>).</span></span>
+          <button type="button" className="btn btn-sm" onClick={toggleSidePanel} aria-pressed={!ui.panelHidden}>
+            <Icon name="panel" size={15} /> {ui.panelHidden ? 'Mostrar' : 'Esconder'}
+          </button>
+        </div>
+        <div className="setting-row">
+          <span><strong>Notificações</strong><span className="small subtle">Avisos que sobem na parte de baixo da tela. Os de erro sempre aparecem.</span></span>
+          <button type="button" className="btn btn-sm" onClick={() => setNotifications(!ui.notifications)} aria-pressed={ui.notifications}>
+            <Icon name={ui.notifications ? 'bell' : 'bellOff'} size={15} /> {ui.notifications ? 'Ligadas' : 'Desligadas'}
+          </button>
+        </div>
+        <div className="setting-row setting-col">
+          <span><strong>Gráficos</strong><span className="small subtle">{current[2]}</span></span>
+          <div className="filters" role="radiogroup" aria-label="Qualidade dos gráficos">
+            {GRAPHICS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={ui.graphics === id}
+                className={`filter ${ui.graphics === id ? 'active' : ''}`}
+                onClick={() => setGraphics(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function MenuDialog() {
   const fileRef = useRef(null);
   const acc = useAccount();
@@ -168,6 +217,7 @@ function MenuDialog() {
           <Icon name="trash" size={15} /> Novo jogo
         </button>
       </div>
+      <SettingsSection />
       <h3 className="section-title">Atalhos</h3>
       <ul className="shortcuts">
         <li><kbd>Espaço</kbd> pausar/retomar</li>
@@ -176,6 +226,7 @@ function MenuDialog() {
         <li><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> empurrar o selecionado</li>
         <li><kbd>M</kbd> visão de manutenção</li>
         <li><kbd>E</kbd> modo edição</li>
+        <li><kbd>H</kbd> esconder/mostrar menu lateral</li>
         <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer (mesmo dia)</li>
         <li><kbd>Esc</kbd> cancelar</li>
         <li><kbd>1</kbd>–<kbd>3</kbd> velocidade ×1/×2/×4</li>

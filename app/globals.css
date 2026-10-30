@@ -446,6 +446,12 @@ kbd {
 .summary-list li { padding: 4px 0; }
 .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .menu-grid .btn { justify-content: flex-start; }
+.settings { display: grid; gap: 10px; margin-bottom: 4px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-row > span { display: grid; gap: 2px; }
+.setting-row.setting-col { flex-direction: column; align-items: stretch; gap: 6px; }
+.setting-row .filters { margin: 0; }
+.game-main.panel-hidden { grid-template-columns: 1fr; }
 .shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12.5px; font-weight: 700; }
 .postcard { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; width: min(680px, 100%); padding: 16px; background: #fffaf0; transform: rotate(-0.6deg); }
 .postcard-photo { display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 10px; background: #fff; border: 2px solid var(--ink); border-radius: 6px; box-shadow: var(--shadow); transform: rotate(-2deg); }
@@ -646,6 +652,7 @@ kbd {
   .clock { flex: 1; }
   .game-main { grid-template-columns: 1fr; grid-template-rows: minmax(320px, 58dvh) auto; }
   .side-panel { border-left: 0; border-top: 3px solid var(--ink); min-height: 50dvh; }
+  .game-main.panel-hidden { grid-template-rows: minmax(320px, 1fr); }
   .tool span { display: none; }
   .tool { padding: 0 10px; }
   .toolbar-left { max-width: calc(100% - 150px); }

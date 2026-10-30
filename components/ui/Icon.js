@@ -46,6 +46,9 @@ const PATHS = {
   user: <><circle cx="12" cy="8.5" r="3.6" /><path d="M5 20c.9-3.8 3.6-5.8 7-5.8s6.1 2 7 5.8" /></>,
   search: <><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l5 5" /></>,
   logout: <><path d="M14 4.5H6.5v15H14" /><path d="M10.5 12h10M17 8.5l3.5 3.5-3.5 3.5" /></>,
+  panel: <><rect x="3.5" y="5" width="17" height="14" rx="2.5" /><path d="M14.5 5v14" /></>,
+  bell: <><path d="M6.5 16.5V11a5.5 5.5 0 0111 0v5.5l1.5 1.5H5z" /><path d="M10 20.5h4" /></>,
+  bellOff: <><path d="M6.5 16.5V11a5.5 5.5 0 0111 0v5.5l1.5 1.5H5z" /><path d="M10 20.5h4M4 4l16 16" /></>,
   bulb: <><path d="M9 17.5h6M10 20.5h4" /><path d="M12 3.5a5.5 5.5 0 00-3 10.1V16h6v-2.4a5.5 5.5 0 00-3-10.1z" /></>,
 };
 

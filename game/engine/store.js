@@ -70,6 +70,10 @@ function createUi() {
     fx: [], // efeitos visuais consumidos pelo renderer
     wheyBubble: null,
     soundOn: true,
+    // Preferências do jogador (guardadas neste navegador): menu lateral, avisos e qualidade dos gráficos.
+    panelHidden: false,
+    notifications: true,
+    graphics: 'alta', // alta | media | baixa
     view: null, // { kind: 'branch', branchId }: visitando uma filial (só para ver)
     prevTab: null,
     notice: null, // { title, lines }: aviso da administração ou do servidor (fica por cima de tudo)
@@ -108,6 +112,8 @@ export function emit() {
 // ---------------------------------------------------------------- utilidades
 function toast(text, tone = 'info') {
   const t = { id: toastId++, text, tone };
+  // Avisos desligados: só os erros (ação que não deu certo) continuam aparecendo.
+  if (game.ui.notifications === false && tone !== 'error') return t;
   game.ui.toasts = [...game.ui.toasts.slice(-3), t];
   return t;
 }
@@ -208,7 +214,7 @@ function startWith(state, offlineSeconds = 0) {
   ensureFrontier(state);
   game.rt = createRuntime(state);
   const settings = loadSettings();
-  game.ui = { ...createUi(), screen: 'game', soundOn: settings.soundOn !== false };
+  game.ui = { ...createUi(), screen: 'game', ...prefsFrom(settings) };
   setSoundEnabled(game.ui.soundOn);
   if (offlineSeconds > CONFIG.time.offlineThresholdSeconds) {
     const summary = catchUpOffline(state, game.rt, offlineSeconds);
@@ -303,7 +309,7 @@ export function flushCloud() {
 export function backToTitle() {
   saveNow(true);
   cloudSave(game.state, { force: true });
-  game.ui = { ...createUi(), screen: 'title' };
+  game.ui = { ...createUi(), screen: 'title', ...prefsFrom(loadSettings()) };
   emit();
 }
 
@@ -1340,6 +1346,7 @@ export function clickWhey() {
 
 export function setTab(tab) {
   game.ui.tab = tab;
+  game.ui.panelHidden = false;
   emit();
 }
 
@@ -1375,11 +1382,48 @@ export function askConfirm(confirm) {
   emit();
 }
 
+// ---------------------------------------------------------------- preferências
+export const GRAPHICS_LEVELS = ['alta', 'media', 'baixa'];
+
+function prefsFrom(settings) {
+  return {
+    soundOn: settings.soundOn !== false,
+    panelHidden: settings.panelHidden === true,
+    notifications: settings.notifications !== false,
+    graphics: GRAPHICS_LEVELS.includes(settings.graphics) ? settings.graphics : 'alta',
+  };
+}
+
+function savePrefs() {
+  const { soundOn, panelHidden, notifications, graphics } = game.ui;
+  saveSettings({ ...loadSettings(), soundOn, panelHidden, notifications, graphics });
+  emit();
+}
+
+/** Esconde ou mostra o menu lateral (a academia ocupa a tela toda). */
+export function toggleSidePanel() {
+  game.ui.panelHidden = !game.ui.panelHidden;
+  savePrefs();
+}
+
+/** Liga ou desliga os avisos que aparecem embaixo da tela (os de erro continuam). */
+export function setNotifications(on) {
+  game.ui.notifications = !!on;
+  if (!on) game.ui.toasts = game.ui.toasts.filter((t) => t.tone === 'error');
+  savePrefs();
+}
+
+/** Qualidade dos gráficos: alta, media ou baixa (para computador mais fraco). */
+export function setGraphics(level) {
+  if (!GRAPHICS_LEVELS.includes(level)) return;
+  game.ui.graphics = level;
+  savePrefs();
+}
+
 export function toggleSound() {
   game.ui.soundOn = !game.ui.soundOn;
   setSoundEnabled(game.ui.soundOn);
-  saveSettings({ ...loadSettings(), soundOn: game.ui.soundOn });
-  emit();
+  savePrefs();
 }
 
 export function catalogEntries() {

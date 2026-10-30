@@ -5,7 +5,7 @@ import { CONFIG, eraDef } from '../../game/config.js';
 import { formatMoney, formatDate } from '../../game/utils/format.js';
 import { averageSatisfaction } from '../../game/simulation/students.js';
 import { monthSummary } from '../../game/economy/economy.js';
-import { setSpeed, saveNow, openModal, toggleSound } from '../../game/engine/store.js';
+import { setSpeed, saveNow, openModal, toggleSound, toggleSidePanel } from '../../game/engine/store.js';
 import Icon from '../ui/Icon.js';
 import { useAccount } from '../../hooks/useAccount.js';
 import Stars from './Stars.js';
@@ -148,6 +148,16 @@ export default function TopBar() {
         </button>
         <button type="button" className="icon-btn" onClick={() => saveNow()} title="Salvar agora" aria-label="Salvar">
           <Icon name="save" />
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={toggleSidePanel}
+          title={ui.panelHidden ? 'Mostrar o menu lateral (H)' : 'Esconder o menu lateral (H)'}
+          aria-label="Mostrar ou esconder o menu lateral"
+          aria-pressed={!ui.panelHidden}
+        >
+          <Icon name="panel" />
         </button>
         <button type="button" className="icon-btn" onClick={() => openModal({ kind: 'menu' })} title="Menu" aria-label="Abrir menu">
           <Icon name="menu" />

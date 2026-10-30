@@ -62,6 +62,11 @@ export default function GameCanvas({ rendererRef }) {
     let raf = 0;
     let last = performance.now();
     const loop = (now) => {
+      // Gráficos baixos: no máximo ~30 quadros por segundo (a simulação anda pelo tempo real).
+      if (game.ui.graphics === 'baixa' && now - last < 30) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       const dt = (now - last) / 1000;
       last = now;
       tick(dt);

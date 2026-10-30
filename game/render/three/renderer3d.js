@@ -35,6 +35,13 @@ const FLOOR_Y = 0.02;
 // Altura de um andar da filial (Era 5): no andar de cima a cidade desce isso por andar.
 const STORY_H = 1.25;
 
+// Qualidade dos gráficos (opção do jogador). Na baixa: menos pixels e sem sombras.
+const QUALITY = {
+  alta: { maxDpr: Infinity, scale: 1, shadows: true, shadowSize: 2048 },
+  media: { maxDpr: 1.25, scale: 1, shadows: true, shadowSize: 1024 },
+  baixa: { maxDpr: 1, scale: 0.75, shadows: false, shadowSize: 512 },
+};
+
 // Câmera elevada em ângulo (isométrica), olhando da rua para dentro da academia.
 const AZIMUTH = THREE.MathUtils.degToRad(30);
 const ELEVATION = THREE.MathUtils.degToRad(50);
@@ -134,6 +141,7 @@ export class Renderer3D extends SceneDirector {
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFShadowMap;
     this.viewport = { w: 1, h: 1, dpr: 1 };
+    this.quality = 'alta';
     this.cam = { zoom: T, target: new THREE.Vector3() };
     this.userMovedCamera = false;
     this.raycaster = new THREE.Raycaster();
@@ -219,7 +227,7 @@ export class Renderer3D extends SceneDirector {
   // ------------------------------------------------------------ câmera
   resize(w, h, dpr) {
     this.viewport = { w, h, dpr };
-    this.gl.setPixelRatio(dpr);
+    this.gl.setPixelRatio(this.pixelRatio());
     this.gl.setSize(w, h, false);
     this.overlay.width = Math.round(w * dpr);
     this.overlay.height = Math.round(h * dpr);
@@ -227,6 +235,25 @@ export class Renderer3D extends SceneDirector {
       if (!this.userMovedCamera) this.fit();
       else this.clampCamera();
     });
+  }
+
+  /** Resolução do 3D na qualidade escolhida (os textos por cima continuam nítidos). */
+  pixelRatio() {
+    const q = QUALITY[this.quality] ?? QUALITY.alta;
+    return Math.min(this.viewport.dpr, q.maxDpr) * q.scale;
+  }
+
+  applyQuality(level) {
+    this.quality = QUALITY[level] ? level : 'alta';
+    const q = QUALITY[this.quality];
+    this.sun.castShadow = q.shadows;
+    if (this.sun.shadow.mapSize.x !== q.shadowSize) {
+      this.sun.shadow.mapSize.set(q.shadowSize, q.shadowSize);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
+    this.gl.setPixelRatio(this.pixelRatio());
+    this.gl.setSize(this.viewport.w, this.viewport.h, false);
   }
 
   updateCamera() {
@@ -427,6 +454,8 @@ export class Renderer3D extends SceneDirector {
   render(now) {
     const home = this.store;
     if (!home.state || !home.rt || this.disposed) return;
+    const level = home.ui.graphics ?? 'alta';
+    if (level !== this.quality) this.applyQuality(level);
     // Matriz ou filial visitada: a cena da filial desenha dentro da grade dela.
     this.renderScene(now, (n) => this.renderFrame(n));
   }
