@@ -610,7 +610,8 @@ export class Renderer3D extends SceneDirector {
     const sx1 = COLS + 40;
     if (upper) {
       // o prédio visto de cima: paredes descendo até a rua, com uma faixa de janelas por andar
-      g.box(COLS, drop, ROWS, WALL, { x: COLS / 2, y: -drop / 2 - 0.02, z: ROWS / 2 });
+      // box() usa a base em y: o prédio vai de -drop até logo abaixo do piso (não pode cobrir o andar).
+      g.box(COLS, drop, ROWS, WALL, { x: COLS / 2, y: -drop - 0.04, z: ROWS / 2 });
       for (let k = 0; k < state.customLayout.floor; k++) {
         const y = -drop + k * STORY_H + STORY_H * 0.55;
         for (let x = 0.6; x < COLS - 0.4; x += 1.1) g.box(0.6, 0.32, 0.02, '#bfe3f5', { x, y, z: ROWS + 0.01 });

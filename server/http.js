@@ -1,4 +1,5 @@
 // Ajudantes das rotas: respostas JSON, leitura do corpo com limite, origem e limite de tentativas.
+import { gunzipSync } from 'node:zlib';
 
 export function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -37,9 +38,25 @@ export function strictSameOrigin(request) {
   return !!request.headers.get('origin') && sameOrigin(request);
 }
 
-export async function readJson(request, maxBytes) {
-  const text = await request.text();
-  if (text.length > maxBytes) return { error: 'Dados grandes demais.' };
+/**
+ * Lê o corpo JSON com limite de tamanho. Com `maxInflated`, aceita também o corpo
+ * compactado (Content-Type: application/gzip): `maxBytes` vale para o que chega e
+ * `maxInflated` para o JSON depois de descompactado.
+ */
+export async function readJson(request, maxBytes, { maxInflated = 0 } = {}) {
+  let text;
+  if (maxInflated && (request.headers.get('content-type') ?? '').startsWith('application/gzip')) {
+    const buf = Buffer.from(await request.arrayBuffer());
+    if (buf.length > maxBytes) return { error: 'Dados grandes demais.' };
+    try {
+      text = gunzipSync(buf, { maxOutputLength: maxInflated }).toString('utf8');
+    } catch (err) {
+      return { error: err?.code === 'ERR_BUFFER_TOO_LARGE' ? 'Dados grandes demais.' : 'Dados compactados inválidos.' };
+    }
+  } else {
+    text = await request.text();
+    if (text.length > maxBytes) return { error: 'Dados grandes demais.' };
+  }
   try {
     return { body: JSON.parse(text) };
   } catch {

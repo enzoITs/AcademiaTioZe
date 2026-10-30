@@ -66,11 +66,11 @@ export function getAccountVersion() {
   return version;
 }
 
-async function api(path, { method = 'GET', body, rawBody, keepalive = false } = {}) {
+async function api(path, { method = 'GET', body, rawBody, contentType = 'application/json', keepalive = false } = {}) {
   const payload = rawBody ?? (body ? JSON.stringify(body) : undefined);
   const res = await fetch(path, {
     method,
-    headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+    headers: payload ? { 'Content-Type': contentType } : undefined,
     body: payload,
     credentials: 'same-origin',
     keepalive,
@@ -143,6 +143,20 @@ export const searchPlayers = (q) => api(`/api/players?q=${encodeURIComponent(q)}
 export const fetchProfile = (name) => api(`/api/players/${encodeURIComponent(name)}`);
 
 // ---------------------------------------------------------------- envio
+/**
+ * Progresso grande vai compactado (gzip): o JSON de quem tem milhares de alunos
+ * passa de alguns MB, e compactado fica bem menor. Sem suporte no navegador, vai como está.
+ */
+async function packSave(text) {
+  if (text.length < 20_000 || typeof CompressionStream === 'undefined') return { rawBody: text };
+  try {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+    return { rawBody: await new Response(stream).arrayBuffer(), contentType: 'application/gzip' };
+  } catch {
+    return { rawBody: text };
+  }
+}
+
 let lastPush = 0;
 let inFlight = false;
 let retryAfter = 0;
@@ -175,7 +189,10 @@ export function cloudSave(state, { force = false, keepalive = false } = {}) {
   lastPush = now;
   inFlight = true;
   set({ sync: 'saving' });
-  currentPush = api('/api/save', { method: 'PUT', rawBody, keepalive })
+  // Ao fechar a aba não dá tempo de compactar: vai direto (e só se for pequeno).
+  const packed = keepalive ? Promise.resolve({ rawBody }) : packSave(rawBody);
+  currentPush = packed
+    .then((p) => api('/api/save', { method: 'PUT', ...p, keepalive }))
     .then((res) => {
       setLocalOwner(account.user?.name ?? '');
       setRev(res?.rev ?? account.rev);

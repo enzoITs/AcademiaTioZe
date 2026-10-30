@@ -130,7 +130,7 @@ function MenuDialog() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 5_000_000) {
+    if (file.size > 50_000_000) {
       notifyError('Arquivo grande demais para ser um save do jogo.');
       return;
     }

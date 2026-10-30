@@ -17,8 +17,12 @@ export const SETTINGS_KEY = 'academia-tio-ze/settings';
 
 const hasStorage = () => typeof window !== 'undefined' && !!window.localStorage;
 
+// Números quebrados com 4 casas bastam para o jogo e deixam o save bem menor
+// (cada aluno tinha dezenas de números com 16 casas).
+const compactNumber = (_key, v) => (typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 1e4) / 1e4 : v);
+
 export function serialize(state) {
-  return JSON.stringify({ ...state, savedAt: Date.now() });
+  return JSON.stringify({ ...state, savedAt: Date.now() }, compactNumber);
 }
 
 export function saveToLocal(state) {

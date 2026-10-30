@@ -135,7 +135,7 @@ export default function TitleScreen() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 5_000_000) return notifyError('Arquivo grande demais para ser um save do jogo.');
+    if (file.size > 50_000_000) return notifyError('Arquivo grande demais para ser um save do jogo.');
     return importSave(await file.text());
   };
 

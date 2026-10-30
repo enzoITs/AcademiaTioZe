@@ -25,7 +25,7 @@ export const PUT = route(async (request) => {
   const { user, error } = await player();
   if (error) return error;
   if (!allow(`save:${user.id}`, 1, CONFIG.online.minSecondsBetweenSaves)) return fail('Salvando rápido demais.', 429);
-  const { body, error: bodyError } = await readJson(request, CONFIG.online.maxSaveBytes);
+  const { body, error: bodyError } = await readJson(request, CONFIG.online.maxSaveBytes, { maxInflated: CONFIG.online.maxSaveJsonBytes });
   if (bodyError) return fail(bodyError, 413);
   if (!body?.save || typeof body.save !== 'object') return fail('Save ausente.');
   const rev = Number.isInteger(body.rev) ? body.rev : null;

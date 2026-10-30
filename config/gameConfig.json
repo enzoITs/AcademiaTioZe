@@ -687,6 +687,7 @@
     "cloudSaveSeconds": 20,
     "minSecondsBetweenSaves": 4,
     "maxSaveBytes": 3000000,
+    "maxSaveJsonBytes": 30000000,
     "sessionDays": 60,
     "anticheat": {
       "speedSlack": 1.25,
