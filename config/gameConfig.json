@@ -209,7 +209,7 @@
       { "level": 2, "label": "Nível 2", "upgradeRate": 0.6, "capacityMultiplier": 1.5, "costMultiplier": 1.35, "building": [12, 9] },
       { "level": 3, "label": "Nível 3", "upgradeRate": 1.0, "capacityMultiplier": 2, "costMultiplier": 1.7, "building": [14, 10] }
     ],
-    "floors": { "max": 3, "cost": 30000, "growth": 1.6, "capacityFactor": 1, "dailyUseShare": 0.6, "careClean": 0.3, "careNeeds": 0.25 },
+    "floors": { "max": 3, "cost": 30000, "growth": 1.6, "capacityFactor": 1, "dailyUseShare": 0.6, "careClean": 0.3, "careNeeds": 0.25, "staffPerFloor": 2 },
     "styles": {
       "acolhedora": {"label":"Acolhedora","color":"#f2cd5c","capacity":90,"feeMultiplier":0.9,"monthlyCost":2200,"growth":1,"description":"Sofá na recepção e café passado na hora. Quem está começando se sente em casa.","profiles":{"iniciante":0.5,"idoso":0.3,"corredor":0.2},"kit":["esteira","bicicleta","eliptico","colchonete","maquina_peito","extensora","bebedouro","espelho","planta","planta","ventilador","poster"],"look":{"wall":"#f6d7a8","door":"awning","floor":["#f3e3c8","#ead6b5"]}},
       "hardcore": {"label":"Hardcore","color":"#e8646a","capacity":80,"feeMultiplier":1,"monthlyCost":2300,"growth":1,"description":"Ferro, giz e música alta. Marombeiro atravessa a cidade para treinar lá.","profiles":{"marombeiro":0.75,"iniciante":0.15,"corredor":0.1},"kit":["supino","rack_agachamento","halteres","halteres","plataforma","leg_press","kettlebell","saco_pancada","esteira","caixa_som","poster","ventilador"],"look":{"wall":"#9a92ad","door":"gate","floor":["#d3cedb","#c7c1d1"]}},

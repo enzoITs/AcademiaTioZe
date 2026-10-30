@@ -8,7 +8,7 @@ import { POSTCARDS } from '../systems/characters.js';
 import { feeLimits } from '../economy/economy.js';
 import {
   STYLES, MAX_BRANCH_LEVEL, MAX_FLOORS, createNetwork, initNetwork, ensureLots, refreshCandidates, managerSalary,
-  floorState, stairsSpot, branchKit, refreshBranchCapacity,
+  floorState, stairsSpot, branchKit, refreshBranchCapacity, maxBranchStaff,
 } from '../systems/network.js';
 import { ensureBranchFloors, stairsItem } from '../systems/branchEdit.js';
 
@@ -182,6 +182,23 @@ function parseFloors(raw, branch, home) {
         .map((d, k) => ({ id: isNum(d.id) ? Math.floor(d.id) : k + 1, x: d.x, y: d.y, kind: d.kind === 'toalha' ? 'toalha' : 'suor' }));
     });
   });
+  // Equipe da filial: cargo conhecido, andar que existe, ao menos um turno; até o limite por andar.
+  branch.staff = arr(raw.staff)
+    .filter((m) => m && isNum(m.id) && CONFIG.staff.roles[m.role] && m.look && Array.isArray(m.shifts)
+      && Number.isInteger(m.floor) && m.floor >= 0 && m.floor < branch.floors.length)
+    .map((m) => ({
+      id: Math.floor(m.id),
+      role: m.role,
+      name: String(m.name ?? 'Equipe').slice(0, 30),
+      trait: String(m.trait ?? '').slice(0, 120),
+      look: m.look,
+      shifts: CONFIG.time.blocks.map((_, i) => m.shifts[i] === true),
+      hiredDay: int(m.hiredDay, 0, 1e9, 0),
+      floor: m.floor,
+    }))
+    .filter((m) => m.shifts.some(Boolean))
+    .slice(0, maxBranchStaff(branch));
+  branch.nextStaffId = Math.max(int(raw.nextStaffId, 1, 1e9, 1), ...branch.staff.map((m) => m.id + 1));
   branch.nextItemId = Math.max(int(raw.nextItemId, 1, 1e9, 1), branch.nextItemId, ...[...ids].map((id) => id + 1));
   branch.nextDirtId = Math.max(int(raw.nextDirtId, 1, 1e9, 1), ...branch.floors.flatMap((f) => f.dirt.map((d) => d.id + 1)));
 }

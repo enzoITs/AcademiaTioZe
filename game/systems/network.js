@@ -6,7 +6,8 @@ import { CONFIG, BLOCKS, PROFILES, getEquipmentDef, demandCategoryOf } from '../
 import { withLayout, cellIndex } from '../grid/grid.js';
 import { evaluateAcademy, needsScoreFor } from '../simulation/academy.js';
 import { nearestWalkable } from '../pathfinding/floodFill.js';
-import { applyWear, rollBreakdowns, cleanliness } from './maintenance.js';
+import { applyWear, rollBreakdowns, cleanliness, conditionState, repairItem, serviceItem } from './maintenance.js';
+import { roleDef, staffSalary, shiftCount, repairQueue } from './staff.js';
 import { nextRandom, pick, randInt } from '../utils/random.js';
 import { transact } from '../economy/economy.js';
 import { FIRST_NAMES, MANAGER_TRAITS } from '../content/lines.js';
@@ -291,6 +292,11 @@ export function runBranchDay(home, branch, offline = false) {
       }
       if (offline) for (const item of floor.items) item.usesRecent = (item.usesRecent ?? 0) * 0.7;
       else broken.push(...rollBreakdowns({ items: floor.items }, home.rng).map((item) => ({ item, floor: i })));
+      // A equipe do andar limpa e conserta o que deu no dia (o quebrado consertado na hora não vira aviso).
+      runBranchStaff(branch, floor, i);
+      for (let k = broken.length - 1; k >= 0; k--) {
+        if (broken[k].floor === i && conditionState(broken[k].item.condition) !== 'quebrado') broken.splice(k, 1);
+      }
     });
   });
   refreshBranchCapacity(home, branch);
@@ -319,7 +325,39 @@ export function branchFee(state, branch) {
 }
 
 export function branchMonthlyCost(branch) {
-  return STYLES[branch.style].monthlyCost * branchLevelDef(branch.level).costMultiplier + (branch.manager?.salary ?? 0);
+  const team = (branch.staff ?? []).reduce((s, m) => s + staffSalary(m), 0);
+  return STYLES[branch.style].monthlyCost * branchLevelDef(branch.level).costMultiplier + (branch.manager?.salary ?? 0) + team;
+}
+
+/** Era 5: quantas pessoas cabem na equipe da filial (por andar construído). */
+export function maxBranchStaff(branch) {
+  return (branch.floors?.length ?? 0) * F.staffPerFloor;
+}
+
+/**
+ * Trabalho do dia da equipe de um andar da filial: cada turno coberto rende o
+ * mesmo que na Matriz (faxina: sujeiras; técnico: consertos ou revisões, sem peça).
+ */
+function runBranchStaff(branch, floor, index) {
+  const team = (branch.staff ?? []).filter((m) => m.floor === index);
+  if (!team.length) return { cleaned: 0, fixed: 0 };
+  const shifts = (role) => team.filter((m) => m.role === role).reduce((s, m) => s + shiftCount(m), 0);
+  let clean = shifts('zelador') * roleDef('zelador').cleanPerBlock;
+  let cleaned = 0;
+  while (clean-- > 0 && floor.dirt.length) {
+    floor.dirt.shift();
+    cleaned += 1;
+  }
+  let fix = shifts('tecnico') * roleDef('tecnico').fixPerBlock;
+  let fixed = 0;
+  while (fix-- > 0) {
+    const item = repairQueue({ items: floor.items })[0];
+    if (!item) break;
+    if (conditionState(item.condition) === 'quebrado') repairItem(item);
+    else serviceItem(item);
+    fixed += 1;
+  }
+  return { cleaned, fixed };
 }
 
 /** Bônus de Comunidade da Matriz Histórica (a garagem do Tio Zé). */

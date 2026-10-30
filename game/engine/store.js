@@ -27,7 +27,9 @@ import {
   sellBranch, branchSaleValue, branchEditable, refreshBranchCapacity, floorCost,
 } from '../systems/network.js';
 import { branchScene, refreshEditableScene } from '../systems/branchScene.js';
-import { buildFloor, floorBlocker, ensureBranchFloors, isFixedItem } from '../systems/branchEdit.js';
+import {
+  buildFloor, floorBlocker, ensureBranchFloors, isFixedItem, branchHireBlocker, hireBranchStaff,
+} from '../systems/branchEdit.js';
 import {
   saveToLocal, readLocalRaw, parseSave, downloadJSON, loadSettings, saveSettings, clearLocal, setLocalOwner,
 } from './persistence.js';
@@ -1201,8 +1203,29 @@ export function requestSellBranch(branchId) {
 }
 
 // ---------------------------------------------------------------- equipe
+/** Equipe do lugar visitado: a da Matriz ou a da filial (Era 5). */
+export function staffHere() {
+  if (editingBranch()) {
+    const b = game.state.network.branches.find((x) => x.id === game.ui.view.branchId);
+    return { kind: 'branch', branch: b, floor: game.ui.view.floor ?? 0, list: b.staff ?? [] };
+  }
+  return { kind: 'matriz', list: game.state.staff };
+}
+
 export function hireStaff(role = 'zelador') {
   const { state } = game;
+  const here = staffHere();
+  if (here.kind === 'branch') {
+    const blocker = branchHireBlocker(state, here.branch, role);
+    if (blocker) return fail(blocker);
+    const member = hireBranchStaff(state, here.branch.id, here.floor, role);
+    if (!member) return fail('Não deu para contratar agora.');
+    const where = here.floor ? `${here.floor}º andar` : 'térreo';
+    toast(`${member.name} (${roleDef(role).label.toLowerCase()}) contratado(a) para o ${where} da ${here.branch.name}, no turno da noite.`, 'success');
+    playSound('buy');
+    emit();
+    return true;
+  }
   const blocker = hireBlocker(state, role);
   if (blocker) return fail(blocker);
   const def = roleDef(role);
@@ -1219,7 +1242,7 @@ export function hireStaff(role = 'zelador') {
 }
 
 export function toggleStaffShift(id, blockIndex) {
-  const member = game.state.staff.find((m) => m.id === id);
+  const member = staffHere().list.find((m) => m.id === id);
   if (!member) return;
   const next = [...member.shifts];
   next[blockIndex] = !next[blockIndex];
@@ -1230,7 +1253,8 @@ export function toggleStaffShift(id, blockIndex) {
 }
 
 export function requestFire(id) {
-  const member = game.state.staff.find((m) => m.id === id);
+  const here = staffHere();
+  const member = here.list.find((m) => m.id === id);
   if (!member) return;
   game.ui.confirm = {
     title: `Dispensar ${member.name}?`,
@@ -1238,7 +1262,8 @@ export function requestFire(id) {
     confirmLabel: 'Dispensar',
     danger: true,
     onConfirm: () => {
-      game.state.staff = game.state.staff.filter((m) => m.id !== id);
+      if (here.kind === 'branch') here.branch.staff = (here.branch.staff ?? []).filter((m) => m.id !== id);
+      else game.state.staff = game.state.staff.filter((m) => m.id !== id);
       toast(`${member.name} foi dispensado(a). Quem sabe volta como aluno(a)!`, 'info');
       emit();
     },

@@ -152,6 +152,21 @@ function syncMembers(scene, branch, members = branch.members) {
 }
 
 // ---------------------------------------------------------------- Era 5: andar editável
+/** Quem aparece no andar: o gerente no térreo e a equipe contratada para aquele andar. */
+function sceneStaff(branch, floor) {
+  const out = [];
+  const mgr = branch.manager;
+  if (mgr && floor === 0) {
+    const mrng = createRng(((mgr.id ?? 1) * 2654435761 + branch.id) >>> 0);
+    out.push({
+      id: 1, role: 'gerente', name: mgr.name, rating: mgr.rating, look: createLook(mrng, 'adult'),
+      shifts: CONFIG.time.blocks.map(() => true), color: STYLES[branch.style].color,
+    });
+  }
+  for (const m of branch.staff ?? []) if (m.floor === floor) out.push({ ...m, id: 1000 + m.id });
+  return out;
+}
+
 function editableKey(home, branch, floor) {
   return `${home.state.seed}|${branch.style}|${branch.level}|${branch.manager?.id ?? 0}|${branch.district}|f${floor}`;
 }
@@ -183,14 +198,7 @@ function createEditableScene(home, branch, floor) {
     milestones: {},
     undo: [],
   };
-  const mgr = branch.manager;
-  if (mgr && floor === 0) {
-    const mrng = createRng(((mgr.id ?? 1) * 2654435761 + branch.id) >>> 0);
-    state.staff = [{
-      id: 1, role: 'gerente', name: mgr.name, rating: mgr.rating, look: createLook(mrng, 'adult'),
-      shifts: CONFIG.time.blocks.map(() => true), color: style.color,
-    }];
-  }
+  state.staff = sceneStaff(branch, floor);
   return {
     kind: 'branch',
     key: editableKey(home, branch, floor),
@@ -239,6 +247,7 @@ function editableScene(home, branch, floor) {
     scenes.set(id, scene);
   }
   scene.ui = home.ui;
+  scene.state.staff = sceneStaff(branch, floor);
   refreshEditableScene(home, scene);
   // Membros do andar: a parte da filial proporcional à capacidade dele.
   const caps = branch.floorCaps ?? [];

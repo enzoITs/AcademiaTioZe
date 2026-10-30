@@ -8,8 +8,9 @@ import { transact } from '../economy/economy.js';
 import { smartLayout } from './eras.js';
 import {
   STYLES, MAX_FLOORS, branchBuilding, branchEditable, branchKit, floorCost, floorState, kitTier,
-  refreshBranchCapacity, stairsSpot,
+  refreshBranchCapacity, stairsSpot, maxBranchStaff,
 } from './network.js';
+import { roleDef, createStaffMember } from './staff.js';
 
 export function stairsItem(branch) {
   const st = stairsSpot(branch);
@@ -75,6 +76,35 @@ export function buildFloor(state, branchId) {
   branch.floors.push({ items: [stairsItem(branch)], dirt: [] });
   refreshBranchCapacity(state, branch);
   return branch.floors.length - 1;
+}
+
+// ---------------------------------------------------------------- equipe da filial
+/** Por que não dá para contratar este cargo para a filial agora (ou null). */
+export function branchHireBlocker(state, branch, role) {
+  if (!branchEditable(state) || !branch?.floors) return 'Equipe nas filiais chega na Era 5.';
+  const def = roleDef(role);
+  if (!def) return 'Cargo desconhecido.';
+  const max = maxBranchStaff(branch);
+  if ((branch.staff?.length ?? 0) >= max) return `A filial comporta ${max} pessoas na equipe (${CONFIG.network.floors.staffPerFloor} por andar).`;
+  if ((def.minRep ?? 0) > state.reputation + 1e-9) return `Precisa de ${String(def.minRep).replace('.', ',')}★ de reputação.`;
+  if ((def.hireCost ?? 0) > 0 && state.money < def.hireCost) return 'Saldo insuficiente para a contratação.';
+  return null;
+}
+
+/** Contrata para o andar `floor` da filial. Devolve a pessoa (ou null). */
+export function hireBranchStaff(state, branchId, floor, role) {
+  const branch = state.network?.branches.find((b) => b.id === branchId);
+  if (branchHireBlocker(state, branch, role) || !branch.floors[floor]) return null;
+  const def = roleDef(role);
+  branch.staff ??= [];
+  branch.nextStaffId ??= 1;
+  // Mesmo formato da equipe da Matriz (nome, jeito, aparência e turnos), com o andar onde trabalha.
+  const member = createStaffMember({ nextStaffId: branch.nextStaffId, time: state.time }, state.rng, role);
+  branch.nextStaffId += 1;
+  member.floor = floor;
+  if (def.hireCost) transact(state, -def.hireCost, 'filiaisCustos', `Contratação: ${member.name} (${branch.name})`);
+  branch.staff.push(member);
+  return member;
 }
 
 /** Itens que não se compram nem se movem (recepção e escada). */

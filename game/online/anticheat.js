@@ -114,6 +114,8 @@ export function progressMetrics(state) {
     branchOver: branches.filter((b) => b.members > branchCapacityBound(b) + 1).length,
     unlockedZones: [...state.unlockedZones],
     nextStaffId: state.nextStaffId,
+    // Equipe das filiais (Era 5): quem foi contratado depois do último save paga a taxa.
+    branchHires: Object.fromEntries(branches.map((b) => [b.id, b.nextStaffId ?? 1])),
     dailyCost: Math.round(monthlyCost / T.daysPerMonth),
   };
 }
@@ -132,6 +134,7 @@ export const BASELINE = Object.freeze({
   branchOver: 0,
   unlockedZones: CONFIG.grid.zones.filter((z) => z.startsUnlocked).map((z) => z.id),
   nextStaffId: 1,
+  branchHires: {},
   dailyCost: 0,
 });
 
@@ -151,6 +154,10 @@ function requiredSpending(from, next, state) {
   }
   for (const m of state.staff) {
     if (m.id >= from.nextStaffId) spent += CONFIG.staff.roles[m.role]?.hireCost ?? 0;
+  }
+  for (const b of state.network?.branches ?? []) {
+    const since = from.branchHires?.[b.id] ?? 1;
+    for (const m of b.staff ?? []) if (m.id >= since) spent += CONFIG.staff.roles[m.role]?.hireCost ?? 0;
   }
   return spent;
 }

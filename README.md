@@ -238,6 +238,10 @@ mensalidade base R$ 150 (teto R$ 380); matrículas ×2,6; equipe até 18.
   - **Manutenção igual à da Matriz:** os membros gastam os aparelhos, deixam sujeira e os cansados quebram (offline
     só desgasta até o piso). Quebrado não conta na capacidade; sujeira e falta do que o público do estilo pede
     entram no fator "Cuidado" da meta de membros. Um aviso chama para consertar.
+  - **Equipe da filial:** dentro da filial, a aba Equipe contrata faxineiro(a) e técnico(a) para o andar visitado
+    (até 2 por andar), com os mesmos turnos, salários e regras da Matriz. Eles trabalham no andar deles (faxina
+    até 6 sujeiras e técnico até 2 consertos/revisões por turno coberto) e aparecem por lá no turno; os salários
+    entram nos custos da filial.
   - A cena da filial (`game/systems/branchScene.js`) aponta para os aparelhos salvos do andar; o store edita
     "o lugar" (`site()`/`withSite()` em `game/engine/store.js`) dentro da grade dele (`withLayout`).
 - **Save e servidor:** `parseSave` valida cada andar (posição, escada, recepção só no térreo, presentes até o tamanho

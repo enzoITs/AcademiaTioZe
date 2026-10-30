@@ -229,3 +229,44 @@ test('mudança de era com muitos aparelhos não trava o jogo', async () => {
   assert.ok(Date.now() - t < 1000, `mudança reaproveita a prévia (${Date.now() - t} ms)`);
   assert.equal(s.era, 5);
 });
+
+test('equipe nas filiais: contrata por andar, limpa, conserta, entra nos custos e fica no save', async () => {
+  const store = await import('../game/engine/store.js');
+  const { runBranchDay, branchMonthlyCost, maxBranchStaff } = await import('../game/systems/network.js');
+  const { auditProgress, progressMetrics } = await import('../game/online/anticheat.js');
+  const s = await era5Game();
+  s.reputation = 4.6;
+  assert.ok(store.continueFromCloud(JSON.parse(serialize(s))));
+  const { game } = store;
+  const b = game.state.network.branches[0];
+  const before = progressMetrics(parseSave(serialize(game.state)));
+  store.viewBranch(b.id);
+  assert.equal(store.staffHere().kind, 'branch');
+
+  const cost0 = branchMonthlyCost(b);
+  const money = game.state.money;
+  assert.ok(store.hireStaff('zelador'));
+  assert.ok(store.hireStaff('tecnico'));
+  assert.equal(b.staff.length, 2);
+  assert.ok(b.staff.every((m) => m.floor === 0));
+  assert.equal(game.state.money, money - CONFIG.staff.roles.tecnico.hireCost, 'só o técnico cobra contratação');
+  assert.ok(branchMonthlyCost(b) > cost0, 'salários entram no custo da filial');
+  assert.equal(game.state.staff.length, s.staff.length, 'a equipe da Matriz não muda');
+  assert.equal(maxBranchStaff(b), 2);
+  assert.equal(store.hireStaff('zelador'), false, 'limite de 2 por andar');
+
+  // O técnico atende o andar dele: o quebrado volta a funcionar no fim do dia.
+  const item = b.floors[0].items.find((i) => CONFIG.equipment[i.type].tiers[0].capacity > 0 && !i.fixed);
+  item.condition = CONFIG.wear.brokenCondition;
+  b.floors[0].dirt.push({ id: 900, x: 1.5, y: 1.5, kind: 'suor' });
+  runBranchDay(game.state, b, true);
+  assert.ok(item.condition > CONFIG.wear.brokenCondition, 'técnico consertou');
+  assert.ok(!b.floors[0].dirt.some((d) => d.id === 900), 'faxina limpou');
+
+  // Save guarda a equipe e o servidor aceita a contratação paga.
+  const back = parseSave(serialize(game.state));
+  assert.deepEqual(back.network.branches[0].staff.map((m) => [m.role, m.floor]), [['zelador', 0], ['tecnico', 0]]);
+  assert.equal(auditProgress(before, back, { realSeconds: 30 }).verdict, 'ok');
+  store.viewMatriz();
+  assert.equal(store.staffHere().kind, 'matriz');
+});

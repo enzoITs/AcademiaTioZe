@@ -8,7 +8,9 @@ import {
   roleDef, staffSalary, totalMonthlySalaries, cleaningCapacityByBlock, repairCapacityByBlock, repairQueue,
   hireBlocker, maxStaff, PEAK_BLOCK,
 } from '../../game/systems/staff.js';
-import { hireStaff, toggleStaffShift, requestFire } from '../../game/engine/store.js';
+import { hireStaff, toggleStaffShift, requestFire, staffHere, site } from '../../game/engine/store.js';
+import { branchHireBlocker } from '../../game/systems/branchEdit.js';
+import { maxBranchStaff } from '../../game/systems/network.js';
 import { drawCleaner } from '../../game/render/draw/people.js';
 import Icon from '../ui/Icon.js';
 
@@ -41,21 +43,37 @@ function dirtForecast(state, academy) {
   });
 }
 
+const floorName = (i) => (i === 0 ? 'térreo' : `${i}º andar`);
+
 export default function StaffPanel() {
-  const { state, rt } = useGame();
-  const capacity = cleaningCapacityByBlock(state);
-  const fixCapacity = repairCapacityByBlock(state);
-  const hasTech = state.staff.some((m) => m.role === 'tecnico');
-  const queue = hasTech ? repairQueue(state).length : 0;
-  const forecast = dirtForecast(state, rt.academy);
-  const salaries = totalMonthlySalaries(state);
+  const { state } = useGame();
+  // Dentro de uma filial (Era 5) a aba mostra a equipe dela; a cobertura é a do andar visitado.
+  const here = staffHere();
+  const place = site();
+  const inBranch = here.kind === 'branch';
+  const team = here.list;
+  const floorTeam = inBranch ? team.filter((m) => m.floor === here.floor) : team;
+  const crew = { staff: floorTeam, items: place.state.items };
+  const capacity = cleaningCapacityByBlock(crew);
+  const fixCapacity = repairCapacityByBlock(crew);
+  const hasTech = floorTeam.some((m) => m.role === 'tecnico');
+  const queue = hasTech ? repairQueue(crew).length : 0;
+  const forecast = place.rt.academy ? dirtForecast(place.state, place.rt.academy) : BLOCKS.map(() => 0);
+  const salaries = totalMonthlySalaries({ staff: team });
+  const max = inBranch ? maxBranchStaff(here.branch) : maxStaff(state);
 
   return (
     <section className="panel-section" aria-label="Equipe">
-      <h2 className="section-title">Contratar</h2>
+      {inBranch ? (
+        <p className="small subtle">
+          Equipe da <strong>{here.branch.name}</strong>. Quem você contratar aqui trabalha no {floorName(here.floor)}; troque de andar na faixa da filial.
+          Os salários entram nos custos da filial.
+        </p>
+      ) : null}
+      <h2 className="section-title">Contratar{inBranch ? ` para o ${floorName(here.floor)}` : ''}</h2>
       {ROLES.map(({ id, icon }) => {
         const role = roleDef(id);
-        const blocker = hireBlocker(state, id);
+        const blocker = inBranch ? branchHireBlocker(state, here.branch, id) : hireBlocker(state, id);
         return (
           <div key={id} className="staff-role">
             <div className="staff-role-head">
@@ -84,7 +102,7 @@ export default function StaffPanel() {
           </div>
         );
       })}
-      <p className="small subtle">Equipe: {state.staff.length}/{maxStaff(state)}. Faxineiro(a) não tem taxa de contratação; os salários são cobrados por dia.</p>
+      <p className="small subtle">Equipe: {team.length}/{max}{inBranch ? ' (2 por andar)' : ''}. Faxineiro(a) não tem taxa de contratação; os salários são cobrados por dia.</p>
 
       <h2 className="section-title">Cobertura de limpeza por turno</h2>
       <div className="coverage">
@@ -119,18 +137,18 @@ export default function StaffPanel() {
         </>
       ) : null}
 
-      <h2 className="section-title">Sua equipe</h2>
-      {state.staff.length === 0 ? (
+      <h2 className="section-title">{inBranch ? 'Equipe da filial' : 'Sua equipe'}</h2>
+      {team.length === 0 ? (
         <p className="empty small">Ninguém contratado. Por enquanto você limpa tudo sozinho(a) clicando nas sujeiras.</p>
       ) : (
         <ul className="staff-list">
-          {state.staff.map((m) => (
+          {team.map((m) => (
             <li key={m.id} className="staff-card">
               <div className="staff-card-head">
                 <StaffThumb look={m.look} role={m.role} />
                 <div>
                   <strong>{m.name}</strong>
-                  <span className="small subtle">{roleDef(m.role).label} · {m.trait}</span>
+                  <span className="small subtle">{roleDef(m.role).label}{inBranch ? ` · ${floorName(m.floor)}` : ''} · {m.trait}</span>
                 </div>
                 <span className="price">{formatMoney(staffSalary(m))}<span className="small subtle">/mês</span></span>
               </div>
@@ -153,10 +171,14 @@ export default function StaffPanel() {
         </ul>
       )}
 
+      {inBranch ? (
+        <p className="hint">Folha mensal da filial: <strong>{formatMoney(salaries)}</strong>. Aparece em Finanças junto com os custos das filiais.</p>
+      ) : (
       <p className="hint">
         Folha mensal: <strong>{formatMoney(salaries)}</strong> · sujeiras limpas pela equipe: {state.stats.cleanedByStaff ?? 0} · por você: {state.stats.cleaned} · aparelhos consertados pela equipe: {state.stats.repairedByStaff ?? 0}.
         Os salários aparecem em Finanças como “Salários da equipe”.
       </p>
+      )}
     </section>
   );
 }
