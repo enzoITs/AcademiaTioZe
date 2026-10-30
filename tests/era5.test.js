@@ -204,3 +204,28 @@ test('a mudança para a Era 5 (com filiais migradas) passa na checagem do servid
   const r = auditProgress(prev, parseSave(serialize(s)), { realSeconds: 30 });
   assert.equal(r.verdict, 'ok', r.reasons.join('; '));
 });
+
+test('mudança de era com muitos aparelhos não trava o jogo', async () => {
+  const { EQUIPMENT } = await import('../game/config.js');
+  const { createNewGame } = await import('../game/engine/state.js');
+  const { syncLayout } = await import('../game/grid/grid.js');
+  const { initNetwork } = await import('../game/systems/network.js');
+  const s = createNewGame(3);
+  s.era = 4;
+  s.unlockedZones = ['predio'];
+  syncLayout(s);
+  initNetwork(s);
+  const types = Object.keys(EQUIPMENT).filter((t) => !EQUIPMENT[t].hidden && (EQUIPMENT[t].minEra ?? 1) <= 4);
+  for (let i = 0; i < 400; i++) {
+    const type = types[i % types.length];
+    s.items.push({ id: i + 1, type, tier: EQUIPMENT[type].tiers[0].id, x: 0, y: 0, rot: 0, condition: 90, pricePaid: 100 });
+  }
+  let t = Date.now();
+  const preview = previewEraMove(s);
+  assert.ok(Date.now() - t < 5000, `prévia levou ${Date.now() - t} ms`);
+  assert.ok(preview.leftovers.length > 0);
+  t = Date.now();
+  performEraMove(s);
+  assert.ok(Date.now() - t < 1000, `mudança reaproveita a prévia (${Date.now() - t} ms)`);
+  assert.equal(s.era, 5);
+});
