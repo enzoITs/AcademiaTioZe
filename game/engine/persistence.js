@@ -322,28 +322,24 @@ export function parseSave(text) {
   state.fee = isNum(data.fee) ? Math.min(Math.max(data.fee, fee.min), fee.max) : base.fee;
   state.reputation = isNum(data.reputation) ? Math.min(Math.max(data.reputation, 0), 5) : base.reputation;
 
-  // Equipamentos: tipo conhecido, posição válida e sem colisão.
+  // Equipamentos: tipo conhecido, da era atual (ou antes), id único, posição válida e sem colisão.
   const items = [];
+  const ids = new Set();
   for (const raw of arr(data.items)) {
-    if (!raw || !EQUIPMENT[raw.type] || !isNum(raw.x) || !isNum(raw.y) || !isNum(raw.id)) continue;
+    const parsed = parseItem(raw);
+    if (!parsed || ids.has(parsed.id)) continue;
+    const def = EQUIPMENT[parsed.type];
     // Itens escondidos (recepção e escada) só existem nas filiais.
-    if (EQUIPMENT[raw.type].hidden) continue;
-    const tier = EQUIPMENT[raw.type].tiers.some((t) => t.id === raw.tier) ? raw.tier : EQUIPMENT[raw.type].tiers[0].id;
-    const item = {
-      ...raw,
-      tier,
-      rot: [0, 1, 2, 3].includes(raw.rot) ? raw.rot : 0,
-      condition: isNum(raw.condition) ? Math.min(Math.max(raw.condition, 0), 100) : 100,
-      pricePaid: isNum(raw.pricePaid) ? Math.max(0, raw.pricePaid) : 0,
-      purchasedDay: isNum(raw.purchasedDay) ? raw.purchasedDay : 0,
-      level: isNum(raw.level) ? Math.min(Math.max(1, Math.floor(raw.level)), CONFIG.levels.max) : 1,
-      upgradeSpent: isNum(raw.upgradeSpent) ? Math.max(0, raw.upgradeSpent) : 0,
-      // Na Matriz nada é "de presente" nem "fixo": esses campos não podem vir do navegador.
-      gift: false,
-      fixed: false,
-    };
+    if (def.hidden) continue;
+    // Aparelho de era futura não entra (save editado ou importado).
+    if ((def.minEra ?? 1) > state.era) continue;
+    // Na Matriz nada é "de presente" nem "fixo": esses campos não podem vir do navegador.
+    const item = { ...parsed, gift: false, fixed: false };
     const check = validatePlacement({ ...state, items }, item);
-    if (check.ok) items.push(item);
+    if (check.ok) {
+      items.push(item);
+      ids.add(item.id);
+    }
   }
   state.items = items;
   state.nextItemId = Math.max(base.nextItemId, ...items.map((i) => i.id + 1));

@@ -7,18 +7,21 @@ import { PALETTE as P, INK } from '../draw/primitives.js';
 import { Builder } from './kit.js';
 
 const PI = Math.PI;
-const TIER_ACCENT = { usado: '#b5a99a', novo: '#8ec5e8', profissional: '#f2cd5c' };
-const accent = (tier) => TIER_ACCENT[tier] ?? TIER_ACCENT.usado;
 const ROPE = '#e9d7a8';
 const WOOD = '#c9a27a';
 const WOOD_DARK = '#b88a55';
 const GOLD = '#f2cd5c';
 const SCREEN = '#3a4a5c';
+// pisos de borracha bege (mesmas cores que o nível troca)
+const MAT = '#d6c7b4';
+const MAT_LINE = '#c2b29e';
+const MAT_LIGHT = '#ddd5c8';
 
 /** Ritmo (rad/s) de cada movimento, compartilhado entre aparelho e aluno. */
 export const RATE = {
   ellip: 4, climb: 3, row: 2.2, extend: 2.6, squat: 2.2, pull: 1.8,
   punch: 6, ropes: 9, cable: 2.4, press: 1.8, swing: 3, swim: 3.2, spar: 5,
+  kick: 2.4, crunch: 2.2, flex: 2.6, calf: 3, abduct: 2.2, thrust: 2,
 };
 
 /** Ida e volta suave entre 0 e 1. */
@@ -52,6 +55,19 @@ export const USE_SPOT = {
   extensora: { pose: 'use-extend', z: 0.0, elev: 0.28, face: 1 },
   smith: { pose: 'use-squat', z: -0.38, elev: 0.05, face: 1 },
   crossover: { pose: 'use-cable', z: 0.05, face: 1 },
+  // máquinas da Era 3 em diante
+  maquina_gluteo: { pose: 'use-kick', z: 0.32, elev: 0.05, face: -1 },
+  abdominal: { pose: 'use-crunch', z: 0.0, elev: 0.3, face: 1 },
+  polia: { pose: 'use-cable', z: 0.3, elev: 0.04, face: -1 },
+  flexora: { pose: 'use-flex', z: -0.05, elev: 0.28, face: 1 },
+  panturrilha: { pose: 'use-calf', z: 0.12, elev: 0.15, face: 1 },
+  voador: { pose: 'use-fly', z: 0.05, elev: 0.33, face: 1 },
+  abdutora: { pose: 'use-abduct', z: -0.05, elev: 0.3, face: 1 },
+  desenvolvimento: { pose: 'use-shoulder', z: 0.0, elev: 0.3, face: 1 },
+  hack_squat: { pose: 'use-squat', z: 0.05, elev: 0.1, face: 1 },
+  multiestacao: { pose: 'use-cable', z: 0.75, elev: 0.04, face: 1, spread: 1.4 },
+  hip_thrust: { pose: 'use-thrust', z: -0.35, elev: 0.3, face: 1 },
+  graviton: { pose: 'use-pullup', z: 0.0, elev: 0.6, face: 1 },
   // Era 5. travel: vai e volta ao longo do aparelho (raias, pista); duel: dois de frente um para o outro.
   piscina: { pose: 'use-swim', z: 0, elev: 0.06, face: 1, spread: 1.4, travel: 1.25, travelRate: 0.45 },
   pista_corrida: { pose: 'use-run', z: 0, elev: 0.06, face: 1, travel: 2.3, travelRate: 0.7 },
@@ -70,12 +86,22 @@ function cup(b, x, y, z, s, color) {
   for (const sx of [-1, 1]) b.torus(0.025 * s, 0.008 * s, color, { x: x + sx * 0.07 * s, y: y + 0.16 * s, z });
 }
 
+/** Torre com a pilha de anilhas (coluna atrás, anilhas na frente, z = centro da coluna). */
+function weightTower(b, x, z, h = 1.2, w = 0.36) {
+  b.box(w + 0.14, h, 0.22, P.metalDark, { x, y: 0.05, z });
+  for (let i = 0; i < 6; i++) b.box(w, 0.06, 0.14, P.plate, { x, y: 0.1 + i * 0.075, z: z + 0.14 });
+  b.box(w + 0.24, 0.08, 0.3, P.metalDark, { x, y: h, z });
+}
+
+/** Anilha de cima da pilha, que sobe quando a máquina é usada. */
+const stackTop = (w = 0.36) => new Builder().box(w, 0.06, 0.14, P.pad, {});
+
 export const MORE_EQUIP = {
   // ------------------------------------------------------------ cardio
   eliptico: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
-      const a = accent(tier);
+      const a = look.accent;
       b.rbox(0.5, 0.08, 1.75, P.metalDark, { z: 0.05 }, 0.03);
       b.rbox(0.56, 0.42, 0.4, a, { y: 0.04, z: -0.68 }, 0.08);
       for (const s of [-1, 1]) b.cyl(0.15, 0.15, 0.04, P.metal, { rz: PI / 2, x: s * 0.29, y: 0.26, z: -0.68 }, 12);
@@ -83,7 +109,6 @@ export const MORE_EQUIP = {
       b.rbox(0.42, 0.16, 0.1, a, { y: 0.92, z: -0.5, rx: -0.5 }, 0.03);
       b.box(0.24, 0.09, 0.02, SCREEN, { y: 0.95, z: -0.45, rx: -0.5 });
       b.box(0.14, 0.03, 0.022, P.mint, { y: 0.98, z: -0.44, rx: -0.5 });
-      if (tier === 'usado') b.box(0.13, 0.025, 0.06, ROPE, { x: 0.2, y: 0.42, z: -0.6, ry: 0.5 });
       const pedal = () => {
         const p = new Builder();
         p.rbox(0.14, 0.04, 0.34, P.rubber, {}, 0.015);
@@ -119,9 +144,9 @@ export const MORE_EQUIP = {
   },
 
   remo: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
-      const a = accent(tier);
+      const a = look.accent;
       b.box(0.14, 0.06, 2.4, P.metal, { y: 0.16, z: 0.15 });
       b.box(0.5, 0.16, 0.1, P.metalDark, { z: 1.3 });
       b.box(0.6, 0.06, 0.32, P.metalDark, { z: -1.15 });
@@ -165,9 +190,9 @@ export const MORE_EQUIP = {
   },
 
   escada: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
-      const a = accent(tier);
+      const a = look.accent;
       b.rbox(0.8, 0.08, 1.8, P.metalDark, {}, 0.03);
       b.rbox(0.66, 0.92, 0.36, a, { y: 0.08, z: -0.7 }, 0.06);
       b.box(0.32, 0.13, 0.02, SCREEN, { y: 0.84, z: -0.51, rx: -0.4 });
@@ -177,7 +202,6 @@ export const MORE_EQUIP = {
         b.box(0.05, 0.05, 0.98, P.metalDark, { x: s * 0.36, y: 0.66, z: -0.08 });
         b.box(0.065, 0.065, 0.3, P.rubber, { x: s * 0.36, y: 0.65, z: 0.15 });
       }
-      if (tier === 'usado') b.box(0.13, 0.025, 0.06, ROPE, { x: 0.36, y: 0.71, z: -0.2, ry: 0.5 });
       const steps = new Builder();
       for (let i = 0; i < 5; i++) {
         steps.box(0.54, 0.05, 0.24, P.rubber, { y: i * 0.16, z: -i * 0.22 });
@@ -208,13 +232,12 @@ export const MORE_EQUIP = {
   },
 
   plataforma: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
       b.rbox(1.9, 0.06, 1.9, P.rubber, {}, 0.02);
       b.box(1.0, 0.012, 1.86, '#d9b07a', { y: 0.06 });
       for (const x of [-0.17, 0.17]) b.box(0.01, 0.004, 1.86, WOOD_DARK, { x, y: 0.072 });
-      if (tier === 'profissional') b.box(0.3, 0.006, 0.3, GOLD, { y: 0.074, z: -0.6 });
-      if (tier === 'usado') b.box(0.13, 0.02, 0.06, ROPE, { x: 0.7, y: 0.06, z: 0.6, ry: 0.5 });
+      if (look.level === 3) b.box(0.3, 0.006, 0.3, GOLD, { y: 0.074, z: -0.6 });
       for (const s of [-1, 1]) {
         b.box(0.12, 0.42, 0.12, P.metalDark, { x: s * 0.82, z: -0.78 });
         b.cyl(0.14, 0.14, 0.06, P.blue, { rz: PI / 2, x: s * 0.82, y: 0.2, z: -0.66 }, 10);
@@ -402,6 +425,341 @@ export const MORE_EQUIP = {
       p.cableL.rotation.set(-0.55, 0, th);
       p.cableR.rotation.set(-0.55, 0, -th);
       for (const st of [p.stackL, p.stackR]) st.position.y = st.userData.base.y + k * 0.3;
+    },
+  },
+
+  // ------------------------------------------------------------ máquinas (Era 3+)
+  maquina_gluteo: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.5, 0.05, 1.7, P.metalDark, {}, 0.02);
+      weightTower(b, 0, -0.7);
+      // coluna com o apoio de peito inclinado e as manoplas
+      b.box(0.1, 0.62, 0.1, P.metalDark, { y: 0.05, z: -0.2 });
+      b.rbox(0.46, 0.1, 0.42, P.pad, { y: 0.66, z: -0.12, rx: 0.5 }, 0.04);
+      b.rbox(0.4, 0.1, 0.24, P.pad, { y: 0.34, z: -0.05 }, 0.04);
+      for (const s of [-1, 1]) {
+        b.box(0.04, 0.04, 0.3, P.metalDark, { x: s * 0.28, y: 0.78, z: -0.28 });
+        b.box(0.05, 0.12, 0.05, P.rubber, { x: s * 0.28, y: 0.74, z: -0.12 });
+      }
+      // alavanca do coice: gira no eixo e empurra com a sola do pé
+      const lever = new Builder();
+      lever.cyl(0.04, 0.04, 0.5, P.metal, { rz: PI / 2 }, 8);
+      lever.box(0.06, 0.06, 0.5, P.metalDark, { x: 0.18, y: -0.03, z: 0.25 });
+      lever.rbox(0.2, 0.2, 0.06, P.rubber, { x: 0.18, y: -0.1, z: 0.5 }, 0.02);
+      return { base: b, parts: [{ name: 'lever', b: lever, pos: [0, 0.3, 0.05] }, { name: 'stack', b: stackTop(), pos: [0, 0.55, -0.56] }] };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.kick) : 0;
+      p.lever.rotation.x = -k * 0.75;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.25;
+    },
+  },
+
+  abdominal: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.5, 0.05, 1.7, P.metalDark, {}, 0.02);
+      weightTower(b, 0, -0.72);
+      b.box(0.1, 0.32, 0.1, P.metalDark, { y: 0.05, z: 0 });
+      b.rbox(0.52, 0.1, 0.46, P.pad, { y: 0.35, z: 0 }, 0.04);
+      b.rbox(0.52, 0.5, 0.1, P.pad, { y: 0.42, z: -0.27, rx: -0.12 }, 0.04);
+      b.box(0.1, 0.1, 0.5, P.metalDark, { y: 0.12, z: 0.4 });
+      b.cyl(0.05, 0.05, 0.46, P.pad, { rz: PI / 2, y: 0.24, z: 0.6 }, 10);
+      // braço com as almofadas do peito: desce junto com o tronco
+      const arm = new Builder();
+      for (const s of [-1, 1]) {
+        arm.box(0.05, 0.05, 0.42, P.metalDark, { x: s * 0.22, z: 0.18 });
+        arm.rbox(0.12, 0.2, 0.1, P.pad, { x: s * 0.16, y: -0.22, z: 0.36 }, 0.03);
+      }
+      arm.cyl(0.035, 0.035, 0.5, P.metal, { rz: PI / 2 }, 8);
+      return { base: b, parts: [{ name: 'arm', b: arm, pos: [0, 1.02, -0.36] }, { name: 'stack', b: stackTop(), pos: [0, 0.55, -0.58] }] };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.crunch) : 0;
+      p.arm.rotation.x = k * 0.45;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.22;
+    },
+  },
+
+  polia: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.6, 0.04, 1.6, MAT, {}, 0.02);
+      b.rbox(0.5, 1.6, 0.4, P.metalDark, { z: -0.6 }, 0.04);
+      for (let i = 0; i < 6; i++) b.box(0.3, 0.06, 0.04, P.plate, { y: 0.1 + i * 0.075, z: -0.39 });
+      b.box(0.1, 0.1, 0.4, P.metalDark, { y: 1.5, z: -0.25 });
+      b.cyl(0.07, 0.07, 0.05, P.metal, { rz: PI / 2, y: 1.46, z: -0.06 }, 10);
+      b.cyl(0.07, 0.07, 0.05, P.metal, { rz: PI / 2, y: 0.12, z: -0.36 }, 10);
+      // banquinho para a rosca sentada
+      b.rbox(0.42, 0.08, 0.3, P.pad, { y: 0.3, z: 0.55 }, 0.03);
+      b.box(0.06, 0.3, 0.06, P.metalDark, { z: 0.55 });
+      const cable = new Builder();
+      cable.box(0.015, 0.95, 0.015, INK, { y: -0.95 });
+      cable.box(0.32, 0.04, 0.04, P.rubber, { y: -0.99 });
+      return { base: b, parts: [{ name: 'cable', b: cable, pos: [0, 1.46, -0.06] }, { name: 'stack', b: stackTop(0.3), pos: [0, 0.56, -0.39] }] };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.cable) : 0;
+      p.cable.rotation.x = -0.15 - k * 0.25;
+      p.cable.scale.y = 1 - k * 0.12;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.3;
+    },
+  },
+
+  flexora: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.6, 0.05, 1.7, P.metalDark, {}, 0.02);
+      weightTower(b, 0, -0.68);
+      b.box(0.1, 0.08, 0.6, P.metalDark, { y: 0.3, z: -0.3 });
+      b.box(0.1, 0.3, 0.1, P.metalDark, { y: 0.05, z: -0.05 });
+      b.rbox(0.5, 0.1, 0.46, P.pad, { y: 0.33, z: -0.05 }, 0.04);
+      b.rbox(0.5, 0.52, 0.1, P.pad, { y: 0.4, z: -0.32, rx: -0.15 }, 0.04);
+      // almofada que trava as coxas por cima
+      for (const s of [-1, 1]) b.box(0.04, 0.42, 0.04, P.metalDark, { x: s * 0.32, y: 0.06, z: 0.12 });
+      b.cyl(0.05, 0.05, 0.6, P.padDark, { rz: PI / 2, y: 0.58, z: 0.12 }, 10);
+      const arm = new Builder();
+      arm.cyl(0.035, 0.035, 0.66, P.metal, { rz: PI / 2 }, 8);
+      for (const s of [-1, 1]) arm.box(0.04, 0.24, 0.04, P.metalDark, { x: s * 0.3, y: -0.24 });
+      arm.cyl(0.055, 0.055, 0.5, P.pad, { rz: PI / 2, y: -0.2 }, 10);
+      return { base: b, parts: [{ name: 'arm', b: arm, pos: [0, 0.42, 0.22] }] };
+    },
+    animate(p, t, o) {
+      // a perna começa esticada e dobra para baixo do banco
+      p.arm.rotation.x = -(1.2 - (o.active ? cycle(t, RATE.flex) : 0) * 1.0);
+    },
+  },
+
+  panturrilha: {
+    build() {
+      const b = new Builder();
+      b.rbox(0.9, 0.05, 1.8, P.metalDark, {}, 0.02);
+      b.rbox(0.6, 0.1, 0.3, P.rubber, { y: 0.05, z: 0.15 }, 0.03);
+      b.box(0.62, 0.02, 0.03, P.yellow, { y: 0.15, z: 0.29 });
+      b.rbox(0.44, 1.5, 0.22, P.metalDark, { z: -0.6 }, 0.04);
+      for (let i = 0; i < 6; i++) b.box(0.28, 0.06, 0.04, P.plate, { y: 0.1 + i * 0.075, z: -0.47 });
+      // ombreiras: sobem e descem com a ponta do pé
+      const yoke = new Builder();
+      yoke.box(0.1, 0.1, 0.5, P.metalDark, { z: 0.2 });
+      for (const s of [-1, 1]) yoke.rbox(0.14, 0.09, 0.2, P.pad, { x: s * 0.14, y: -0.06, z: 0.45 }, 0.035);
+      return { base: b, parts: [{ name: 'yoke', b: yoke, pos: [0, 0.98, -0.5] }, { name: 'stack', b: stackTop(0.28), pos: [0, 0.55, -0.47] }] };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.calf) : 0;
+      p.yoke.position.y = p.yoke.userData.base.y + k * 0.06;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.18;
+    },
+  },
+
+  voador: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.7, 0.05, 1.6, P.metalDark, { z: -0.05 }, 0.02);
+      weightTower(b, 0, -0.72, 1.3);
+      b.box(1.5, 0.1, 0.16, P.metalDark, { y: 1.3, z: -0.72 });
+      b.box(0.08, 0.36, 0.08, P.metalDark, { y: 0.05, z: 0.05 });
+      b.rbox(0.5, 0.1, 0.44, P.pad, { y: 0.38, z: 0.05 }, 0.04);
+      b.rbox(0.46, 0.7, 0.1, P.pad, { y: 0.44, z: -0.22 }, 0.04);
+      // braços que abrem e fecham na frente do peito
+      const wing = (s) => {
+        const w = new Builder();
+        w.box(0.06, 0.06, 0.06, P.metal, {});
+        w.box(0.5, 0.05, 0.05, P.metalDark, { x: s * 0.25, y: 0.01 });
+        w.rbox(0.1, 0.4, 0.12, P.pad, { x: s * 0.5, y: -0.36, z: 0.04 }, 0.035);
+        return w;
+      };
+      return {
+        base: b,
+        parts: [
+          { name: 'wingL', b: wing(-1), pos: [-0.12, 1.18, -0.2] },
+          { name: 'wingR', b: wing(1), pos: [0.12, 1.18, -0.2] },
+          { name: 'stack', b: stackTop(), pos: [0, 0.55, -0.58] },
+        ],
+      };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.cable) : 0;
+      p.wingL.rotation.y = -0.15 + k * 1.2;
+      p.wingR.rotation.y = 0.15 - k * 1.2;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.22;
+    },
+  },
+
+  abdutora: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.6, 0.05, 1.7, P.metalDark, {}, 0.02);
+      weightTower(b, 0, -0.72);
+      b.box(0.12, 0.3, 0.7, P.metalDark, { y: 0.05, z: -0.15 });
+      b.rbox(0.56, 0.1, 0.5, P.pad, { y: 0.35, z: -0.05 }, 0.04);
+      b.rbox(0.56, 0.62, 0.1, P.pad, { y: 0.42, z: -0.34, rx: -0.25 }, 0.04);
+      b.box(0.7, 0.05, 0.14, P.metalDark, { y: 0.12, z: 0.62 });
+      for (const s of [-1, 1]) b.box(0.05, 0.22, 0.05, P.rubber, { x: s * 0.3, y: 0.34, z: -0.05 });
+      // almofadas por fora dos joelhos: abrem para os lados
+      const pad = (s) => {
+        const w = new Builder();
+        w.box(0.05, 0.05, 0.5, P.metalDark, { z: 0.25 });
+        w.rbox(0.08, 0.24, 0.24, P.pad, { x: s * 0.06, y: -0.04, z: 0.42 }, 0.03);
+        return w;
+      };
+      return {
+        base: b,
+        parts: [
+          { name: 'padL', b: pad(-1), pos: [-0.16, 0.42, -0.05] },
+          { name: 'padR', b: pad(1), pos: [0.16, 0.42, -0.05] },
+          { name: 'stack', b: stackTop(), pos: [0, 0.55, -0.58] },
+        ],
+      };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.abduct) : 0;
+      p.padL.rotation.y = -k * 0.45;
+      p.padR.rotation.y = k * 0.45;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.2;
+    },
+  },
+
+  desenvolvimento: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.6, 0.05, 1.7, P.metalDark, {}, 0.02);
+      weightTower(b, 0, -0.74, 1.45);
+      b.box(0.1, 0.32, 0.1, P.metalDark, { y: 0.05, z: 0 });
+      b.rbox(0.5, 0.1, 0.44, P.pad, { y: 0.35, z: 0 }, 0.04);
+      b.rbox(0.46, 0.85, 0.1, P.pad, { y: 0.42, z: -0.26, rx: -0.08 }, 0.04);
+      for (const s of [-1, 1]) b.box(0.08, 1.35, 0.08, P.metalDark, { x: s * 0.42, y: 0.05, z: -0.42 });
+      // manoplas que sobem acima da cabeça
+      const bar = new Builder();
+      for (const s of [-1, 1]) {
+        bar.box(0.06, 0.06, 0.4, P.metalDark, { x: s * 0.42, z: 0.18 });
+        bar.box(0.05, 0.16, 0.05, P.rubber, { x: s * 0.3, y: 0.02, z: 0.36 });
+        bar.box(0.12, 0.04, 0.04, P.metal, { x: s * 0.36, y: 0.02, z: 0.36 });
+      }
+      return { base: b, parts: [{ name: 'bar', b: bar, pos: [0, 0.82, -0.4] }, { name: 'stack', b: stackTop(), pos: [0, 0.55, -0.6] }] };
+    },
+    animate(p, t, o) {
+      const { k } = pressPose(t, o.active);
+      p.bar.position.y = p.bar.userData.base.y + k * 0.3;
+      p.stack.position.y = p.stack.userData.base.y + k * 0.3;
+    },
+  },
+
+  hack_squat: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.8, 0.06, 2.8, MAT_LIGHT, {}, 0.03);
+      // trilhos inclinados e plataforma dos pés na frente
+      for (const s of [-1, 1]) {
+        b.box(0.1, 0.1, 2.0, P.metalDark, { x: s * 0.42, y: 0.75, z: -0.35, rx: -0.75 });
+        b.box(0.1, 1.45, 0.1, P.metalDark, { x: s * 0.42, z: -1.15 });
+        b.cyl(0.18, 0.18, 0.08, P.plate, { rz: PI / 2, x: s * 0.62, y: 1.0, z: -0.95 }, 10);
+      }
+      b.box(0.94, 0.08, 0.1, P.metalDark, { y: 1.45, z: -1.15 });
+      b.rbox(0.9, 0.08, 0.6, P.metal, { y: 0.06, z: 0.45, rx: -0.2 }, 0.03);
+      // carrinho com encosto e ombreiras que desce no trilho
+      const sled = new Builder();
+      sled.rbox(0.56, 0.9, 0.12, P.pad, { y: -0.45, rx: -0.75 }, 0.04);
+      for (const s of [-1, 1]) sled.rbox(0.14, 0.1, 0.24, P.padDark, { x: s * 0.16, y: 0.25, z: 0.1, rx: -0.75 }, 0.035);
+      return { base: b, parts: [{ name: 'sled', b: sled, pos: [0, 0.95, -0.55] }] };
+    },
+    animate(p, t, o) {
+      const d = o.active ? cycle(t, RATE.squat) * 0.22 : 0;
+      const base = p.sled.userData.base;
+      p.sled.position.y = base.y - d * Math.cos(0.75);
+      p.sled.position.z = base.z + d * Math.sin(0.75);
+    },
+  },
+
+  multiestacao: {
+    build() {
+      const b = new Builder();
+      b.rbox(2.9, 0.05, 2.9, MAT, {}, 0.03);
+      for (let i = 0; i < 6; i++) b.box(0.02, 0.006, 2.8, MAT_LINE, { x: -1.15 + i * 0.46, y: 0.05 });
+      // pilar central com quatro torres de polia
+      b.rbox(0.5, 1.8, 0.5, P.metalDark, {}, 0.05);
+      b.box(2.4, 0.1, 0.14, P.metalDark, { y: 1.7 });
+      b.box(0.14, 0.1, 2.4, P.metalDark, { y: 1.7 });
+      for (const [x, z] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        b.rbox(0.3, 1.6, 0.3, P.metalDark, { x: x * 1.1, z: z * 1.1 }, 0.04);
+        for (let i = 0; i < 5; i++) b.box(0.22, 0.05, 0.22, P.plate, { x: x * 1.27, y: 0.08 + i * 0.07, z: z * 1.27 });
+        b.cyl(0.06, 0.06, 0.05, P.metal, { rx: PI / 2, x: x * 1.0, y: 1.56, z: z * 1.1 + 0.17 }, 10);
+      }
+      b.rbox(0.9, 0.08, 0.32, P.pad, { y: 0.3, z: -0.5 }, 0.03);
+      b.box(0.08, 0.3, 0.08, P.metalDark, { z: -0.5 });
+      const cable = () => {
+        const c = new Builder();
+        c.box(0.015, 0.95, 0.015, INK, { y: -0.95 });
+        c.box(0.12, 0.04, 0.04, P.rubber, { y: -0.99 });
+        return c;
+      };
+      return {
+        base: b,
+        parts: [
+          { name: 'cableL', b: cable(), pos: [-1.0, 1.56, 0.17] },
+          { name: 'cableR', b: cable(), pos: [1.0, 1.56, 0.17] },
+        ],
+      };
+    },
+    animate(p, t, o) {
+      const k = o.active ? cycle(t, RATE.cable) : 0;
+      const th = 0.15 + k * 0.6;
+      p.cableL.rotation.set(-0.5, 0, th);
+      p.cableR.rotation.set(-0.5, 0, -th);
+    },
+  },
+
+  hip_thrust: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.8, 0.05, 2.8, MAT_LIGHT, {}, 0.03);
+      // banco para apoiar as costas, atrás
+      b.box(0.9, 0.36, 0.2, P.metalDark, { y: 0.05, z: -0.75 });
+      b.rbox(1.1, 0.1, 0.36, P.pad, { y: 0.4, z: -0.75 }, 0.04);
+      // trilhos da barra guiada e apoio dos pés na frente
+      for (const s of [-1, 1]) {
+        b.box(0.1, 1.0, 0.1, P.metalDark, { x: s * 0.8, y: 0.05, z: -0.2 });
+        b.box(0.1, 0.06, 0.6, P.metalDark, { x: s * 0.8, y: 0.05, z: -0.2 });
+      }
+      b.rbox(1.0, 0.06, 0.5, P.rubber, { y: 0.05, z: 0.75 }, 0.02);
+      b.box(1.02, 0.015, 0.03, P.yellow, { y: 0.11, z: 0.98 });
+      const bar = new Builder();
+      bar.cyl(0.025, 0.025, 1.7, P.metal, { rz: PI / 2 }, 8);
+      bar.cyl(0.07, 0.07, 0.5, P.pad, { rz: PI / 2 }, 10);
+      for (const s of [-1, 1]) {
+        bar.box(0.14, 0.1, 0.14, P.metal, { x: s * 0.8, y: -0.05 });
+        bar.cyl(0.18, 0.18, 0.07, P.plate, { rz: PI / 2, x: s * 0.62 }, 10);
+      }
+      return { base: b, parts: [{ name: 'bar', b: bar, pos: [0, 0.42, -0.2] }] };
+    },
+    animate(p, t, o) {
+      p.bar.position.y = p.bar.userData.base.y + (o.active ? cycle(t, RATE.thrust) * 0.2 : 0);
+    },
+  },
+
+  graviton: {
+    build() {
+      const b = new Builder();
+      b.rbox(1.6, 0.05, 1.7, P.metalDark, {}, 0.02);
+      for (const s of [-1, 1]) {
+        b.box(0.12, 2.0, 0.12, P.metalDark, { x: s * 0.62, z: -0.5 });
+        b.box(0.1, 0.08, 0.7, P.metalDark, { x: s * 0.62, y: 1.95, z: -0.2 });
+        b.box(0.06, 0.18, 0.06, P.rubber, { x: s * 0.4, y: 1.8, z: 0.1 });
+      }
+      b.box(1.34, 0.1, 0.1, P.metalDark, { y: 1.95, z: -0.5 });
+      b.box(0.9, 0.06, 0.06, P.metal, { y: 1.98, z: 0.1 });
+      b.rbox(0.5, 1.4, 0.22, P.metalDark, { z: -0.72 }, 0.04);
+      for (let i = 0; i < 6; i++) b.box(0.3, 0.06, 0.04, P.plate, { y: 0.1 + i * 0.075, z: -0.59 });
+      // degraus para subir
+      for (const s of [-1, 1]) b.box(0.24, 0.05, 0.2, P.rubber, { x: s * 0.4, y: 0.35, z: -0.1 });
+      // plataforma dos joelhos: o contrapeso empurra para cima
+      const knee = new Builder();
+      knee.rbox(0.4, 0.08, 0.32, P.pad, {}, 0.035);
+      knee.box(0.06, 0.06, 0.5, P.metalDark, { y: -0.04, z: -0.3 });
+      return { base: b, parts: [{ name: 'knee', b: knee, pos: [0, 0.55, 0.0] }] };
+    },
+    animate(p, t, o) {
+      p.knee.position.y = p.knee.userData.base.y + (o.active ? cycle(t, RATE.pull) * 0.166 : 0);
     },
   },
 

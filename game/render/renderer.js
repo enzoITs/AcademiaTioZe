@@ -4,7 +4,7 @@ import { CONFIG, getEquipmentDef } from '../config.js';
 import {
   COLS, ROWS, DOOR, inBounds, footprintSize, frontCells, zoneAtCell, allZones, zoneById,
 } from '../grid/grid.js';
-import { conditionState, hasWear, CONDITION_STATES } from '../systems/maintenance.js';
+import { conditionState, hasWear, CONDITION_STATES, itemLevel } from '../systems/maintenance.js';
 import { placementPreview } from '../engine/store.js';
 import { SceneDirector } from './director.js';
 import { drawEquipmentShape } from './draw/equipment.js';
@@ -464,7 +464,7 @@ export class GameRenderer extends SceneDirector {
     dropShadow(ctx, -w * T / 2 + 4, -h * T / 2 + 4, w * T - 8, h * T - 8, 10);
     ctx.save();
     ctx.rotate((item.rot * Math.PI) / 2);
-    drawEquipmentShape(ctx, item.type, w0 * T, h0 * T, t, { tier: item.tier, active, on: true });
+    drawEquipmentShape(ctx, item.type, w0 * T, h0 * T, t, { level: itemLevel(item), active, on: true });
     ctx.restore();
 
     if (hasWear(item) && (st === 'cansado' || st === 'quebrado')) {
@@ -615,8 +615,8 @@ export class GameRenderer extends SceneDirector {
     ctx.globalAlpha = 0.78;
     ctx.translate((pv.x + w / 2) * T, (pv.y + h / 2) * T - 3 + Math.sin(t * 4) * 1.5);
     ctx.rotate((pv.rot * Math.PI) / 2);
-    const tier = movingItem?.tier ?? ui.placing?.tier ?? 'usado';
-    drawEquipmentShape(ctx, pv.type, def.size[0] * T, def.size[1] * T, t, { tier, active: false, on: true });
+    const level = movingItem ? itemLevel(movingItem) : 1;
+    drawEquipmentShape(ctx, pv.type, def.size[0] * T, def.size[1] * T, t, { level, active: false, on: true });
     ctx.restore();
   }
 

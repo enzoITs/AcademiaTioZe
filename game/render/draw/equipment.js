@@ -2,28 +2,26 @@
 // o aparelho centrado na origem, sem rotação, com a frente (área de uso)
 // voltada para +y. Pode ser trocada por sprites no futuro: basta manter
 // a assinatura draw(ctx, w, h, t, opts).
-import { PALETTE as P, INK, box, circle, ellipse, line, roundRect, fillStroke } from './primitives.js';
+import { PALETTE, INK, box, circle, ellipse, line, roundRect, fillStroke } from './primitives.js';
+import { levelLook, levelPalette } from '../levelLook.js';
+import { EQUIPMENT } from '../../config.js';
 
-const TIER_ACCENT = { usado: '#b5a99a', novo: '#8ec5e8', profissional: '#f2cd5c' };
+// Paleta do desenho em andamento: troca pela do nível do aparelho (2 e 3
+// mudam estrutura, estofado, metal...) e volta ao padrão no fim.
+let P = PALETTE;
+// Cor de destaque (painel, quadro) do nível em andamento.
+let ACCENT = levelLook(1).accent;
 
 function plateStack(ctx, x, y, r, color = P.plate) {
   circle(ctx, x, y, r, color);
   circle(ctx, x, y, r * 0.35, P.metal, INK, 1.5);
 }
 
-function tape(ctx, x, y) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(-0.5);
-  box(ctx, -6, -2.5, 12, 5, 1, '#e9d7a8', 'rgba(61,53,80,0.5)', 1);
-  ctx.restore();
-}
-
 const DRAW = {
   esteira(ctx, w, h, t, o) {
     box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 8, P.metal);
     // console no fundo
-    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, 16, 5, TIER_ACCENT[o.tier]);
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, 16, 5, ACCENT);
     box(ctx, -8, -h / 2 + 9, 16, 8, 2, '#3a4a5c', INK, 1.5);
     ctx.fillStyle = '#a8e6cf';
     ctx.fillRect(-6, -h / 2 + 11, 12 * (o.active ? 0.5 + 0.5 * Math.sin(t * 3) ** 2 : 0.3), 4);
@@ -42,11 +40,10 @@ const DRAW = {
     fillStroke(ctx, null);
     line(ctx, -w / 2 + 7, -h / 2 + 24, -w / 2 + 7, h / 2 - 12, P.metalDark, 3);
     line(ctx, w / 2 - 7, -h / 2 + 24, w / 2 - 7, h / 2 - 12, P.metalDark, 3);
-    if (o.tier === 'usado') tape(ctx, w / 2 - 9, 0);
   },
   bicicleta(ctx, w, h, t, o) {
     ellipse(ctx, 0, 6, w / 2 - 8, h / 2 - 12, 'rgba(61,53,80,0.08)');
-    box(ctx, -5, -h / 2 + 12, 10, h - 26, 5, TIER_ACCENT[o.tier]);
+    box(ctx, -5, -h / 2 + 12, 10, h - 26, 5, ACCENT);
     // volante (roda de inércia)
     ctx.save();
     ctx.translate(0, -h / 2 + 18);
@@ -79,8 +76,7 @@ const DRAW = {
     box(ctx, -13, -h / 2 + 34, 26, h - 50, 9, P.pad);
     line(ctx, -7, -h / 2 + 42, -7, h / 2 - 22, P.padDark, 2);
     box(ctx, -18, h / 2 - 20, 36, 8, 4, P.metalDark);
-    if (o.tier === 'profissional') box(ctx, -6, h / 2 - 19, 12, 6, 2, P.yellow, INK, 1);
-    if (o.tier === 'usado') tape(ctx, 8, 0);
+    if (o.level === 3) box(ctx, -6, h / 2 - 19, 12, 6, 2, P.yellow, INK, 1);
   },
   halteres(ctx, w, h) {
     box(ctx, -w / 2 + 4, -h / 2 + 8, w - 8, h - 16, 6, '#d9cfc0');
@@ -242,7 +238,7 @@ function cupTop(ctx, x, y, r, color) {
 Object.assign(DRAW, {
   eliptico(ctx, w, h, t, o) {
     box(ctx, -10, -h / 2 + 6, 20, h - 12, 6, P.metalDark);
-    box(ctx, -w / 2 + 8, -h / 2 + 6, w - 16, 20, 6, TIER_ACCENT[o.tier]);
+    box(ctx, -w / 2 + 8, -h / 2 + 6, w - 16, 20, 6, ACCENT);
     const a = o.active ? t * 4 : 0;
     box(ctx, -12, 6 + Math.cos(a) * 6, 9, 18, 3, P.rubber);
     box(ctx, 3, 6 - Math.cos(a) * 6, 9, 18, 3, P.rubber);
@@ -252,7 +248,7 @@ Object.assign(DRAW, {
   remo(ctx, w, h, t, o) {
     line(ctx, 0, -h / 2 + 30, 0, h / 2 - 8, P.metal, 7);
     line(ctx, -14, h / 2 - 8, 14, h / 2 - 8, P.metalDark, 4);
-    circle(ctx, 0, -h / 2 + 18, 14, TIER_ACCENT[o.tier]);
+    circle(ctx, 0, -h / 2 + 18, 14, ACCENT);
     circle(ctx, 0, -h / 2 + 18, 5, P.metalDark, INK, 1.5);
     box(ctx, -12, -h / 2 + 36, 9, 12, 3, P.rubber);
     box(ctx, 3, -h / 2 + 36, 9, 12, 3, P.rubber);
@@ -262,7 +258,7 @@ Object.assign(DRAW, {
   },
   escada(ctx, w, h, t, o) {
     box(ctx, -w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 6, P.metalDark);
-    box(ctx, -w / 2 + 8, -h / 2 + 7, w - 16, 22, 6, TIER_ACCENT[o.tier]);
+    box(ctx, -w / 2 + 8, -h / 2 + 7, w - 16, 22, 6, ACCENT);
     roundRect(ctx, -14, -h / 2 + 32, 28, h - 44, 4);
     fillStroke(ctx, P.rubber);
     const off = o.active ? (t * 14) % 11 : 0;
@@ -448,6 +444,178 @@ Object.assign(DRAW, {
   },
 });
 
-export function drawEquipmentShape(ctx, type, w, h, t, opts) {
-  (DRAW[type] ?? DRAW.halteres)(ctx, w, h, t, opts);
+// Máquinas da Era 3 em diante (mesmo estilo: vista de cima, frente para +y).
+function stackTower(ctx, w, h, width = 30) {
+  box(ctx, -width / 2, -h / 2 + 5, width, 16, 4, P.metalDark);
+  for (let i = 0; i < 4; i++) box(ctx, -width / 2 + 4, -h / 2 + 7 + i * 3, width - 8, 2.5, 1, P.plate, null);
+}
+const pump = (o, t, rate) => (o.active ? (1 - Math.cos(t * rate)) / 2 : 0);
+
+Object.assign(DRAW, {
+  maquina_gluteo(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 6, '#c9bdd8', null);
+    stackTower(ctx, w, h);
+    box(ctx, -14, -h / 2 + 26, 28, 14, 6, P.pad);
+    for (const s of [-1, 1]) circle(ctx, s * 18, -h / 2 + 30, 3.5, P.rubber, INK, 1);
+    const k = pump(o, t, 2.4);
+    line(ctx, 6, -2, 10, 12 + k * 14, P.metalDark, 5);
+    box(ctx, 4, 10 + k * 14, 14, 7, 2, P.rubber);
+  },
+  abdominal(ctx, w, h, t, o) {
+    stackTower(ctx, w, h);
+    box(ctx, -14, -h / 2 + 24, 28, 9, 4, P.pad);
+    box(ctx, -14, -4, 28, 20, 7, P.pad);
+    const k = pump(o, t, 2.2);
+    for (const s of [-1, 1]) box(ctx, s * 13 - 4, -h / 2 + 28 + k * 6, 8, 12, 3, P.padDark);
+    line(ctx, -12, h / 2 - 10, 12, h / 2 - 10, P.pad, 6);
+  },
+  polia(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, '#d6c7b4');
+    stackTower(ctx, w, h, 26);
+    const k = pump(o, t, 2.4);
+    line(ctx, 0, -h / 2 + 14, 0, -6 + k * 8, INK, 1.5);
+    line(ctx, -9, -6 + k * 8, 9, -6 + k * 8, P.rubber, 4);
+    box(ctx, -10, h / 2 - 20, 20, 12, 4, P.pad);
+  },
+  flexora(ctx, w, h, t, o) {
+    stackTower(ctx, w, h, 26);
+    box(ctx, -14, -h / 2 + 28, 28, 10, 4, P.pad);
+    box(ctx, -14, -6, 28, 22, 7, P.pad);
+    line(ctx, -16, 8, 16, 8, INK, 7);
+    line(ctx, -16, 8, 16, 8, P.padDark, 5);
+    const k = pump(o, t, 2.6);
+    line(ctx, -16, 24 - k * 6, 16, 24 - k * 6, INK, 8);
+    line(ctx, -16, 24 - k * 6, 16, 24 - k * 6, P.pad, 6);
+  },
+  panturrilha(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 6, P.metalDark);
+    box(ctx, -12, -h / 2 + 8, 24, 14, 3, P.plate);
+    const k = pump(o, t, 3);
+    for (const s of [-1, 1]) box(ctx, s * 7 - 4, -6 - k * 2, 8, 12, 3, P.pad);
+    box(ctx, -14, 8, 28, 10, 3, P.rubber);
+    line(ctx, -14, 18, 14, 18, P.yellow, 2);
+  },
+  voador(ctx, w, h, t, o) {
+    stackTower(ctx, w, h);
+    box(ctx, -14, -h / 2 + 24, 28, 12, 5, P.pad);
+    box(ctx, -14, 2, 28, 18, 7, P.pad);
+    const k = pump(o, t, 2.4);
+    for (const s of [-1, 1]) {
+      const x = s * (24 - k * 14);
+      line(ctx, s * 8, -h / 2 + 30, x, -4, P.metalDark, 4);
+      box(ctx, x - 4, -10, 8, 12, 3, P.pad);
+    }
+  },
+  abdutora(ctx, w, h, t, o) {
+    stackTower(ctx, w, h);
+    box(ctx, -15, -h / 2 + 24, 30, 12, 5, P.pad);
+    box(ctx, -15, -6, 30, 22, 7, P.pad);
+    const k = pump(o, t, 2.2);
+    for (const s of [-1, 1]) box(ctx, s * (14 + k * 6) - 3, 0, 6, 18, 3, P.padDark);
+  },
+  desenvolvimento(ctx, w, h, t, o) {
+    stackTower(ctx, w, h);
+    box(ctx, -14, -h / 2 + 24, 28, 20, 6, P.pad);
+    box(ctx, -14, 2, 28, 18, 7, P.pad);
+    const k = pump(o, t, 1.8);
+    for (const s of [-1, 1]) {
+      line(ctx, s * 20, -h / 2 + 22, s * 20, -2 - k * 6, P.metalDark, 4);
+      circle(ctx, s * 16, -2 - k * 6, 4, P.rubber, INK, 1.5);
+    }
+  },
+  hack_squat(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, '#ddd5c8');
+    for (const s of [-1, 1]) line(ctx, s * 20, -h / 2 + 10, s * 20, h / 2 - 34, P.metalDark, 6);
+    plateStack(ctx, -w / 2 + 14, -h / 2 + 22, 9);
+    plateStack(ctx, w / 2 - 14, -h / 2 + 22, 9);
+    const k = pump(o, t, 2.2);
+    box(ctx, -14, -h / 2 + 28 + k * 10, 28, 40, 7, P.pad);
+    for (const s of [-1, 1]) box(ctx, s * 8 - 5, -h / 2 + 26 + k * 10, 10, 8, 3, P.padDark);
+    box(ctx, -20, h / 2 - 28, 40, 18, 4, P.metal);
+  },
+  multiestacao(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 8, '#d6c7b4');
+    line(ctx, -w / 2 + 16, 0, w / 2 - 16, 0, P.metalDark, 6);
+    line(ctx, 0, -h / 2 + 16, 0, h / 2 - 16, P.metalDark, 6);
+    box(ctx, -12, -12, 24, 24, 5, P.metalDark);
+    for (const [x, y] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      box(ctx, x * (w / 2 - 18) - 8, y * (h / 2 - 18) - 8, 16, 16, 4, P.metalDark);
+      box(ctx, x * (w / 2 - 18) - 5, y * (h / 2 - 18) - 5, 10, 10, 2, P.plate, null);
+    }
+    const k = pump(o, t, 2.4);
+    for (const s of [-1, 1]) {
+      const hx = s * (w / 2 - 30 - k * 14);
+      line(ctx, s * (w / 2 - 18), 0, hx, 22, INK, 1.5);
+      circle(ctx, hx, 22, 4, P.rubber, INK, 1.5);
+    }
+    box(ctx, -18, -h / 2 + 26, 36, 10, 4, P.pad);
+  },
+  hip_thrust(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 6, '#ddd5c8');
+    box(ctx, -w / 2 + 12, -h / 2 + 14, w - 24, 16, 6, P.pad);
+    for (const s of [-1, 1]) line(ctx, s * (w / 2 - 12), -h / 2 + 30, s * (w / 2 - 12), -h / 2 + 62, P.metalDark, 6);
+    const k = pump(o, t, 2);
+    const by = -h / 2 + 46 - k * 3;
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, INK, 6);
+    line(ctx, -w / 2 + 8, by, w / 2 - 8, by, P.metal, 4);
+    box(ctx, -12, by - 5, 24, 10, 5, P.pad);
+    plateStack(ctx, -w / 2 + 22, by, 9);
+    plateStack(ctx, w / 2 - 22, by, 9);
+    box(ctx, -22, h / 2 - 30, 44, 18, 4, P.rubber);
+    line(ctx, -22, h / 2 - 12, 22, h / 2 - 12, P.yellow, 2);
+  },
+  graviton(ctx, w, h, t, o) {
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, h - 12, 6, P.metalDark);
+    box(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, 10, 4, P.metal);
+    box(ctx, -12, -h / 2 + 18, 24, 12, 3, P.plate);
+    for (const s of [-1, 1]) {
+      box(ctx, s * 22 - 5, -6, 10, 12, 3, P.rubber);
+      circle(ctx, s * 16, -h / 2 + 12, 3.5, P.rubber, INK, 1);
+    }
+    const k = pump(o, t, 1.8);
+    box(ctx, -12, 2 - k * 3, 24, 16, 6, P.pad);
+  },
+});
+
+/** Moldura do nível em volta do aparelho (azul no 2, escura com filete dourado no 3). */
+function drawLevelTrim(ctx, w, h, look) {
+  if (look.level < 2) return;
+  roundRect(ctx, -w / 2 + 2, -h / 2 + 2, w - 4, h - 4, 8);
+  ctx.strokeStyle = look.trim;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  if (look.level === 3) {
+    roundRect(ctx, -w / 2 + 4.5, -h / 2 + 4.5, w - 9, h - 9, 6);
+    ctx.strokeStyle = look.badge;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    line(ctx, -w * 0.25, h / 2 - 2, w * 0.25, h / 2 - 2, look.led, 2);
+  }
+  box(ctx, w / 2 - 16, h / 2 - 7, 11, 4, 1.5, look.badge, INK, 1);
+}
+
+function hasLevelTrim(type) {
+  const def = EQUIPMENT[type];
+  return !!def && !def.wallMounted && !def.fixed && def.tiers.some((t) => t.capacity > 0);
+}
+
+/** Desenha o aparelho; opts.level (1 a 3) escolhe a cara do nível. */
+export function drawEquipmentShape(ctx, type, w, h, t, opts = {}) {
+  const look = levelLook(opts.level ?? 1);
+  const prevP = P;
+  const prevA = ACCENT;
+  P = levelPalette(look.level);
+  ACCENT = look.accent;
+  try {
+    (DRAW[type] ?? DRAW.halteres)(ctx, w, h, t, { ...opts, level: look.level });
+    if (DRAW[type] && hasLevelTrim(type)) drawLevelTrim(ctx, w, h, look);
+  } finally {
+    P = prevP;
+    ACCENT = prevA;
+  }
+}
+
+/** Diz se o aparelho tem desenho 2D próprio. */
+export function hasEquipmentDrawing(type) {
+  return Object.hasOwn(DRAW, type);
 }

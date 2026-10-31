@@ -928,7 +928,7 @@ export class Renderer3D extends SceneDirector {
   }
 
   createItemView(item, side, level = 1) {
-    const model = makeEquipment(item.type, item.tier, side);
+    const model = makeEquipment(item.type, level, side);
     const group = model.group;
     group.userData.itemId = item.id;
     // Melhorias: uma estrelinha dourada por nível acima do 1, num cantinho do aparelho.
@@ -970,7 +970,7 @@ export class Renderer3D extends SceneDirector {
       const def = getEquipmentDef(item.type);
       const side = def.wallMounted ? this.wallSideOf(item.type, item.x, item.y, item.rot) : -1;
       const level = itemLevel(item);
-      const key = `${item.type}|${item.tier}|${side}|${level}`;
+      const key = `${item.type}|${side}|${level}`;
       let v = this.itemViews.get(item.id);
       if (!v || v.key !== key) {
         if (v) this.removeItemView(item.id, v);
@@ -994,7 +994,7 @@ export class Renderer3D extends SceneDirector {
         m.material = mat;
         if (m.userData.outline) m.userData.outline.material = selected ? MATS.selected : MATS.outline;
       }
-      v.model.animate(t, { tier: item.tier, active, on: true });
+      v.model.animate(t, { level, active, on: true });
 
       let scale = 1;
       const anim = this.itemAnims.get(item.id);
@@ -1253,10 +1253,10 @@ export class Renderer3D extends SceneDirector {
   syncPreview(state, ui, t) {
     const pv = placementPreview();
     const movingItem = ui.mode === 'move' ? state.items.find((i) => i.id === ui.moving?.id) : null;
-    const tier = movingItem?.tier ?? ui.placing?.tier ?? 'usado';
+    const level = movingItem ? itemLevel(movingItem) : 1;
     const origin = movingItem && ui.moving.origin ? ui.moving.origin : null;
     const key = pv
-      ? `${pv.type}|${tier}|${pv.x},${pv.y},${pv.rot}|${pv.ok}|${!!pv.warning}|${origin ? `${origin.x},${origin.y},${origin.rot}` : ''}`
+      ? `${pv.type}|${level}|${pv.x},${pv.y},${pv.rot}|${pv.ok}|${!!pv.warning}|${origin ? `${origin.x},${origin.y},${origin.rot}` : ''}`
       : '';
     if (key !== this.previewKey) {
       this.previewKey = key;
@@ -1276,7 +1276,7 @@ export class Renderer3D extends SceneDirector {
         for (const c of pv.front) g.add(tile(c.x, c.y, basic('#8ec5e8', 0.4), 0.14));
         const def = getEquipmentDef(pv.type);
         const side = def.wallMounted ? this.wallSideOf(pv.type, pv.x, pv.y, pv.rot) : -1;
-        const model = makeEquipment(pv.type, tier, side);
+        const model = makeEquipment(pv.type, level, side);
         for (const m of model.meshes) {
           m.material = MATS.ghost;
           m.castShadow = false;

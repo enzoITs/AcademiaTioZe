@@ -58,7 +58,7 @@ export default function ItemInspector() {
         <Icon name="close" size={16} />
       </button>
       <div className="inspector-head">
-        <EquipmentThumb type={item.type} tier={item.tier} size={52} />
+        <EquipmentThumb type={item.type} level={level} size={52} />
         <div>
           <h3>{def.name}</h3>
           <span className="small subtle">

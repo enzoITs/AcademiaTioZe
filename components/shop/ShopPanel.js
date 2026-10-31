@@ -31,7 +31,7 @@ function ShopCard({ entry, money, reputation, requested, era }) {
   return (
     <article className={`shop-card ${locked ? 'locked' : ''}`}>
       {requested && !locked ? <span className="badge badge-hot">Muito pedido</span> : null}
-      <div className="shop-thumb"><EquipmentThumb type={entry.type} tier={tier.id} size={56} /></div>
+      <div className="shop-thumb"><EquipmentThumb type={entry.type} size={56} /></div>
       <div className="shop-info">
         <h3>{entry.name}</h3>
         <p className="shop-meta">

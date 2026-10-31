@@ -47,6 +47,19 @@ export const MATS = {
 };
 
 // ------------------------------------------------------------ construtor
+// Troca de cores ativa enquanto um aparelho é montado (visual do nível 2/3).
+let activeRemap = null;
+/** Roda fn com as cores trocadas pelo mapa dado ({ '#hex': '#novo' }). */
+export function withColorRemap(remap, fn) {
+  const prev = activeRemap;
+  activeRemap = remap && Object.keys(remap).length ? remap : null;
+  try {
+    return fn();
+  } finally {
+    activeRemap = prev;
+  }
+}
+
 const tmpM = new THREE.Matrix4();
 const tmpQ = new THREE.Quaternion();
 const tmpE = new THREE.Euler();
@@ -76,7 +89,7 @@ export class Builder {
       this.parts.push(g);
       return this;
     }
-    const c = col(color);
+    const c = col(activeRemap?.[color] ?? color);
     const n = g.attributes.position.count;
     const arr = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {

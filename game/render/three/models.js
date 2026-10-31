@@ -3,19 +3,14 @@
 // sem rotação, com a frente (área de uso) voltada para +z, como no desenho 2D
 // (frente para +y). Partes animadas ficam separadas; o resto vira uma malha só.
 import * as THREE from 'three';
-import { PROFILES } from '../../config.js';
+import { PROFILES, EQUIPMENT, getEquipmentDef } from '../../config.js';
 import { PALETTE as P, INK } from '../draw/primitives.js';
 import { drawEquipmentShape } from '../draw/equipment.js';
-import { Builder, MATS, solid, cached } from './kit.js';
+import { Builder, MATS, solid, cached, withColorRemap } from './kit.js';
+import { levelLook } from '../levelLook.js';
 import { MORE_EQUIP, RATE, cycle, pressPose } from './moreEquipment.js';
 
-const TIER_ACCENT = { usado: '#b5a99a', novo: '#8ec5e8', profissional: '#f2cd5c' };
 const PI = Math.PI;
-const accent = (tier) => TIER_ACCENT[tier] ?? TIER_ACCENT.usado;
-
-function tape(b, o) {
-  b.box(0.13, 0.025, 0.06, '#e9d7a8', { ry: 0.5, ...o });
-}
 
 /** Barra com anilhas deitada no eixo x (centro em 0). */
 function barbell(b, len, plateR, plateColor, y = 0) {
@@ -69,17 +64,17 @@ function getPosterTexture() {
   c.height = 128;
   const ctx = c.getContext('2d');
   ctx.setTransform(128 / 34, 0, 0, 128 / 38, 64, 64);
-  drawEquipmentShape(ctx, 'poster', 48, 48, 0.5, { tier: 'usado', active: false, on: false });
+  drawEquipmentShape(ctx, 'poster', 48, 48, 0.5, { level: 1, active: false, on: false });
   posterTexture = new THREE.CanvasTexture(c);
   posterTexture.colorSpace = THREE.SRGBColorSpace;
   return posterTexture;
 }
 
 // ------------------------------------------------------------ aparelhos
-// build(tier, side) devolve { base: Builder, parts: [{ name, b: Builder, pos }] }.
+// build(look, side) devolve { base: Builder, parts: [{ name, b: Builder, pos }] }.
 const EQUIP = {
   esteira: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
       b.rbox(0.74, 0.1, 1.78, P.metal, { z: 0.08 });
       b.box(0.56, 0.025, 1.46, P.rubber, { y: 0.1, z: 0.16 });
@@ -88,10 +83,9 @@ const EQUIP = {
         b.box(0.06, 0.62, 0.07, P.metalDark, { x: s * 0.31, y: 0.1, z: -0.7 });
         b.box(0.05, 0.05, 0.44, P.metalDark, { x: s * 0.31, y: 0.5, z: -0.47 });
       }
-      b.rbox(0.72, 0.22, 0.12, accent(tier), { y: 0.62, z: -0.74, rx: -0.45 });
+      b.rbox(0.72, 0.22, 0.12, look.accent, { y: 0.62, z: -0.74, rx: -0.45 });
       b.box(0.3, 0.12, 0.02, '#3a4a5c', { y: 0.67, z: -0.67, rx: -0.45 });
       b.box(0.2, 0.035, 0.022, P.mint, { y: 0.705, z: -0.655, rx: -0.45 });
-      if (tier === 'usado') tape(b, { x: 0.31, y: 0.15, z: 0.25 });
       const stripes = new Builder();
       for (const z of [-0.6, -0.2, 0.2]) stripes.box(0.54, 0.008, 0.05, '#6c6684', { z });
       return { base: b, parts: [{ name: 'stripes', b: stripes, pos: [0, 0.122, 0.16] }] };
@@ -102,9 +96,9 @@ const EQUIP = {
   },
 
   bicicleta: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
-      const a = accent(tier);
+      const a = look.accent;
       b.box(0.62, 0.05, 0.1, P.metalDark, { z: -0.72 });
       b.box(0.62, 0.05, 0.1, P.metalDark, { z: 0.72 });
       b.rbox(0.12, 0.09, 1.5, a, { y: 0.04 }, 0.03);
@@ -137,7 +131,7 @@ const EQUIP = {
   },
 
   supino: {
-    build(tier) {
+    build(look) {
       const b = new Builder();
       for (const s of [-1, 1]) {
         b.box(0.12, 0.8, 0.12, P.metalDark, { x: s * 0.62, z: -1.15 });
@@ -150,8 +144,7 @@ const EQUIP = {
       b.rbox(0.52, 0.12, 1.6, P.pad, { y: 0.28, z: 0.1 }, 0.05);
       b.box(0.025, 0.006, 1.45, P.padDark, { x: -0.13, y: 0.4, z: 0.1 });
       b.box(0.74, 0.06, 0.2, P.metalDark, { z: 1.2 });
-      if (tier === 'profissional') b.box(0.24, 0.04, 0.12, P.yellow, { y: 0.06, z: 1.2 });
-      if (tier === 'usado') tape(b, { x: 0.12, y: 0.4, z: 0.4 });
+      if (look.level === 3) b.box(0.24, 0.04, 0.12, P.yellow, { y: 0.06, z: 1.2 });
       const bar = new Builder();
       barbell(bar, 2.0, 0.2, P.plate);
       return { base: b, parts: [{ name: 'bar', b: bar, pos: [0, 0.8, -1.12] }] };
@@ -255,9 +248,9 @@ const EQUIP = {
       b.cyl(0.07, 0.07, 0.06, P.metal, { rz: PI / 2, y: 1.38, z: -0.04 }, 10);
       for (let i = 0; i < 5; i++) b.box(0.3, 0.06, 0.14, P.plate, { y: 0.08 + i * 0.075, z: -0.56 });
       b.box(0.08, 0.32, 0.08, P.metalDark, { z: 0.25 });
-      b.rbox(0.56, 0.12, 0.42, P.blue, { y: 0.32, z: 0.25 }, 0.05);
+      b.rbox(0.56, 0.12, 0.42, P.pad, { y: 0.32, z: 0.25 }, 0.05);
       b.box(0.05, 0.6, 0.05, P.metalDark, { z: 0.0 });
-      b.rbox(0.5, 0.1, 0.13, P.blue, { y: 0.6, z: 0.0 }, 0.04);
+      b.rbox(0.5, 0.1, 0.13, P.pad, { y: 0.6, z: 0.0 }, 0.04);
       const bar = new Builder();
       bar.box(1.1, 0.045, 0.045, P.metal, { y: -0.0225 });
       for (const s of [-1, 1]) bar.box(0.18, 0.06, 0.06, P.rubber, { x: s * 0.46, y: -0.03 });
@@ -331,7 +324,7 @@ const EQUIP = {
 
   espelho: {
     wall: true,
-    build(tier, side) {
+    build(look, side) {
       const b = new Builder();
       wallPanel(b, 1, 2, side, (pb, L) => {
         pb.rbox(0.06, 1.0, L - 0.14, P.metal, { y: 0.1 }, 0.025);
@@ -345,7 +338,7 @@ const EQUIP = {
 
   poster: {
     wall: true,
-    build(tier, side) {
+    build(look, side) {
       const b = new Builder();
       wallPanel(b, 1, 1, side, (pb) => {
         pb.rbox(0.04, 0.66, 0.7, P.yellow, { y: 0.32 }, 0.02);
@@ -421,26 +414,66 @@ const EQUIP = {
 
 const POSTER_PLANE = () => cached('poster|plane', () => new THREE.PlaneGeometry(0.62, 0.58));
 
+/**
+ * Adorno do nível no chão do aparelho: moldura colorida na borda (nível 2)
+ * ou moldura escura com filete dourado e LED na frente (nível 3).
+ */
+function addLevelTrim(b, W, D, look) {
+  if (look.level < 2) return;
+  const t = 0.06;
+  const h = 0.035;
+  const e = 0.02;
+  const frame = (color, inset, thick, height, y = 0) => {
+    for (const s of [-1, 1]) {
+      b.box(W - 2 * inset, height, thick, color, { y, z: s * (D / 2 - inset - thick / 2) });
+      b.box(thick, height, D - 2 * inset - 2 * thick, color, { y, x: s * (W / 2 - inset - thick / 2) });
+    }
+  };
+  frame(look.trim, e, t, h);
+  if (look.level === 3) {
+    frame(look.badge, e + t * 0.35, t * 0.3, 0.008, h);
+    b.box(Math.max(0.3, W * 0.5), 0.012, 0.025, look.led, { y: h + 0.008, z: D / 2 - e - t / 2 });
+  }
+  // plaquinha com a marca no canto da frente
+  b.rbox(0.2, 0.06, 0.03, look.badge, { x: W / 2 - e - t - 0.14, y: 0.005, z: D / 2 - e - t / 2 }, 0.012);
+}
+
+/** Aparelhos de treino (com vagas) ganham o adorno do nível; decoração só muda de cor. */
+function hasLevelTrim(type) {
+  const def = EQUIPMENT[type];
+  return !!def && !def.wallMounted && !def.fixed && def.tiers.some((t) => t.capacity > 0);
+}
+
 /** Monta (ou reaproveita) a geometria de um aparelho. side só importa para itens de parede. */
-function equipmentSpec(type, tier, side) {
+function equipmentSpec(type, level, side) {
   const def = EQUIP[type] ?? EQUIP.halteres;
-  const key = `eq|${type}|${tier}|${def.wall ? side : ''}`;
-  return cached(key, () => {
-    const { base, parts } = def.build(tier, side);
+  const look = levelLook(level);
+  const key = `eq|${type}|${look.level}|${def.wall ? side : ''}`;
+  return cached(key, () => withColorRemap(look.remap, () => {
+    const { base, parts } = def.build(look, side);
+    if (hasLevelTrim(type)) {
+      const [W, D] = getEquipmentDef(type).size;
+      addLevelTrim(base, W, D, look);
+    }
     const baseGeo = base.build();
     const built = parts.map((p) => ({ name: p.name, geo: p.b.build(), pos: p.pos }));
     let height = baseGeo.boundingBox.max.y;
     for (const p of built) height = Math.max(height, p.pos[1] + p.geo.boundingBox.max.y);
     return { def, base: baseGeo, parts: built, height };
-  });
+  }));
+}
+
+/** Diz se o aparelho tem modelo 3D próprio (o resto cai no rack de halteres). */
+export function hasEquipmentModel(type) {
+  return Object.hasOwn(EQUIP, type);
 }
 
 /**
- * Cria a representação 3D de um aparelho.
+ * Cria a representação 3D de um aparelho no nível dado (1 padrão, 2 e 3 melhores).
  * Retorna { group, meshes, parts, height, animate(t, opts) }.
  */
-export function makeEquipment(type, tier, side = -1) {
-  const spec = equipmentSpec(type, tier, side);
+export function makeEquipment(type, level = 1, side = -1) {
+  const spec = equipmentSpec(type, level, side);
   const group = new THREE.Group();
   const body = solid(spec.base);
   group.add(body);
@@ -454,7 +487,7 @@ export function makeEquipment(type, tier, side = -1) {
     meshes.push(m);
     parts[p.name] = m;
   }
-  const extra = spec.def.extras ? spec.def.extras(group, side, tier) : [];
+  const extra = spec.def.extras ? spec.def.extras(group, side, level) : [];
   const animate = spec.def.animate ? (t, o) => spec.def.animate(parts, t, o) : () => {};
   return { group, meshes, extra, parts, height: spec.height, animate };
 }
@@ -706,6 +739,7 @@ export function posePerson(rig, state, t, seed, profileId) {
   let armL = 0;
   let armR = 0;
   let armZ = 0;
+  let legZ = 0;
   if (state === 'walk') {
     bob = Math.abs(Math.sin(phase * 1.2)) * 0.035;
     legL = Math.sin(phase * 1.2) * 0.6;
@@ -792,6 +826,58 @@ export function posePerson(rig, state, t, seed, profileId) {
     const k = cycle(t, RATE.cable);
     armL = armR = -1.1;
     armZ = 1.25 - k * 1.0;
+  } else if (state === 'use-kick') {
+    // coice no glúteo: tronco no apoio, uma perna empurra para trás
+    const k = cycle(t, RATE.kick);
+    lean = 0.45;
+    legL = -0.15;
+    legR = 0.15 + k * 1.1;
+    armL = armR = -1.25;
+  } else if (state === 'use-crunch') {
+    // abdominal sentado: mãos nas almofadas e tronco dobrando para a frente
+    const k = cycle(t, RATE.crunch);
+    lean = 0.05 + k * 0.5;
+    legL = legR = -1.4;
+    armL = armR = -2.5;
+    armZ = 0.15;
+  } else if (state === 'use-flex') {
+    // flexora sentada: perna esticada que dobra para baixo do banco
+    const k = cycle(t, RATE.flex);
+    legL = legR = -(1.55 - k * 0.9);
+    armL = armR = -0.2;
+    armZ = 0.25;
+  } else if (state === 'use-calf') {
+    // panturrilha: sobe na ponta do pé com as ombreiras nos ombros
+    bob = cycle(t, RATE.calf) * 0.06;
+    armL = armR = -2.9;
+    armZ = 0.45;
+  } else if (state === 'use-fly') {
+    // voador sentado: braços abrem e fecham na frente do peito
+    const k = cycle(t, RATE.cable);
+    legL = legR = -1.4;
+    armL = armR = -1.4;
+    armZ = 1.2 - k * 1.0;
+  } else if (state === 'use-abduct') {
+    // abdutora: sentado, joelhos abrindo para os lados
+    const k = cycle(t, RATE.abduct);
+    legL = legR = -1.4;
+    legZ = k * 0.45;
+    armL = armR = -0.3;
+    armZ = 0.3;
+  } else if (state === 'use-shoulder') {
+    // desenvolvimento sentado: empurra as manoplas acima da cabeça
+    const { armX } = pressPose(t, true);
+    legL = legR = -1.4;
+    armL = armR = armX;
+    armZ = 0.25;
+  } else if (state === 'use-thrust') {
+    // hip thrust: costas no banco, quadril sobe e desce com a barra
+    const k = cycle(t, RATE.thrust);
+    lean = -(1.05 + k * 0.4);
+    legL = legR = 1.0 + k * 0.4 - 1.6;
+    bob = k * 0.08;
+    armL = armR = -0.6;
+    armZ = 0.2;
   } else if (state === 'use-swim') {
     // nado crawl: deitado na água, braçada alternada e pernada curtinha
     const s = Math.sin(t * RATE.swim + seed);
@@ -830,6 +916,8 @@ export function posePerson(rig, state, t, seed, profileId) {
   rig.inner.scale.y = squash;
   rig.legL.rotation.x = legL;
   rig.legR.rotation.x = legR;
+  rig.legL.rotation.z = -legZ;
+  rig.legR.rotation.z = legZ;
   rig.armL.rotation.x = armL;
   rig.armR.rotation.x = armR;
   rig.armL.rotation.z = -armZ;

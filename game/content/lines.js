@@ -21,6 +21,9 @@ export const EQUIPMENT_SHORT = {
   ring_light: 'ring light', geladeira: 'geladeira de isotônicos', caixa_som: 'caixa de som', trofeus: 'estante de troféus',
   piscina: 'piscina', pista_corrida: 'pista de corrida', ringue: 'ringue', banheira_gelo: 'banheira de gelo', sauna: 'sauna',
   recepcao: 'recepção', escada_filial: 'escada',
+  maquina_gluteo: 'máquina de glúteo', abdominal: 'máquina de abdominal', polia: 'polia', flexora: 'flexora',
+  panturrilha: 'panturrilha', voador: 'voador', abdutora: 'abdutora', desenvolvimento: 'desenvolvimento',
+  hack_squat: 'hack', multiestacao: 'multiestação', hip_thrust: 'hip thrust', graviton: 'graviton',
 };
 
 // Conversa de quem treina em cada estilo de filial (balões na visita à filial).

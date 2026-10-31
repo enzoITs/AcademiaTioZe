@@ -396,6 +396,102 @@
       "description": "Duas torres de polia para o crucifixo perfeito. Peito de vitrine.",
       "tiers": [{ "id": "usado", "price": 1400, "capacity": 6 }]
     },
+    "maquina_gluteo": {
+      "name": "Máquina de glúteo", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 3,
+      "description": "Coice guiado com apoio no peito. Influencer não sai daqui sem o vídeo do treino de glúteo.",
+      "tiers": [
+        { "id": "novo", "price": 1300, "capacity": 5 },
+        { "id": "profissional", "price": 3200, "capacity": 6, "minRep": 3.5 }
+      ]
+    },
+    "abdominal": {
+      "name": "Máquina de abdominal", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 3,
+      "description": "Abdominal sentado com carga na medida. Barriga trincada sem forçar o pescoço.",
+      "tiers": [
+        { "id": "novo", "price": 1200, "capacity": 5 },
+        { "id": "profissional", "price": 3000, "capacity": 6, "minRep": 3.5 }
+      ]
+    },
+    "polia": {
+      "name": "Estação de polia", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 3,
+      "description": "Polia alta e baixa numa torre só: tríceps, rosca e remada no mesmo lugar.",
+      "tiers": [
+        { "id": "novo", "price": 1500, "capacity": 6 },
+        { "id": "profissional", "price": 3600, "capacity": 7, "minRep": 3.5 }
+      ]
+    },
+    "flexora": {
+      "name": "Cadeira flexora", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 3,
+      "description": "Posterior de coxa deitadinho. A dupla perfeita da extensora.",
+      "tiers": [
+        { "id": "novo", "price": 1250, "capacity": 5 },
+        { "id": "profissional", "price": 3100, "capacity": 6, "minRep": 3.5 }
+      ]
+    },
+    "panturrilha": {
+      "name": "Panturrilha em pé", "category": "maquinas", "size": [1, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 3,
+      "description": "Sobe e desce na ponta do pé. Panturrilha de jogador de futebol.",
+      "tiers": [
+        { "id": "novo", "price": 1100, "capacity": 4 },
+        { "id": "profissional", "price": 2600, "capacity": 5, "minRep": 3.5 }
+      ]
+    },
+    "voador": {
+      "name": "Voador (peck deck)", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "chest": true, "minEra": 4,
+      "description": "Abre e fecha os braços sentado. Peito desenhado e ombro protegido.",
+      "tiers": [
+        { "id": "novo", "price": 2200, "capacity": 5 },
+        { "id": "profissional", "price": 4800, "capacity": 6, "minRep": 4 }
+      ]
+    },
+    "abdutora": {
+      "name": "Cadeira abdutora", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 4,
+      "description": "Abre e fecha as pernas com carga. Glúteo médio agradece.",
+      "tiers": [
+        { "id": "novo", "price": 2000, "capacity": 5 },
+        { "id": "profissional", "price": 4500, "capacity": 6, "minRep": 4 }
+      ]
+    },
+    "desenvolvimento": {
+      "name": "Desenvolvimento de ombros", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 4,
+      "description": "Empurra a carga acima da cabeça com o encosto firme. Ombro de capa de revista.",
+      "tiers": [
+        { "id": "novo", "price": 2400, "capacity": 5 },
+        { "id": "profissional", "price": 5200, "capacity": 6, "minRep": 4 }
+      ]
+    },
+    "hack_squat": {
+      "name": "Hack squat", "category": "maquinas", "size": [2, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true, "minEra": 4,
+      "description": "Agachamento no trilho inclinado, costas apoiadas. Coxa que não cabe na calça.",
+      "tiers": [
+        { "id": "novo", "price": 3000, "capacity": 5 },
+        { "id": "profissional", "price": 6200, "capacity": 6, "minRep": 4 }
+      ]
+    },
+    "multiestacao": {
+      "name": "Multiestação de polias", "category": "maquinas", "size": [3, 3], "needsAccess": true, "visualSlots": 2, "anim": "lift", "minEra": 5,
+      "description": "Quatro torres de polia em volta de um pilar. Dá para treinar o corpo inteiro e cabe muita gente.",
+      "tiers": [
+        { "id": "novo", "price": 5200, "capacity": 10 },
+        { "id": "profissional", "price": 9800, "capacity": 12, "minRep": 4.3 }
+      ]
+    },
+    "hip_thrust": {
+      "name": "Hip thrust guiado", "category": "maquinas", "size": [2, 3], "needsAccess": true, "visualSlots": 1, "anim": "lift", "noisy": true, "minEra": 5,
+      "description": "Elevação pélvica com a barra no trilho e o banco no ponto certo. Glúteo de atleta.",
+      "tiers": [
+        { "id": "novo", "price": 3800, "capacity": 5 },
+        { "id": "profissional", "price": 7600, "capacity": 6, "minRep": 4.3 }
+      ]
+    },
+    "graviton": {
+      "name": "Graviton", "category": "maquinas", "size": [2, 2], "needsAccess": true, "visualSlots": 1, "anim": "lift", "minEra": 5,
+      "description": "Barra fixa com contrapeso nos joelhos. Até quem nunca fez uma barra sobe aqui.",
+      "tiers": [
+        { "id": "novo", "price": 3500, "capacity": 5 },
+        { "id": "profissional", "price": 7000, "capacity": 6, "minRep": 4.3 }
+      ]
+    },
     "bebedouro": {
       "name": "Bebedouro", "category": "conforto", "size": [1, 1], "needsAccess": true, "vibe": 12,
       "description": "Água geladinha. Essencial para o Corredor; perto do cardio agrada.",
@@ -549,7 +645,7 @@
       "priceMultiplier": 0.5,
       "spawnWeight": 0.2,
       "essentials": ["espelho", "ring_light", "colchonete"],
-      "desired": ["planta", "trofeus", "poster", "eliptico", "geladeira"],
+      "desired": ["planta", "trofeus", "poster", "eliptico", "geladeira", "maquina_gluteo", "abdominal"],
       "vibeMultipliers": { "espelho": 2, "ring_light": 1.8, "planta": 1.5, "trofeus": 1.4 },
       "signature": { "shirt": "#f5b3c8", "accent": "#b9a3e3", "accessory": "phone" },
       "dirtSensitivity": 1.5
@@ -565,7 +661,7 @@
       "priceMultiplier": 0.8,
       "spawnWeight": 0.2,
       "essentials": ["pista_corrida", "plataforma", "banheira_gelo"],
-      "desired": ["piscina", "ringue", "sauna", "trofeus", "bebedouro"],
+      "desired": ["piscina", "ringue", "sauna", "trofeus", "bebedouro", "hip_thrust"],
       "vibeMultipliers": { "banheira_gelo": 1.8, "sauna": 1.5, "trofeus": 1.6 },
       "signature": { "shirt": "#2f6f9f", "accent": "#f2cd5c", "accessory": "medal" },
       "dirtSensitivity": 1.2
